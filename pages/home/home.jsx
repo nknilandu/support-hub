@@ -1,4 +1,5 @@
 
+import Footer from '../../app/layouts/Footer/Footer';
 import Navbar from '../../app/layouts/Navbar/Navbar';
 import CTASection from '../../components/home/CTASection/CTASection';
 import Hero from '../../components/home/Hero/Hero';
@@ -21,6 +22,7 @@ const home = () => {
             <PricingSection></PricingSection>
             <SecuritySection></SecuritySection>
             <CTASection></CTASection>
+            <Footer></Footer>
         </div>
     );
 };
