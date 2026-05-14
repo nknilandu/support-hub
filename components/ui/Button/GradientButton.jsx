@@ -8,7 +8,7 @@ const GradientButton = ({
 
   shadow = false,
 
-  rounded = "rounded-lg",
+  rounded = "rounded-xl",
   blur = "blur-xl",
 
   from = "from-primary",
@@ -39,7 +39,7 @@ const GradientButton = ({
       <button
         type={type}
         className={cn(
-          "btn relative z-10 inline-flex w-fit items-center justify-center gap-2 border-0 bg-gradient-to-r text-white shadow-none transition-all",
+          "btn relative z-10 inline-flex w-full items-center justify-center gap-2 border-0 bg-gradient-to-r text-white shadow-none transition-all",
           from,
           to,
           rounded,

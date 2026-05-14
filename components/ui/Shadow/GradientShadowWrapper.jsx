@@ -14,15 +14,15 @@ const GradientShadow = ({
         className={cn(
           "absolute -inset-2 bg-gradient-to-br from-primary/30 to-secondary/30 opacity-80 blur-xl",
           radius,
-          glowClassName
+          glowClassName,
         )}
       />
 
       {/* gradient border */}
       <div
         className={cn(
-          "relative bg-gradient-to-br from-primary to-secondary",  // for border give here p-[2px]
-          radius
+          "relative bg-gradient-to-br from-primary to-secondary", // for border give here p-[2px]
+          radius,
         )}
       >
         {/* content */}
@@ -35,8 +35,6 @@ const GradientShadow = ({
 };
 
 export default GradientShadow;
-
-
 
 /*
   Uses:

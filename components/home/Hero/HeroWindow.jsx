@@ -104,7 +104,7 @@ const HeroWindow = () => {
 
 
       {/* windows */}
-      <GradientShadow glowClassName="opacity-50 blur-lg" radius="rounded-3xl">
+      <GradientShadow glowClassName="opacity-30 blur-md" radius="rounded-3xl">
         {/* console */}
         <div className="relative overflow-hidden">
           {/* Browser bar */}
@@ -232,7 +232,7 @@ const HeroWindow = () => {
                 </p>
 
                 <div className="mt-2 flex gap-2">
-                  <GradientButton buttonClassName="btn-xs hover:opacity-100">
+                  <GradientButton buttonClassName="btn-xs hover:opacity-100 rounded-lg">
                     Approve & send
                   </GradientButton>
 
