@@ -1,42 +1,75 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link as ScrollLink } from "react-scroll";
 import {
-  Bot,
-  Boxes,
-  ChevronRight,
-  CircleDollarSign,
+  Bell,
+  User,
+  Mail,
+  LogOut,
+  Pencil,
   Menu,
-  Moon,
-  Sparkles,
-  Sun,
   X,
-  Zap,
+  Moon,
+  Sun,
+  Bot,
 } from "lucide-react";
 
-const navItems = [
-  { label: "Product", href: "#product", icon: Boxes },
-  { label: "AI", href: "#ai", icon: Bot },
-  { label: "How it works", href: "#how-it-works", icon: Zap },
-  { label: "Pricing", href: "#pricing", icon: CircleDollarSign },
+import { cn } from "../../../src/lib/cn";
+import GradientButton from "../../../components/ui/Button/GradientButton";
+import GradientText from "../../../components/ui/Text/GradientText";
+import TextBadge from "../../../components/ui/Badge/TextBadge";
+
+const navLinks = [
+  { label: "Features", to: "features" },
+  { label: "Workflow", to: "workflow" },
+  { label: "Pricing", to: "pricing" },
+  { label: "Security", to: "security" },
 ];
 
-const Navbar = () => {
-  const [theme, setTheme] = useState("dark");
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+const loggedInNavLinks = [
+  { label: "Dashboard", path: "/dashboard" },
+  { label: "Pricing", path: "/pricing" },
+  { label: "Profile", path: "/profile" },
+];
+
+const mobileLoggedInNavLinks = [
+  { label: "Dashboard", to: "/dashboard" },
+  { label: "Notification", to: "/notifications", hasDot: true },
+  { label: "Pricing", to: "/pricing" },
+  { label: "Profile", to: "/profile" },
+];
+
+const user = {
+  imageUrl:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRBraP-MM0RM-sZ0Qd6JKJEldoTX6k38o_fjg&s",
+  name: "Sherlock LC",
+  email: "sharlockaj@gmail.com",
+};
+
+const notifications = [{ id: 1, title: "New ticket assigned" }];
+
+const hasNotifications = notifications.length > 0;
+
+export default function Navbar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [theme, setTheme] = useState("light");
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "dark";
+    const savedTheme = localStorage.getItem("supporthub-theme") || "light";
+
     setTheme(savedTheme);
     document.documentElement.setAttribute("data-theme", savedTheme);
   }, []);
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      setIsScrolled(window.scrollY > 12);
     };
 
     handleScroll();
-    window.addEventListener("scroll", handleScroll);
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -45,180 +78,258 @@ const Navbar = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
 
     setTheme(nextTheme);
-    localStorage.setItem("theme", nextTheme);
+    localStorage.setItem("supporthub-theme", nextTheme);
     document.documentElement.setAttribute("data-theme", nextTheme);
   };
 
-  const isDark = theme === "dark";
+  const closeMenu = () => {
+    setIsOpen(false);
+  };
 
   return (
-    <header className="fixed left-0 top-0 z-50 w-full px-4 py-4">
-      <nav
-        className={`relative mx-auto flex max-w-7xl items-center justify-between rounded-[2rem] px-4 py-2.5 transition-all duration-500 ${
-          scrolled
-            ? "border border-base-content/10 bg-base-100/55 shadow-[0_20px_80px_-24px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-            : "border border-transparent bg-transparent shadow-none"
-        }`}
-      >
-        {/* Soft navbar glow */}
-        <div className="pointer-events-none absolute inset-x-10 -bottom-4 -z-10 h-10 rounded-full bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 blur-2xl" />
-
+    <header
+      className={cn(
+        "fixed left-0 top-0 z-50 w-full transition-all duration-300",
+        isScrolled
+          ? "border-b border-base-content/10 bg-base-100/5 shadow-sm shadow-base-content/5 backdrop-blur-lg"
+          : "border-b border-transparent bg-base-200 backdrop-blur-md",
+      )}
+    >
+      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Logo */}
-        <a href="#" className="group flex items-center gap-3">
-          <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-primary to-secondary text-primary-content shadow-[0_12px_35px_-12px] shadow-primary/70 transition duration-300 group-hover:scale-105">
-            <Sparkles className="h-5 w-5" />
-
-            <div className="absolute inset-0 rounded-2xl border border-white/25" />
-            <div className="absolute inset-0 rounded-2xl bg-white/10 opacity-0 transition group-hover:opacity-100" />
-            <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-secondary shadow-[0_0_18px] shadow-secondary" />
+        <a href="#" onClick={closeMenu} className="flex items-center gap-2">
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-content shadow-sm">
+            <div className="absolute inset-0 rounded-xl bg-white/10" />
+            <Bot size={18} strokeWidth={2} className="relative z-10" />
           </div>
 
-          <div className="leading-none">
-            <h2 className="text-lg font-bold tracking-tight text-base-content">
-              Support<span className="text-primary">Hub</span>
-            </h2>
-            <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.22em] text-base-content/45">
-              AI Helpdesk
-            </p>
-          </div>
+          <span className="text-lg font-semibold tracking-tight text-base-content">
+            Support<GradientText>Hub</GradientText>
+          </span>
+
+          <TextBadge
+            variant="cyan"
+            size="sm"
+            uppercase={false}
+            className="hidden font-medium md:inline-flex"
+          >
+            AI Workspace
+          </TextBadge>
         </a>
 
-        {/* Desktop Center Nav */}
-        <div className="hidden items-center rounded-full border border-base-content/10 bg-base-100/35 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_55px_-28px_rgba(0,0,0,0.5)] backdrop-blur-2xl lg:flex">
-          {navItems.map((item, index) => {
-            const Icon = item.icon;
-
-            return (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`group relative flex items-center gap-2 overflow-hidden rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                  index === 0
-                    ? "bg-gradient-to-r from-primary/20 to-secondary/15 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                    : "text-base-content/65 hover:bg-base-content/10 hover:text-base-content"
-                }`}
-              >
-                {index === 0 && (
-                  <span className="absolute inset-0 rounded-full border border-primary/25" />
-                )}
-
-                <Icon
-                  className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 ${
-                    index === 0 ? "text-primary" : ""
-                  }`}
-                />
-                <span>{item.label}</span>
-              </a>
-            );
-          })}
+        {/*===================== Desktop  nav ================ */}
+        <div className="hidden items-center rounded-2xl border border-base-content/10 bg-base-100/50 px-2 py-1 backdrop-blur-xl lg:flex">
+          {loggedInNavLinks.map((link) => (
+            <ScrollLink
+              key={link.to}
+              to={link.to}
+              smooth
+              offset={-20}
+              duration={500}
+              spy
+              activeClass="bg-gradient-to-r from-primary/10 to-secondary/10 text-primary rounded-xl"
+              className="rounded-xl px-4 py-2 text-sm font-medium text-base-content/65 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/20 hover:text-primary"
+            >
+              {link.label}
+            </ScrollLink>
+          ))}
         </div>
 
-        {/* Right Actions */}
+        {/*=============== desktop right side ===================*/}
         <div className="hidden items-center gap-3 lg:flex">
-          {/* Premium Theme Switch */}
+          {/* Notification */}
           <button
-            onClick={toggleTheme}
-            className="group relative flex h-11 w-[86px] items-center rounded-full border border-base-content/10 bg-base-100/35 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_40px_-24px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition"
-            aria-label="Toggle theme"
+            type="button"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl  text-base-content/70 backdrop-blur-xl transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
           >
-            <span
-              className={`absolute top-1 h-9 w-9 rounded-full bg-gradient-to-br shadow-lg transition-all duration-300 ${
-                isDark
-                  ? "left-1 translate-x-0 from-primary to-secondary shadow-primary/40"
-                  : "left-1 translate-x-[42px] from-warning to-secondary shadow-warning/30"
-              }`}
-            />
+            <Bell size={17} strokeWidth={2} />
 
-            <span className="relative z-10 flex w-full items-center justify-between px-2">
-              <Moon
-                className={`h-4 w-4 transition ${
-                  isDark ? "text-primary-content" : "text-base-content/35"
-                }`}
+            {hasNotifications && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-base-100" />
+            )}
+          </button>
+
+          {/* Theme */}
+          <GradientButton
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            shadow
+            buttonClassName="px-3 from-base-100 to-base-200 text-base-content/90"
+            glowClassName="opacity-30 blur-xs"
+          >
+            {theme === "dark" ? (
+              <Sun size={17} strokeWidth={2} />
+            ) : (
+              <Moon size={17} strokeWidth={2} />
+            )}
+          </GradientButton>
+
+          <GradientButton
+            type="button"
+            onClick={() => setIsProfileOpen((prev) => !prev)}
+            shadow
+            className="w-10"
+            buttonClassName="p-0 from-base-100 to-base-200 text-base-content/90"
+            glowClassName="opacity-30 blur-xs"
+          >
+            {/* <User size={17} strokeWidth={2} /> */}
+            {user.imageUrl ? (
+              <img
+                src={user.imageUrl}
+                alt=""
+                className="h-full w-full rounded-xl object-cover object-center"
               />
-              <Sun
-                className={`h-4 w-4 transition ${
-                  isDark ? "text-base-content/35" : "text-primary-content"
-                }`}
-              />
-            </span>
-          </button>
+            ) : (
+              <User size={17} strokeWidth={2} />
+            )}
+          </GradientButton>
 
-          <button className="btn btn-ghost rounded-full px-5 font-semibold text-base-content hover:bg-base-content/10">
-            Sign in
-          </button>
+          {/* Profile */}
+          <div className="relative">
+            {isProfileOpen && (
+              <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100/95 p-4 shadow-xl backdrop-blur-xl">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-content">
+                    <User size={17} strokeWidth={2} />
+                  </div>
 
-          <button className="btn group rounded-full border-0 bg-gradient-to-r from-primary to-secondary px-6 text-primary-content shadow-[0_16px_45px_-16px] shadow-primary/70 transition hover:scale-[1.03] hover:shadow-[0_20px_55px_-16px] hover:shadow-secondary/60">
-            Get Started
-            <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-base-content">
+                      {user.name}
+                    </p>
+
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
+                      <Mail size={12} strokeWidth={2} />
+                      <span className="truncate">{user.email}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
+                  >
+                    <Pencil size={13} strokeWidth={2} />
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
+                  >
+                    <LogOut size={13} strokeWidth={2} />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setOpen(!open)}
-          className="btn btn-circle border border-base-content/10 bg-base-100/35 shadow-[0_14px_40px_-24px_rgba(0,0,0,0.6)] backdrop-blur-2xl lg:hidden"
-          aria-label="Open menu"
-        >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        {/* Mobile controls */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <GradientButton
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            shadow
+            buttonClassName="px-3 from-base-100 to-base-200 text-base-content/90"
+            glowClassName="opacity-30 blur-xs"
+          >
+            {theme === "dark" ? (
+              <Sun size={17} strokeWidth={2} />
+            ) : (
+              <Moon size={17} strokeWidth={2} />
+            )}
+          </GradientButton>
+
+          <GradientButton
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            aria-label="Toggle menu"
+            aria-expanded={isOpen}
+            shadow
+            className="relative"
+            buttonClassName="px-3 from-base-100 to-base-200 text-base-content/90"
+            glowClassName="opacity-30 blur-xs"
+          >
+            {isOpen ? (
+              <X size={17} strokeWidth={2} />
+            ) : (
+              <Menu size={17} strokeWidth={2} />
+            )}
+
+            {hasNotifications && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-base-100" />
+            )}
+          </GradientButton>
+        </div>
       </nav>
 
-      {/* Mobile Dropdown */}
-      {open && (
-        <div className="mx-auto mt-4 max-w-7xl overflow-hidden rounded-3xl border border-base-content/10 bg-base-100/80 p-4 shadow-[0_25px_90px_-30px_rgba(0,0,0,0.65)] backdrop-blur-2xl lg:hidden">
-          <div className="pointer-events-none absolute left-1/2 h-32 w-64 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
+      {/* Mobile menu */}
+      <div
+        className={cn(
+          "overflow-hidden border-t border-base-content/10 bg-base-100/10 backdrop-blur-xl transition-all duration-300 lg:hidden",
+          isOpen ? "max-h-[520px] opacity-100" : "max-h-0 opacity-0",
+        )}
+      >
+        <div className="mx-auto max-w-7xl px-6 py-5">
+          {/* User info */}
+          <div className="flex gap-3 items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-content">
+              <User size={17} strokeWidth={2} />
+            </div>
 
-          <div className="relative z-10 grid gap-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-base-content">
+                {user.name}
+              </p>
 
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-base-content/75 transition hover:bg-base-content/10 hover:text-base-content"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    {item.label}
-                  </span>
-
-                  <ChevronRight className="h-4 w-4 text-base-content/35" />
-                </a>
-              );
-            })}
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
+                <Mail size={12} strokeWidth={2} />
+                <span className="truncate">{user.email}</span>
+              </div>
+            </div>
           </div>
 
-          <div className="relative z-10 mt-4 flex flex-col gap-3 border-t border-base-content/10 pt-4 sm:flex-row">
-            <button
-              onClick={toggleTheme}
-              className="btn flex-1 rounded-2xl border border-base-content/10 bg-base-100/40"
-            >
-              {isDark ? (
-                <>
-                  <Sun className="h-5 w-5 text-warning" />
-                  Light Mode
-                </>
-              ) : (
-                <>
-                  <Moon className="h-5 w-5 text-primary" />
-                  Dark Mode
-                </>
-              )}
-            </button>
+          <div className="my-4 h-px bg-base-content/10" />
 
-            <button className="btn flex-1 rounded-2xl border-0 bg-gradient-to-r from-primary to-secondary text-primary-content shadow-lg shadow-primary/30">
-              Get Started
-              <ChevronRight className="h-4 w-4" />
+          {/* Nav tabs */}
+          <div className="flex flex-col gap-2">
+            {mobileLoggedInNavLinks.map((link) => (
+              <ScrollLink
+                key={link.to}
+                to={link.to}
+                smooth
+                offset={-20}
+                duration={500}
+                onClick={closeMenu}
+                spy
+                activeClass="bg-gradient-to-r from-primary/10 to-secondary/10 text-primary rounded-xl"
+                className="flex cursor-pointer items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-base-content/70 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/10 hover:text-primary"
+              >
+                <span>{link.label}</span>
+
+                {link.hasDot && hasNotifications && (
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                )}
+              </ScrollLink>
+            ))}
+          </div>
+
+          <div className="mt-5">
+            <button
+              type="button"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-semibold text-red-500 transition hover:bg-red-500/15"
+            >
+              <LogOut size={15} strokeWidth={2} />
+              Logout
             </button>
           </div>
         </div>
-      )}
+      </div>
     </header>
   );
-};
-
-export default Navbar;
+}

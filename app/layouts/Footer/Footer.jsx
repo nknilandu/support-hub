@@ -45,7 +45,7 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t-0 border-base-content/5 bg-base-100/50">
+    <footer className="w-full border-t-0 border-base-content/5 bg-base-100/60">
       <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
           {/* Brand area */}
