@@ -184,226 +184,219 @@ export default function RegisterPage() {
             </div>
 
             <GradientShadow
-              glowClassName="opacity-20 blur-md"
+              glowClassName="opacity-30 blur-md"
               radius="rounded-3xl"
             >
               <CardWithBlurBlob
-  interactive={false}
-  className="rounded-sm border-none p-5 md:p-6"
-  blobColor="bg-primary/10"
-  blobHoverColor="group-hover:bg-secondary/20"
->
-  <div className="mb-5 text-center">
-    <h2 className="text-2xl font-semibold tracking-tight text-base-content">
-      Create account
-    </h2>
-    <p className="mt-1 text-sm text-base-content/60">
-      Join SupportHub and choose your workspace role.
-    </p>
-  </div>
-
-  <form onSubmit={handleSubmit} className="space-y-4">
-    {/* Profile + username */}
-    <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
-      {/* Compact profile upload */}
-      <div className="flex justify-center sm:justify-start">
-        <button
-          type="button"
-          className="group relative flex h-18 w-18 items-center justify-center rounded-full border-2 border-dashed border-base-content/20 bg-base-100/70 text-base-content/40 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-secondary/20">
-            <Upload size={19} strokeWidth={2} />
-          </div>
-
-          <span className="absolute -bottom-3 rounded-full border border-base-content/10 bg-base-100 px-2 py-0.5 text-[10px] font-medium text-base-content/50">
-            Photo
-          </span>
-        </button>
-      </div>
-
-{/* username */}
-
-            <div>
-        <label
-          htmlFor="username"
-          className="mb-2 block text-sm font-medium text-base-content/75"
-        >
-          Username
-        </label>
-
-        <div className="relative">
-          <UserRound
-            size={15}
-            strokeWidth={2}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
-          />
-          <input
-            id="username"
-            type="text"
-            placeholder="sherlock"
-            className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-          />
-        </div>
-      </div>
-
-      
-    </div>
-
-
-    <div>
-        <label
-          htmlFor="email"
-          className="mb-2 block text-sm font-medium text-base-content/75"
-        >
-          Email
-        </label>
-
-        <div className="relative">
-          <Mail
-            size={15}
-            strokeWidth={2}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
-          />
-          <input
-            id="email"
-            type="email"
-            placeholder="you@company.com"
-            className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-          />
-        </div>
-      </div>
-
-    {/* Password */}
-    <div>
-      <label
-        htmlFor="password"
-        className="mb-2 block text-sm font-medium text-base-content/75"
-      >
-        Password
-      </label>
-
-      <div className="relative">
-        <Lock
-          size={15}
-          strokeWidth={2}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
-        />
-        <input
-          id="password"
-          type={showPassword ? "text" : "password"}
-          placeholder="••••••••"
-          className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 pr-11 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-        />
-
-        <button
-          type="button"
-          onClick={() => setShowPassword((prev) => !prev)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 transition hover:text-primary"
-        >
-          {showPassword ? (
-            <EyeOff size={15} strokeWidth={2} />
-          ) : (
-            <Eye size={15} strokeWidth={2} />
-          )}
-        </button>
-      </div>
-    </div>
-
-
-    {/* Compact role selection */}
-      <div>
-        <p className="mb-2 text-sm font-medium text-base-content/75">
-          I am joining as
-        </p>
-
-        <div className="grid grid-cols-3 gap-2">
-          {roles.map((role) => {
-            const Icon = role.icon;
-            const isSelected = selectedRole === role.value;
-
-            return (
-              <button
-                key={role.value}
-                type="button"
-                onClick={() => setSelectedRole(role.value)}
-                className={cn(
-                  "relative flex h-16 flex-col items-center justify-center rounded-xl border bg-base-100/70 text-center transition",
-                  "hover:border-primary/30 hover:bg-primary/5",
-                  isSelected
-                    ? "border-primary/40 bg-gradient-to-br from-primary/10 to-secondary/10"
-                    : "border-base-content/10"
-                )}
+                interactive={false}
+                className="rounded-sm border-none p-5 md:p-6"
+                blobColor="bg-primary/10"
+                blobHoverColor="group-hover:bg-secondary/20"
               >
-                <Icon
-                  size={16}
-                  strokeWidth={2}
-                  className={cn(
-                    "mb-1",
-                    role.variant === "blue" && "text-blue-500",
-                    role.variant === "cyan" && "text-cyan-500",
-                    role.variant === "green" && "text-green-500"
+                <div className="mb-5 text-center">
+                  <h2 className="text-2xl font-semibold tracking-tight text-base-content">
+                    Create account
+                  </h2>
+                  <p className="mt-1 text-sm text-base-content/60">
+                    Join SupportHub and choose your workspace role.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Profile + username */}
+                  <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
+                    {/* Compact profile upload */}
+                    <div className="flex justify-center sm:justify-start">
+                      <button
+                        type="button"
+                        className="group relative flex h-18 w-18 items-center justify-center rounded-full border-2 border-dashed border-base-content/20 bg-base-100/70 text-base-content/40 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                      >
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-secondary/20">
+                          <Upload size={19} strokeWidth={2} />
+                        </div>
+
+                        <span className="absolute -bottom-3 rounded-full border border-base-content/10 bg-base-100 px-2 py-0.5 text-[10px] font-medium text-base-content/50">
+                          Photo
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* username */}
+
+                    <div>
+                      <label
+                        htmlFor="username"
+                        className="mb-2 block text-sm font-medium text-base-content/75"
+                      >
+                        Username
+                      </label>
+
+                      <div className="relative">
+                        <UserRound
+                          size={15}
+                          strokeWidth={2}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                        />
+                        <input
+                          id="username"
+                          type="text"
+                          placeholder="sherlock"
+                          className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="mb-2 block text-sm font-medium text-base-content/75"
+                    >
+                      Email
+                    </label>
+
+                    <div className="relative">
+                      <Mail
+                        size={15}
+                        strokeWidth={2}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                      />
+                      <input
+                        id="email"
+                        type="email"
+                        placeholder="you@company.com"
+                        className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="mb-2 block text-sm font-medium text-base-content/75"
+                    >
+                      Password
+                    </label>
+
+                    <div className="relative">
+                      <Lock
+                        size={15}
+                        strokeWidth={2}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                      />
+                      <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 pr-11 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 transition hover:text-primary"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={15} strokeWidth={2} />
+                        ) : (
+                          <Eye size={15} strokeWidth={2} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Compact role selection */}
+                  <div>
+                    <p className="mb-2 text-sm font-medium text-base-content/75">
+                      I am joining as
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {roles.map((role) => {
+                        const Icon = role.icon;
+                        const isSelected = selectedRole === role.value;
+
+                        return (
+                          <button
+                            key={role.value}
+                            type="button"
+                            onClick={() => setSelectedRole(role.value)}
+                            className={cn(
+                              "relative flex h-16 flex-col items-center justify-center rounded-xl border bg-base-100/70 text-center transition",
+                              "hover:border-primary/30 hover:bg-primary/5",
+                              isSelected
+                                ? "border-primary/40 bg-gradient-to-br from-primary/10 to-secondary/10"
+                                : "border-base-content/10",
+                            )}
+                          >
+                            <Icon
+                              size={16}
+                              strokeWidth={2}
+                              className={cn(
+                                "mb-1",
+                                role.variant === "blue" && "text-blue-500",
+                                role.variant === "cyan" && "text-cyan-500",
+                                role.variant === "green" && "text-green-500",
+                              )}
+                            />
+
+                            <span className="text-[11px] font-semibold text-base-content">
+                              {role.label}
+                            </span>
+
+                            {isSelected && (
+                              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <GradientButton
+                    type="submit"
+                    shadow
+                    className="w-full"
+                    buttonClassName="min-h-0 h-10 w-full text-sm font-semibold"
+                    glowClassName="opacity-30"
+                  >
+                    Create account
+                    <ArrowRight size={15} strokeWidth={2} />
+                  </GradientButton>
+                  {formError && (
+                    <p className="-m-2 px-3 text-xs font-medium text-red-500">
+                      ⚠ {formError}
+                    </p>
                   )}
-                />
+                </form>
 
-                <span className="text-[11px] font-semibold text-base-content">
-                  {role.label}
-                </span>
+                <div className="my-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-base-content/10" />
+                  <span className="text-xs font-medium text-base-content/40">
+                    OR
+                  </span>
+                  <div className="h-px flex-1 bg-base-content/10" />
+                </div>
 
-                {isSelected && (
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                <button
+                  type="button"
+                  className="flex h-10 w-full items-center justify-center gap-3 rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5"
+                >
+                  <FcGoogle size={18} />
+                  Continue with Google
+                </button>
 
-
-
-
-
-
-
-
-
-    <GradientButton
-      type="submit"
-      shadow
-      className="w-full"
-      buttonClassName="min-h-0 h-10 w-full text-sm font-semibold"
-      glowClassName="opacity-30"
-    >
-      Create account
-      <ArrowRight size={15} strokeWidth={2} />
-    </GradientButton>
-    {formError && (
-  <p className="-m-2 px-3 text-xs font-medium text-red-500">
-    ⚠ {formError}
-  </p>
-)}
-  </form>
-
-  <div className="my-5 flex items-center gap-3">
-    <div className="h-px flex-1 bg-base-content/10" />
-    <span className="text-xs font-medium text-base-content/40">OR</span>
-    <div className="h-px flex-1 bg-base-content/10" />
-  </div>
-
-  <button
-    type="button"
-    className="flex h-10 w-full items-center justify-center gap-3 rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5"
-  >
-    <FcGoogle size={18} />
-    Continue with Google
-  </button>
-
-  <p className="mt-5 text-center text-sm text-base-content/60">
-    Already have an account?{" "}
-    <a href="/login" className="font-semibold text-primary hover:underline">
-      Login
-    </a>
-  </p>
-</CardWithBlurBlob>
+                <p className="mt-5 text-center text-sm text-base-content/60">
+                  Already have an account?{" "}
+                  <a
+                    href="/login"
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Login
+                  </a>
+                </p>
+              </CardWithBlurBlob>
             </GradientShadow>
 
             <p className="mt-5 text-center text-xs leading-5 text-base-content/45">

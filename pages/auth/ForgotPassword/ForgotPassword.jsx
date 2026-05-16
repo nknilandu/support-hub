@@ -1,18 +1,5 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  Bot,
-  KeyRound,
-  Mail,
-  ShieldCheck,
-  CircleCheck,
-  AlertCircle,
-  Inbox,
-  TimerReset,
-} from "lucide-react";
-import { useState } from "react";
-
-import { cn } from "../../../src/lib/cn";
+import { ArrowLeft, Bot, Mail } from "lucide-react";
+import { useContext, useState } from "react";
 import GradientButton from "../../../components/ui/Button/GradientButton";
 import GradientText from "../../../components/ui/Text/GradientText";
 import TextBadge from "../../../components/ui/Badge/TextBadge";
@@ -20,36 +7,50 @@ import GradientCard from "../../../components/ui/Card/GradientCard";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
 import GradientShadow from "../../../components/ui/Shadow/GradientShadowWrapper";
 
+import { useForm } from "react-hook-form";
+import { AuthContext } from "../../../providers/AuthProvider";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router";
+
 const infoCards = [
   {
     title: "Secure reset flow",
     description: "Password reset links are time-limited and email verified.",
-    icon: ShieldCheck,
   },
   {
     title: "Check your inbox",
     description: "We will send reset instructions to your registered email.",
-    icon: Inbox,
-  }
+  },
 ];
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [formError, setFormError] = useState("");
-  const [isSent, setIsSent] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const { forgotPassword } = useContext(AuthContext);
 
-    if (!email.trim()) {
-      setIsSent(false);
-      setFormError("Please enter your email address.");
-      return;
-    }
+  const {
+    register,
+    formState: { errors },
+    handleSubmit,
+  } = useForm();
 
-    // Later: call forgot-password API here
-    setFormError("");
-    setIsSent(true);
+  const onSubmit = (data) => {
+    setBtnLoading(true);
+    forgotPassword(data.email)
+      .then(() => {
+        toast.success(
+          "Password Reset email successfully sent. Please reset your password and Login now",
+        );
+        navigate("/login");
+
+        setBtnLoading(false);
+      })
+      .catch((e) => {
+        console.log(e.message);
+        toast.error(e.message);
+        setBtnLoading(false);
+      });
   };
 
   return (
@@ -95,8 +96,8 @@ export default function ForgotPassword() {
             </div>
 
             <h1 className="max-w-xl text-5xl font-semibold leading-tight tracking-tight text-base-content">
-              Reset access to your{" "}
-              <GradientText>SupportHub</GradientText> workspace
+              Reset access to your <GradientText>SupportHub</GradientText>{" "}
+              workspace
             </h1>
 
             <p className="mt-5 max-w-lg text-base leading-7 text-base-content/65">
@@ -106,7 +107,7 @@ export default function ForgotPassword() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 max-w-xl gap-4">
-            {infoCards.map(({ title, description, icon: Icon }) => (
+            {infoCards.map(({ title, description }) => (
               <CardWithBlurBlob
                 key={title}
                 interactive={false}
@@ -115,8 +116,6 @@ export default function ForgotPassword() {
                 blobColor="bg-primary/10"
                 blobHoverColor="group-hover:bg-secondary/15"
               >
-                
-
                 <div>
                   <p className="text-sm font-semibold text-base-content">
                     {title}
@@ -155,7 +154,7 @@ export default function ForgotPassword() {
             </div>
 
             <GradientShadow
-              glowClassName="opacity-20 blur-md"
+              glowClassName="opacity-30 blur-md"
               radius="rounded-3xl"
             >
               <CardWithBlurBlob
@@ -165,8 +164,6 @@ export default function ForgotPassword() {
                 blobHoverColor="group-hover:bg-secondary/20"
               >
                 <div className="mb-6 text-center">
-                  
-
                   <h2 className="text-2xl mt-2 font-semibold tracking-tight text-base-content">
                     Forgot password?
                   </h2>
@@ -177,83 +174,60 @@ export default function ForgotPassword() {
                   </p>
                 </div>
 
-                {isSent ? (
-                  <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-center">
-                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-success/15 text-success">
-                      <CircleCheck size={18} strokeWidth={2} />
-                    </div>
-
-                    <p className="text-sm font-semibold text-base-content">
-                      Reset link sent
-                    </p>
-
-                    <p className="mt-1 text-sm leading-6 text-base-content/60">
-                      Check your inbox for password reset instructions.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsSent(false)}
-                      className="mt-4 text-sm font-semibold text-primary hover:underline"
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="mb-2 block text-sm font-medium text-base-content/75"
                     >
-                      Use another email
-                    </button>
+                      Email address
+                    </label>
+
+                    <div className="relative">
+                      <Mail
+                        size={15}
+                        strokeWidth={2}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                      />
+
+                      <input
+                        {...register("email", {
+                          required: "Email address is required",
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: "Enter a valid email address",
+                          },
+                        })}
+                        type="text"
+                        name="email"
+                        placeholder="example@email.com"
+                        className="h-10 w-full rounded-xl border bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:ring-4 border-base-content/10 focus:border-primary/40 focus:ring-primary/10"
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className="mb-2 block text-sm font-medium text-base-content/75"
-                      >
-                        Email address
-                      </label>
 
-                      <div className="relative">
-                        <Mail
-                          size={15}
-                          strokeWidth={2}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
-                        />
-
-                        <input
-                          id="email"
-                          type="email"
-                          value={email}
-                          onChange={(event) => {
-                            setEmail(event.target.value);
-                            setFormError("");
-                          }}
-                          placeholder="you@company.com"
-                          className={cn(
-                            "h-10 w-full rounded-xl border bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:ring-4",
-                            formError
-                              ? "border-red-500/40 focus:border-red-500/50 focus:ring-red-500/10"
-                              : "border-base-content/10 focus:border-primary/40 focus:ring-primary/10"
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    <GradientButton
-                      type="submit"
-                      shadow
-                      className="w-full"
-                      buttonClassName="min-h-0 h-10 w-full text-sm font-semibold"
-                      glowClassName="opacity-30"
-                    >
-                      Send reset link
-                      <ArrowRight size={15} strokeWidth={2} />
-                    </GradientButton>
-
-                    {formError && (
-                      <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-red-500">
-                        <AlertCircle size={13} strokeWidth={2} />
-                        <span>{formError}</span>
-                      </div>
+                  <GradientButton
+                    type="submit"
+                    disabled={btnLoading}
+                    shadow
+                    className="w-full"
+                    buttonClassName={`min-h-0 h-11 w-full text-sm font-semibold ${btnLoading && "from-primary/10 to-secondary/20"}`}
+                    glowClassName="opacity-30"
+                  >
+                    {btnLoading ? (
+                      <span className="loading loading-spinner loading-sm"></span>
+                    ) : (
+                      "Send reset link"
                     )}
-                  </form>
-                )}
+                  </GradientButton>
+
+                  {/* error message */}
+                  {errors.email && (
+                    <p className="px-3 -m-2 text-xs text-red-500">
+                      {errors.email.message}
+                    </p>
+                  )}
+                </form>
 
                 <div className="mt-6 flex items-center justify-center gap-2 text-sm text-base-content/60">
                   <span>Remembered your password?</span>

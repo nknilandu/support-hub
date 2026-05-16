@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  ArrowRight,
   Bot,
   Crown,
   Eye,
@@ -12,7 +11,8 @@ import {
   Building2,
   MessageSquareText,
 } from "lucide-react";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { useForm } from "react-hook-form";
 
 import { cn } from "../../../src/lib/cn";
 import GradientButton from "../../../components/ui/Button/GradientButton";
@@ -22,6 +22,9 @@ import GradientCard from "../../../components/ui/Card/GradientCard";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
 import { FcGoogle } from "react-icons/fc";
 import GradientShadow from "../../../components/ui/Shadow/GradientShadowWrapper";
+import { AuthContext } from "../../../providers/AuthProvider";
+import { toast } from "react-toastify";
+import { Link, useLocation, useNavigate } from "react-router";
 
 const demoRoles = [
   {
@@ -63,19 +66,68 @@ const infoCards = [
 ];
 
 export default function LoginPage() {
+  const { googleSignIn, loginUser, setUser } = useContext(AuthContext);
+
   const [showPassword, setShowPassword] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const {
+    register,
+    formState: { errors },
+    handleSubmit,
+  } = useForm();
 
   const handleDemoLogin = (role) => {
     console.log("Demo login:", role.label);
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const googleSubmit = () => {
+    setGoogleLoading(true);
+    googleSignIn()
+      .then((res) => {
+        // success
+        const user = res.user;
+        setUser(user);
+        toast.success("Successfully Loged in.");
+        navigate(`${location.state ? location.state : "/"}`);
+        setGoogleLoading(false);
+      })
+      .catch((e) => {
+        // error
+        console.log(e.message);
+        toast.error(e.message);
+        setGoogleLoading(false);
+      });
+  };
+
+  const onSubmit = (data) => {
+    setBtnLoading(true);
+
+    loginUser(data.email, data.password)
+      .then((res) => {
+        // success
+        const user = res.user;
+        setUser(user);
+        toast.success("Successfully Loged in.");
+        navigate(`${location.state ? location.state : "/"}`);
+        setBtnLoading(false);
+      })
+      .catch((e) => {
+        // error
+        console.log(e.message);
+        toast.error(e.message);
+        setBtnLoading(false);
+      });
   };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-base-200/40">
       {/* Background grid */}
+      <title>Login | SupportHub</title>
       <div
         className="pointer-events-none absolute inset-0 opacity-40"
         style={{
@@ -178,7 +230,7 @@ export default function LoginPage() {
             </div>
 
             <GradientShadow
-              glowClassName="opacity-20 blur-md"
+              glowClassName="opacity-30 blur-md"
               radius="rounded-3xl"
             >
               <CardWithBlurBlob
@@ -200,7 +252,7 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   <div>
                     <label
                       htmlFor="email"
@@ -216,9 +268,17 @@ export default function LoginPage() {
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
                       />
                       <input
-                        id="email"
-                        type="email"
-                        placeholder="you@company.com"
+                        {...register("email", {
+                          required: "Email address is required",
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: "Enter a valid email address",
+                          },
+                        })}
+                        type="text"
+                        name="email"
+                        autoComplete="email"
+                        placeholder="example@email.com"
                         className="h-11 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                       />
                     </div>
@@ -248,9 +308,23 @@ export default function LoginPage() {
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
                       />
                       <input
-                        id="password"
+                        {...register("password", {
+                          required: "password field is empty",
+                          minLength: {
+                            value: 8,
+                            message:
+                              "password must contains minimum 8 characters",
+                          },
+                          pattern: {
+                            value: /^(?=.*[a-z])(?=.*[A-Z]).+$/,
+                            message:
+                              "password must contain at least one lowercase and one uppercase letter",
+                          },
+                        })}
+                        name="password"
+                        placeholder="At least 8 characters"
+                        autoComplete="current-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
                         className="h-11 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 pr-11 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                       />
 
@@ -270,14 +344,30 @@ export default function LoginPage() {
 
                   <GradientButton
                     type="submit"
+                    disabled={btnLoading}
                     shadow
                     className="w-full"
-                    buttonClassName="min-h-0 h-11 w-full text-sm font-semibold"
+                    buttonClassName={`min-h-0 h-11 w-full text-sm font-semibold ${btnLoading && "from-primary/10 to-secondary/20"}`}
                     glowClassName="opacity-30"
                   >
-                    Login
-                    <ArrowRight size={15} strokeWidth={2} />
+                    {btnLoading ? (
+                      <span className="loading loading-spinner loading-sm"></span>
+                    ) : (
+                      "Login"
+                    )}
                   </GradientButton>
+
+                  {errors.email ? (
+                    <p className="-m-2 px-3 text-xs text-red-500">
+                      {errors.email.message}
+                    </p>
+                  ) : (
+                    errors.password && (
+                      <p className="-m-2 px-3 text-xs text-red-500">
+                        {errors.password.message}
+                      </p>
+                    )
+                  )}
                 </form>
 
                 <div className="my-6 flex items-center gap-3">
@@ -290,10 +380,18 @@ export default function LoginPage() {
 
                 <button
                   type="button"
-                  className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5"
+                  onClick={googleSubmit}
+                  disabled={btnLoading || googleLoading}
+                  className="h-11 w-full items-center rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5"
                 >
-                  <FcGoogle size={18}></FcGoogle>
-                  Continue with Google
+                  {googleLoading ? (
+                    <span className="loading loading-spinner loading-sm text-base-content"></span>
+                  ) : (
+                    <div className="flex justify-center gap-3 ">
+                      <FcGoogle size={18}></FcGoogle>
+                      <span>Continue with Google</span>
+                    </div>
+                  )}
                 </button>
 
                 {/* Demo roles */}
@@ -339,12 +437,12 @@ export default function LoginPage() {
 
                 <p className="mt-6 text-center text-sm text-base-content/60">
                   Don&apos;t have an account?{" "}
-                  <a
-                    href="/signup"
+                  <Link
+                    to="/register"
                     className="font-semibold text-primary hover:underline"
                   >
                     Create workspace
-                  </a>
+                  </Link>
                 </p>
               </CardWithBlurBlob>
             </GradientShadow>
