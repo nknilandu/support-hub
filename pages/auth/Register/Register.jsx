@@ -13,7 +13,7 @@ import {
   MessageSquareText,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 import { cn } from "../../../src/lib/cn";
 import GradientButton from "../../../components/ui/Button/GradientButton";
@@ -23,6 +23,10 @@ import GradientCard from "../../../components/ui/Card/GradientCard";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
 import GradientShadow from "../../../components/ui/Shadow/GradientShadowWrapper";
 import { FcGoogle } from "react-icons/fc";
+import { useForm } from "react-hook-form";
+import { Link, useLocation, useNavigate } from "react-router";
+import { toast } from "react-toastify";
+import { AuthContext } from "../../../providers/AuthProvider";
 
 const roles = [
   {
@@ -69,15 +73,45 @@ const infoCards = [
   },
 ];
 
-export default function RegisterPage() {
-  const [showPassword, setShowPassword] = useState(false);
+export default function Register() {
+  const { googleSignIn, setUser } = useContext(AuthContext);
+
   const [selectedRole, setSelectedRole] = useState("customer");
-  const [formError, setFormError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-    console.log("Register role:", selectedRole);
+  const {
+    register,
+    formState: { errors },
+    handleSubmit,
+  } = useForm();
+
+  const googleSubmit = () => {
+    setGoogleLoading(true);
+    googleSignIn()
+      .then((res) => {
+        // success
+        const user = res.user;
+        setUser(user);
+        toast.success("Successfully Loged in.");
+        navigate(`${location.state ? location.state : "/"}`);
+        setGoogleLoading(false);
+      })
+      .catch((e) => {
+        // error
+        console.log(e.message);
+        toast.error(e.message);
+        setGoogleLoading(false);
+      });
+  };
+
+  const onSubmit = (data) => {
+    setBtnLoading(true);
+    toast("button clicked ");
   };
 
   return (
@@ -202,7 +236,7 @@ export default function RegisterPage() {
                   </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   {/* Profile + username */}
                   <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
                     {/* Compact profile upload */}
@@ -262,9 +296,17 @@ export default function RegisterPage() {
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
                       />
                       <input
-                        id="email"
-                        type="email"
-                        placeholder="you@company.com"
+                        {...register("email", {
+                          required: "Email address is required",
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: "Enter a valid email address",
+                          },
+                        })}
+                        type="text"
+                        name="email"
+                        autoComplete="email"
+                        placeholder="example@email.com"
                         className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                       />
                     </div>
@@ -286,9 +328,23 @@ export default function RegisterPage() {
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
                       />
                       <input
-                        id="password"
+                        {...register("password", {
+                          required: "password field is empty",
+                          minLength: {
+                            value: 8,
+                            message:
+                              "password must contains minimum 8 characters",
+                          },
+                          pattern: {
+                            value: /^(?=.*[a-z])(?=.*[A-Z]).+$/,
+                            message:
+                              "password must contain at least one lowercase and one uppercase letter",
+                          },
+                        })}
+                        name="password"
+                        placeholder="At least 8 characters"
+                        autoComplete="current-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
                         className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 pr-11 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                       />
 
@@ -356,18 +412,30 @@ export default function RegisterPage() {
 
                   <GradientButton
                     type="submit"
+                    disabled={btnLoading}
                     shadow
                     className="w-full"
-                    buttonClassName="min-h-0 h-10 w-full text-sm font-semibold"
+                    buttonClassName={`min-h-0 h-11 w-full text-sm font-semibold ${btnLoading && "from-primary/10 to-secondary/20"}`}
                     glowClassName="opacity-30"
                   >
-                    Create account
-                    <ArrowRight size={15} strokeWidth={2} />
+                    {btnLoading ? (
+                      <span className="loading loading-spinner loading-sm"></span>
+                    ) : (
+                      "Create Account"
+                    )}
                   </GradientButton>
-                  {formError && (
-                    <p className="-m-2 px-3 text-xs font-medium text-red-500">
-                      ⚠ {formError}
+
+                  {/* error */}
+                  {errors.email ? (
+                    <p className="-m-2 px-3 text-xs text-red-500">
+                      {errors.email.message}
                     </p>
+                  ) : (
+                    errors.password && (
+                      <p className="-m-2 px-3 text-xs text-red-500">
+                        {errors.password.message}
+                      </p>
+                    )
                   )}
                 </form>
 
@@ -379,22 +447,31 @@ export default function RegisterPage() {
                   <div className="h-px flex-1 bg-base-content/10" />
                 </div>
 
+                {/* google  */}
                 <button
                   type="button"
-                  className="flex h-10 w-full items-center justify-center gap-3 rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5"
+                  onClick={googleSubmit}
+                  disabled={btnLoading || googleLoading}
+                  className="h-11 w-full items-center rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5"
                 >
-                  <FcGoogle size={18} />
-                  Continue with Google
+                  {googleLoading ? (
+                    <span className="loading loading-spinner loading-sm text-base-content"></span>
+                  ) : (
+                    <div className="flex justify-center gap-3 ">
+                      <FcGoogle size={18}></FcGoogle>
+                      <span>Continue with Google</span>
+                    </div>
+                  )}
                 </button>
 
                 <p className="mt-5 text-center text-sm text-base-content/60">
                   Already have an account?{" "}
-                  <a
-                    href="/login"
+                  <Link
+                    to="/login"
                     className="font-semibold text-primary hover:underline"
                   >
                     Login
-                  </a>
+                  </Link>
                 </p>
               </CardWithBlurBlob>
             </GradientShadow>

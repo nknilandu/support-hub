@@ -65,7 +65,7 @@ const infoCards = [
   },
 ];
 
-export default function LoginPage() {
+export default function Login() {
   const { googleSignIn, loginUser, setUser } = useContext(AuthContext);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -357,6 +357,7 @@ export default function LoginPage() {
                     )}
                   </GradientButton>
 
+                  {/* error */}
                   {errors.email ? (
                     <p className="-m-2 px-3 text-xs text-red-500">
                       {errors.email.message}
