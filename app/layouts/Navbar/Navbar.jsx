@@ -119,9 +119,9 @@ export default function Navbar() {
 
         {/*===================== Desktop  nav ================ */}
         <div className="hidden items-center rounded-2xl border border-base-content/10 bg-base-100/50 px-2 py-1 backdrop-blur-xl lg:flex">
-          {loggedInNavLinks.map((link) => (
+          {loggedInNavLinks.map((index, link) => (
             <ScrollLink
-              key={link.to}
+              key={link.to || index}
               to={link.to}
               smooth
               offset={-20}

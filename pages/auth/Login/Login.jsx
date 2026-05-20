@@ -95,6 +95,8 @@ export default function Login() {
         toast.success("Successfully Loged in.");
         navigate(`${location.state ? location.state : "/"}`);
         setGoogleLoading(false);
+
+        console.log(user)
       })
       .catch((e) => {
         // error

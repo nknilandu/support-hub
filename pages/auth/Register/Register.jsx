@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  ArrowRight,
   Bot,
   Crown,
   Eye,
@@ -12,6 +11,7 @@ import {
   Building2,
   MessageSquareText,
   Upload,
+  ChevronDown,
 } from "lucide-react";
 import { useContext, useState } from "react";
 
@@ -27,6 +27,21 @@ import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../../providers/AuthProvider";
+
+const companies = [
+  {
+    _id: "1",
+    name: "Acme Inc",
+  },
+  {
+    _id: "2",
+    name: "BetaSoft",
+  },
+  {
+    _id: "3",
+    name: "Nova Support",
+  },
+];
 
 const roles = [
   {
@@ -74,12 +89,19 @@ const infoCards = [
 ];
 
 export default function Register() {
-  const { googleSignIn, setUser } = useContext(AuthContext);
+  const { googleSignIn, createUser, setUser } = useContext(AuthContext);
 
   const [selectedRole, setSelectedRole] = useState("customer");
   const [showPassword, setShowPassword] = useState(false);
   const [btnLoading, setBtnLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  const [profileImage, setProfileImage] = useState(null);
+
+  const [organizations, setOrganizations] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgError, setOrgError] = useState("");
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -90,14 +112,37 @@ export default function Register() {
     handleSubmit,
   } = useForm();
 
+  // ++++++++++++ save data to db ============
+  const saveUserToDB = (url, userInfo, token) => {
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(userInfo),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        // success
+        toast.success("Successfully Loged in.");
+        navigate(`${location.state ? location.state : "/"}`);
+        setBtnLoading(false);
+        setGoogleLoading(false);
+      });
+  };
+
+  // ++++++++++++ google signup +++++++++++++++++
   const googleSubmit = () => {
     setGoogleLoading(true);
+    
     googleSignIn()
       .then((res) => {
         // success
         const user = res.user;
         setUser(user);
-        toast.success("Successfully Loged in.");
+        toast.success("Successfully Registered User.");
         navigate(`${location.state ? location.state : "/"}`);
         setGoogleLoading(false);
       })
@@ -111,7 +156,73 @@ export default function Register() {
 
   const onSubmit = (data) => {
     setBtnLoading(true);
-    toast("button clicked ");
+    // create user on firebase
+    createUser(data.email, data.password)
+    .then((res) => {
+       // success
+        const user = res.user;
+        setUser(user);
+
+        //  upload logo and get link
+        const logo = profileImage;
+const formData = new FormData();
+formData.append("image", logo);
+
+        // upload image to imgbb
+        fetch(
+          `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        )
+          .then((res) => res.json())
+          .then((result) => {
+             // upload success
+            const photoLink = result.data.display_url;
+
+
+            const userInfo = {
+              uid: user.uid,
+              displayName: data.username,
+              companyName: data.companyName,
+              photoURL: photoLink,
+              email: data.email,
+              companyId: data.date,
+              status: "active",
+              role: selectedRole,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+
+            // console.log(user)
+            // console.log(userInfo)
+            saveUserToDB("http://localhost:3021/companies", userInfo, user.accessToken)
+
+          }).catch((e)=> {
+            // error
+        console.log(e.message);
+        toast.error(e.message);
+        return
+          })
+
+
+   
+
+
+   
+
+
+
+        }) 
+      
+      .catch((e) => {
+        // error
+        console.log(e.message);
+        toast.error(e.message);
+        setBtnLoading(false);
+      });
   };
 
   return (
@@ -243,16 +354,41 @@ export default function Register() {
                     <div className="flex justify-center sm:justify-start">
                       <button
                         type="button"
+                        onClick={() =>
+                          document.getElementById("profileImage")?.click()
+                        }
                         className="group relative flex h-18 w-18 items-center justify-center rounded-full border-2 border-dashed border-base-content/20 bg-base-100/70 text-base-content/40 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                       >
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-secondary/20">
-                          <Upload size={19} strokeWidth={2} />
-                        </div>
+                        {profileImage ? (
+                          <img
+                            src={URL.createObjectURL(profileImage)}
+                            alt="Profile"
+                            className="h-full w-full object-cover rounded-full"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-secondary/20">
+                            <Upload size={19} strokeWidth={2} />
+                          </div>
+                        )}
 
-                        <span className="absolute -bottom-3 rounded-full border border-base-content/10 bg-base-100 px-2 py-0.5 text-[10px] font-medium text-base-content/50">
+                        <span className="absolute -bottom-3 rounded-full border bg-base-100 px-2 py-0.5 text-[10px] font-medium border-base-content/10 text-base-content/50">
                           Photo
                         </span>
                       </button>
+                      {/* ====== */}
+                      <input
+                        {...register("profileImage", {
+                          required: "Profile image is required",
+                          onChange: (e) => {
+                            const file = e.target.files?.[0];
+                            setProfileImage(file || null);
+                          },
+                        })}
+                        id="profileImage"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                      />
                     </div>
 
                     {/* username */}
@@ -262,7 +398,7 @@ export default function Register() {
                         htmlFor="username"
                         className="mb-2 block text-sm font-medium text-base-content/75"
                       >
-                        Username
+                        {`${selectedRole === "owner" ? "Company name" : "User name"}`}
                       </label>
 
                       <div className="relative">
@@ -272,9 +408,12 @@ export default function Register() {
                           className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
                         />
                         <input
-                          id="username"
+                          {...register("username", {
+                            required: `${selectedRole === "owner" ? "Company name" : "User name"} is required `,
+                          })}
+                          id="name"
                           type="text"
-                          placeholder="sherlock"
+                          placeholder={`${selectedRole === "owner" ? "company name" : "user name"}`}
                           className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                         />
                       </div>
@@ -410,6 +549,78 @@ export default function Register() {
                     </div>
                   </div>
 
+                  {/* +++++++++++++++++++++++++++ */}
+                  {(selectedRole === "agent" ||
+                    selectedRole === "customer") && (
+                    <div>
+                      <label
+                        htmlFor="organizationId"
+                        className="mb-2 block text-sm font-medium text-base-content/75"
+                      >
+                        Select Company <span className="text-red-500">*</span>
+                      </label>
+
+                      <div className="relative">
+                        <Building2
+                          size={15}
+                          strokeWidth={2}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                        />
+
+                        <select
+                          id="organizationId"
+                          value={selectedCompany?._id || ""}
+                          onChange={(e) => {
+                            const company = organizations.find(
+                              (org) => org._id === e.target.value,
+                            );
+
+                            setSelectedCompany(company || null);
+                          }}
+                          className="h-10 w-full appearance-none rounded-xl border border-base-content/10 bg-base-100 px-9 pr-10 text-sm text-base-content outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                        >
+                          <option value="">
+                            {orgLoading
+                              ? "Loading companies..."
+                              : "Choose company"}
+                          </option>
+
+                          {!orgLoading &&
+                            organizations.map((org) => (
+                              <option key={org._id} value={org._id}>
+                                {org.name}
+                              </option>
+                            ))}
+                        </select>
+
+                        <ChevronDown
+                          size={16}
+                          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                        />
+                      </div>
+
+                      {orgError && (
+                        <p className="mt-2 text-xs text-red-500">{orgError}</p>
+                      )}
+
+                      {!orgLoading &&
+                        !orgError &&
+                        organizations.length === 0 && (
+                          <p className="mt-2 text-xs text-base-content/50">
+                            No active company found.
+                          </p>
+                        )}
+
+                      {selectedRole === "agent" && (
+                        <p className="mt-2 text-xs leading-5 text-amber-500">
+                          Agent account will stay pending until the company
+                          owner approves your request.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {/* +++++++++++++++++++++++++++ */}
+
                   <GradientButton
                     type="submit"
                     disabled={btnLoading}
@@ -426,17 +637,27 @@ export default function Register() {
                   </GradientButton>
 
                   {/* error */}
-                  {errors.email ? (
+                  {errors.profileImage ? (
+                    <p className="-m-2 px-3 text-xs text-red-500">
+                      {errors.profileImage.message}
+                    </p>
+                  ) : errors.username ? (
+                    <p className="-m-2 px-3 text-xs text-red-500">
+                      {errors.username.message}
+                    </p>
+                  ) : errors.email ? (
                     <p className="-m-2 px-3 text-xs text-red-500">
                       {errors.email.message}
                     </p>
-                  ) : (
-                    errors.password && (
-                      <p className="-m-2 px-3 text-xs text-red-500">
-                        {errors.password.message}
-                      </p>
-                    )
-                  )}
+                  ) : errors.password ? (
+                    <p className="-m-2 px-3 text-xs text-red-500">
+                      {errors.password.message}
+                    </p>
+                  ) : errors.companyName ? (
+                    <p className="-m-2 px-3 text-xs text-red-500">
+                      {errors.companyName.message}
+                    </p>
+                  ) : null}
                 </form>
 
                 <div className="my-5 flex items-center gap-3">
