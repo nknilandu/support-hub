@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Link as ScrollLink } from "react-scroll";
 import {
   Bell,
@@ -17,6 +17,8 @@ import { cn } from "../../../src/lib/cn";
 import GradientButton from "../../../components/ui/Button/GradientButton";
 import GradientText from "../../../components/ui/Text/GradientText";
 import TextBadge from "../../../components/ui/Badge/TextBadge";
+import { AuthContext } from "../../../providers/AuthProvider";
+
 
 const navLinks = [
   { label: "Features", to: "features" },
@@ -38,13 +40,6 @@ const mobileLoggedInNavLinks = [
   { label: "Profile", to: "/profile" },
 ];
 
-const user = {
-  imageUrl:
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRBraP-MM0RM-sZ0Qd6JKJEldoTX6k38o_fjg&s",
-  name: "Sherlock LC",
-  email: "sharlockaj@gmail.com",
-};
-
 const notifications = [{ id: 1, title: "New ticket assigned" }];
 
 const hasNotifications = notifications.length > 0;
@@ -54,6 +49,9 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [theme, setTheme] = useState("light");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { user, loading } = useContext(AuthContext)
+
+  console.log(user)
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("supporthub-theme") || "light";
