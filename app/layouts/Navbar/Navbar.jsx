@@ -18,7 +18,7 @@ import GradientButton from "../../../components/ui/Button/GradientButton";
 import GradientText from "../../../components/ui/Text/GradientText";
 import TextBadge from "../../../components/ui/Badge/TextBadge";
 import { AuthContext } from "../../../providers/AuthProvider";
-import { Link, useNavigate } from "react-router";
+import { Link, NavLink, useNavigate } from "react-router";
 import Swal from "sweetalert2";
 
 const navLinks = [
@@ -28,21 +28,27 @@ const navLinks = [
   { label: "Security", to: "security" },
 ];
 
-const loggedInNavLinks = [
-  { label: "Dashboard", path: "/dashboard" },
-  { label: "Pricing", path: "/pricing" },
-  { label: "Profile", path: "/profile" },
-];
+const navByRole = {
+  owner: [
+    { label: "Dashboard", path: "/owner/dashboard" },
+    { label: "Tickets", path: "/owner/tickets" },
+    { label: "Employees", path: "/owner/employees" },
+    { label: "Company", path: "/owner/company" },
+  ],
 
-const mobileLoggedInNavLinks = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Notification", to: "/notifications", hasDot: true },
-  { label: "Pricing", to: "/pricing" },
-  { label: "Profile", to: "/profile" },
-];
+  agent: [
+    { label: "Dashboard", path: "/agent/dashboard" },
+    { label: "Tickets", path: "/agent/tickets" },
+  ],
+
+  customer: [
+    { label: "Dashboard", path: "/customer/dashboard" },
+    { label: "My Tickets", path: "/customer/tickets" },
+    { label: "Create Ticket", path: "/customer/tickets/new" },
+  ],
+};
 
 const notifications = [{ id: 1, title: "New ticket assigned" }];
-
 const hasNotifications = notifications.length > 0;
 
 export default function Navbar() {
@@ -50,9 +56,11 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [theme, setTheme] = useState("light");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { user, loading, logOut } = useContext(AuthContext);
+  const { user, loading, logOut, userRole, setUserRole } =
+    useContext(AuthContext);
 
   const navigate = useNavigate();
+  const links = navByRole[userRole] || [];
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("supporthub-theme") || "light";
@@ -104,6 +112,7 @@ export default function Navbar() {
               icon: "success",
             });
 
+            setUserRole(null);
             navigate("/login");
           })
           .catch((error) => {
@@ -146,20 +155,30 @@ export default function Navbar() {
 
         {/*===================== Desktop  nav ================ */}
         <div className="hidden items-center rounded-2xl border border-base-content/10 bg-base-100/50 px-2 py-1 backdrop-blur-xl lg:flex">
-          {loggedInNavLinks.map((link, i) => (
-            <ScrollLink
-              key={i}
-              to={link.to}
-              smooth
-              offset={-20}
-              duration={500}
-              spy
-              activeClass="bg-gradient-to-r from-primary/10 to-secondary/10 text-primary rounded-xl"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-base-content/65 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/20 hover:text-primary"
-            >
-              {link.label}
-            </ScrollLink>
-          ))}
+          {user
+            ? links.map((link, i) => (
+                <NavLink
+                  key={i}
+                  to={link.path}
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-base-content/65 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/20 hover:text-primary"
+                >
+                  {link.label}
+                </NavLink>
+              ))
+            : navLinks.map((link, i) => (
+                <ScrollLink
+                  key={i}
+                  to={link.to}
+                  smooth
+                  offset={-20}
+                  duration={500}
+                  spy
+                  activeClass="bg-gradient-to-r from-primary/10 to-secondary/10 text-primary rounded-xl"
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-base-content/65 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/20 hover:text-primary"
+                >
+                  {link.label}
+                </ScrollLink>
+              ))}
         </div>
 
         {/*=============== desktop right side ===================*/}
@@ -365,72 +384,119 @@ export default function Navbar() {
       >
         <div className="mx-auto max-w-7xl px-6 py-5">
           {/* User info */}
-          {user ? (
-            <div className="flex gap-3 items-center">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-200 border text-primary/20">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt="userPhoto"
-                    className="h-full w-full rounded-full object-cover object-center"
-                  />
-                ) : (
-                  <User size={17} strokeWidth={2} />
-                )}
-              </div>
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-base-content">
-                  {user.displayName}
-                </p>
-
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
-                  <Mail size={12} strokeWidth={2} />
-                  <span className="truncate">{user.email}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
+          {loading ? (
             <div className="flex justify-center items-center gap-3">
               <span className="loading loading-spinner"></span>
               <p>Loading User</p>
             </div>
-          )}
+          ) : (
+            user && (
+              <>
+                <div className="flex gap-3 items-center">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-200 border text-primary/20">
+                    {user.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt="userPhoto"
+                        className="h-full w-full rounded-full object-cover object-center"
+                      />
+                    ) : (
+                      <User size={17} strokeWidth={2} />
+                    )}
+                  </div>
 
-          <div className="my-4 h-px bg-base-content/10" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-base-content">
+                      {user.displayName}
+                    </p>
+
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
+                      <Mail size={12} strokeWidth={2} />
+                      <span className="truncate">{user.email}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="my-4 h-px bg-base-content/10" />
+              </>
+            )
+          )}
 
           {/* Nav tabs */}
           <div className="flex flex-col gap-2">
-            {mobileLoggedInNavLinks.map((link, i) => (
-              <ScrollLink
-                key={i}
-                to={link.to}
-                smooth
-                offset={-20}
-                duration={500}
-                onClick={closeMenu}
-                spy
-                activeClass="bg-gradient-to-r from-primary/10 to-secondary/10 text-primary rounded-xl"
-                className="flex cursor-pointer items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-base-content/70 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/10 hover:text-primary"
+            {user
+              ? links.map((link, i) => (
+                  <NavLink
+                    key={i}
+                    to={link.path}
+                    className="flex cursor-pointer items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-base-content/70 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/10 hover:text-primary"
+                  >
+                    <span>{link.label}</span>
+                  </NavLink>
+                ))
+              : navLinks.map((link, i) => (
+                  <ScrollLink
+                    key={i}
+                    to={link.to}
+                    smooth
+                    offset={-20}
+                    duration={500}
+                    onClick={closeMenu}
+                    spy
+                    activeClass="bg-gradient-to-r from-primary/10 to-secondary/10 text-primary rounded-xl"
+                    className="flex cursor-pointer items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-base-content/70 transition hover:bg-gradient-to-r hover:from-primary/10 hover:to-secondary/10 hover:text-primary"
+                  >
+                    <span>{link.label}</span>
+
+                    {link.hasDot && hasNotifications && (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                    )}
+                  </ScrollLink>
+                ))}
+          </div>
+
+          {!loading && user ? (
+            <div className="mt-5 flex justify-center items-center gap-3 flex-col sm:flex-row">
+              <Link
+                to="/profile"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-200 px-4 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:text-primary hover:bg-primary/5"
               >
-                <span>{link.label}</span>
-
-                {link.hasDot && hasNotifications && (
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
-                )}
-              </ScrollLink>
-            ))}
-          </div>
-
-          <div className="mt-5">
-            <button
-              type="button"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-semibold text-red-500 transition hover:bg-red-500/15"
-            >
-              <LogOut size={15} strokeWidth={2} />
-              Logout
-            </button>
-          </div>
+                <Pencil size={15} strokeWidth={2} />
+                Edit
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-semibold text-red-500 transition hover:bg-red-500/15"
+              >
+                <LogOut size={15} strokeWidth={2} />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="my-5 flex items-center justify-center gap-4 flex-col sm:flex-row">
+              <Link to="/login" className="w-full">
+                <GradientButton
+                  shadow
+                  className="w-full"
+                  buttonClassName="px-6 from-base-100 to-base-200 text-base-content/90"
+                  glowClassName="opacity-30 blur-xs"
+                >
+                  Login
+                </GradientButton>
+              </Link>
+              <Link to="/register" className="w-full">
+                <GradientButton
+                  className="w-full"
+                  buttonClassName=" rounded-xl px-6"
+                  shadow
+                  glowClassName="opacity-60 blur-md"
+                >
+                  Sign Up
+                </GradientButton>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

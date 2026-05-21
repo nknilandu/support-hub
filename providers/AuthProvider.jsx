@@ -59,6 +59,20 @@ const AuthProvider = ({ children }) => {
     });
   }, []);
 
+   useEffect(() => {
+      if (user) {
+        fetch(`http://localhost:3021/users/role?email=${user.email}`, {
+          headers: {
+            Authorization: `Bearer ${user.accessToken}`,
+          }
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            setUserRole(data.role || null);
+          });
+      }
+    }, [user]);
+
   const authData = {
     googleSignIn,
     createUser,
@@ -70,7 +84,7 @@ const AuthProvider = ({ children }) => {
     loading,
     updateUserProfile,
     userRole,
-    setUserRole,
+    setUserRole
 
   };
 
