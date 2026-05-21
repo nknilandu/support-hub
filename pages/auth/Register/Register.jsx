@@ -13,7 +13,7 @@ import {
   Upload,
   ChevronDown,
 } from "lucide-react";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { cn } from "../../../src/lib/cn";
 import GradientButton from "../../../components/ui/Button/GradientButton";
@@ -27,21 +27,6 @@ import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../../providers/AuthProvider";
-
-const companies = [
-  {
-    _id: "1",
-    name: "Acme Inc",
-  },
-  {
-    _id: "2",
-    name: "BetaSoft",
-  },
-  {
-    _id: "3",
-    name: "Nova Support",
-  },
-];
 
 const roles = [
   {
@@ -89,7 +74,8 @@ const infoCards = [
 ];
 
 export default function Register() {
-  const { googleSignIn, createUser, setUser } = useContext(AuthContext);
+  const { googleSignIn, createUser, setUser, updateUserProfile } =
+    useContext(AuthContext);
 
   const [selectedRole, setSelectedRole] = useState("customer");
   const [showPassword, setShowPassword] = useState(false);
@@ -97,11 +83,9 @@ export default function Register() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [profileImage, setProfileImage] = useState(null);
-
-  const [organizations, setOrganizations] = useState([]);
+  const [companyData, setCompanyData] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [orgLoading, setOrgLoading] = useState(false);
-  const [orgError, setOrgError] = useState("");
+  const [companyLoading, setCompanyLoading] = useState(true);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -112,116 +96,233 @@ export default function Register() {
     handleSubmit,
   } = useForm();
 
+  // ================= get company data ===================
+  useEffect(() => {
+    fetch("http://localhost:3021/companies")
+      .then((res) => res.json())
+      .then((data) => {
+        setCompanyData(data);
+        // console.log(data);
+      })
+      .catch((e) => {
+        toast.error("Unable to load company's information");
+        console.log(e);
+      })
+      .finally(() => {
+        setCompanyLoading(false);
+      });
+  }, []);
+
   // ++++++++++++ save data to db ============
-  const saveUserToDB = (url, userInfo, token) => {
-    fetch(url, {
+  const saveUserToDB = (url, infoData, token) => {
+    return fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(userInfo),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log(data);
-        // success
-        toast.success("Successfully Loged in.");
-        navigate(`${location.state ? location.state : "/"}`);
-        setBtnLoading(false);
-        setGoogleLoading(false);
-      });
+      body: JSON.stringify(infoData),
+    }).then((res) => res.json());
   };
 
   // ++++++++++++ google signup +++++++++++++++++
-  const googleSubmit = () => {
-    setGoogleLoading(true);
-    
-    googleSignIn()
-      .then((res) => {
-        // success
-        const user = res.user;
-        setUser(user);
-        toast.success("Successfully Registered User.");
-        navigate(`${location.state ? location.state : "/"}`);
-        setGoogleLoading(false);
-      })
-      .catch((e) => {
-        // error
-        console.log(e.message);
-        toast.error(e.message);
-        setGoogleLoading(false);
+const googleSubmit = () => {
+  setGoogleLoading(true);
+
+
+  const companyNameInput = document.getElementById("companyname")?.value;
+
+  if (selectedRole === "owner" && !companyNameInput) {
+    toast.error("Company name is required");
+    setGoogleLoading(false);
+    return;
+  }
+
+  if (selectedRole !== "owner" && !selectedCompany) {
+    toast.error("Company selection is required");
+    setGoogleLoading(false);
+    return;
+  }
+
+  googleSignIn()
+    .then((res) => {
+      const user = res.user;
+      setUser(user);
+
+      const userInfo = {
+        uid: user.uid,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        email: user.email,
+        status: "active",
+        role: selectedRole,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      if (selectedRole !== "owner") {
+        userInfo.companyName = selectedCompany.companyName;
+        userInfo.companyId = selectedCompany._id;
+      }
+
+      return saveUserToDB(
+        "http://localhost:3021/users",
+        userInfo,
+        user.accessToken
+      ).then((userDbData) => {
+
+        if (selectedRole === "owner") {
+          const companyInfo = {
+            companyName: companyNameInput,
+            companyLogo: user.photoURL,
+            ownerId: userDbData.insertedId,
+            status: "active",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+
+          return saveUserToDB(
+            "http://localhost:3021/companies",
+            companyInfo,
+            user.accessToken
+          );
+        }
+
+        return userDbData;
       });
-  };
+    })
+    .then((dbResult) => {
+      if (!dbResult.success) {
+        toast.error(dbResult.message || "Signup failed");
+        return;
+      }
+
+      toast.success("Google signup completed");
+      navigate(`${location.state ? location.state : "/"}`);
+    })
+    .catch((e) => {
+      console.log(e);
+      toast.error(e.message);
+    })
+    .finally(() => {
+      setGoogleLoading(false);
+    });
+};
+
+  // +++++++++++++++++ button submit +++++++++++++++++
 
   const onSubmit = (data) => {
     setBtnLoading(true);
-    // create user on firebase
-    createUser(data.email, data.password)
-    .then((res) => {
-       // success
-        const user = res.user;
-        setUser(user);
 
-        //  upload logo and get link
-        const logo = profileImage;
-const formData = new FormData();
-formData.append("image", logo);
+    //  upload logo and get link
+    const logo = profileImage;
+    const formData = new FormData();
+    formData.append("image", logo);
 
-        // upload image to imgbb
-        fetch(
-          `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        )
-          .then((res) => res.json())
-          .then((result) => {
-             // upload success
-            const photoLink = result.data.display_url;
+    // upload image to imgbb
+    fetch(
+      `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    )
+      .then((res) => res.json())
+      .then((result) => {
+        // image upload success in imgbb
+        const photoLink = result.data.display_url;
 
+        // create user on firebase
+        createUser(data.email, data.password)
+          .then((res) => {
+            // created user success
+            const user = res.user;
+            setUser(user);
 
             const userInfo = {
               uid: user.uid,
               displayName: data.username,
-              companyName: data.companyName,
               photoURL: photoLink,
               email: data.email,
-              companyId: data.date,
               status: "active",
               role: selectedRole,
               createdAt: new Date(),
               updatedAt: new Date(),
             };
 
+            if (selectedRole !== "owner" && selectedCompany) {
+              userInfo.companyName = selectedCompany.companyName;
+              userInfo.companyId = selectedCompany._id;
+            }
 
-            // console.log(user)
-            // console.log(userInfo)
-            saveUserToDB("http://localhost:3021/companies", userInfo, user.accessToken)
+            //update user profile on firebase
+            updateUserProfile({
+              displayName: data.name,
+              photoURL: photoLink,
+            })
+              .then(() => {
+                toast.success("profile updated");
+              })
+              .catch((e) => {
+                toast.error("could not update profile");
+                console.log(e);
+              });
 
-          }).catch((e)=> {
-            // error
-        console.log(e.message);
-        toast.error(e.message);
-        return
+            saveUserToDB(
+              "http://localhost:3021/users",
+              userInfo,
+              user.accessToken,
+            )
+              .then((result) => {
+                if (selectedRole === "owner") {
+                  //for owmer
+                  const companyInfo = {
+                    companyName: data.companyname,
+                    companyLogo: photoLink,
+                    ownerId: result.insertedId,
+                    status: "active",
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  };
+                  saveUserToDB(
+                    "http://localhost:3021/companies",
+                    companyInfo,
+                    user.accessToken,
+                  ).then(() => {
+                    toast.success("Account created successfully");
+                    navigate(`${location.state ? location.state : "/"}`);
+                    setGoogleLoading(false);
+                    setBtnLoading(false);
+                  });
+                } else {
+                  toast.success("Account created successfully");
+                  navigate(`${location.state ? location.state : "/"}`);
+                  setGoogleLoading(false);
+                  setBtnLoading(false);
+                }
+              })
+              .catch((e) => {
+                // / error
+                console.log(e);
+                toast.error(e.message);
+                setBtnLoading(false);
+                setGoogleLoading(false);
+              });
           })
-
-
-   
-
-
-   
-
-
-
-        }) 
-      
+          .catch((e) => {
+            // error
+            console.log(e);
+            toast.error(e.message);
+            setBtnLoading(false);
+            setGoogleLoading(false);
+          });
+      })
       .catch((e) => {
         // error
-        console.log(e.message);
+        console.log(e);
         toast.error(e.message);
         setBtnLoading(false);
+        setGoogleLoading(false);
       });
   };
 
@@ -394,11 +495,8 @@ formData.append("image", logo);
                     {/* username */}
 
                     <div>
-                      <label
-                        htmlFor="username"
-                        className="mb-2 block text-sm font-medium text-base-content/75"
-                      >
-                        {`${selectedRole === "owner" ? "Company name" : "User name"}`}
+                      <label className="mb-2 block text-sm font-medium text-base-content/75">
+                        User name
                       </label>
 
                       <div className="relative">
@@ -409,22 +507,46 @@ formData.append("image", logo);
                         />
                         <input
                           {...register("username", {
-                            required: `${selectedRole === "owner" ? "Company name" : "User name"} is required `,
+                            required: "User name is required",
                           })}
-                          id="name"
+                          id="username"
                           type="text"
-                          placeholder={`${selectedRole === "owner" ? "company name" : "user name"}`}
+                          placeholder="user name"
                           className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                         />
                       </div>
                     </div>
                   </div>
 
+                  {/* company name */}
+
+                  {selectedRole === "owner" && (
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-base-content/75">
+                        Company name
+                      </label>
+
+                      <div className="relative">
+                        <Building2
+                          size={15}
+                          strokeWidth={2}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                        />
+                        <input
+                          {...register("companyname", {
+                            required: "Company name is required",
+                          })}
+                          id="companyname"
+                          type="text"
+                          placeholder="company name"
+                          className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div>
-                    <label
-                      htmlFor="email"
-                      className="mb-2 block text-sm font-medium text-base-content/75"
-                    >
+                    <label className="mb-2 block text-sm font-medium text-base-content/75">
                       Email
                     </label>
 
@@ -550,6 +672,7 @@ formData.append("image", logo);
                   </div>
 
                   {/* +++++++++++++++++++++++++++ */}
+
                   {(selectedRole === "agent" ||
                     selectedRole === "customer") && (
                     <div>
@@ -567,28 +690,39 @@ formData.append("image", logo);
                           className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
                         />
 
+                        {/* =========== */}
                         <select
-                          id="organizationId"
-                          value={selectedCompany?._id || ""}
-                          onChange={(e) => {
-                            const company = organizations.find(
-                              (org) => org._id === e.target.value,
-                            );
+                          {...register("companyselection", {
+                            required:
+                              selectedRole === "customer" ||
+                              selectedRole === "agent"
+                                ? "Company selection is required"
+                                : false,
 
-                            setSelectedCompany(company || null);
-                          }}
+                            onChange: (e) => {
+                              const selectedId = e.target.value;
+
+                              const company = companyData.find(
+                                (company) => company._id === selectedId,
+                              );
+
+                              setSelectedCompany(company || null);
+                            },
+                          })}
+                          id="companyselection"
+                          defaultValue=""
                           className="h-10 w-full appearance-none rounded-xl border border-base-content/10 bg-base-100 px-9 pr-10 text-sm text-base-content outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                         >
-                          <option value="">
-                            {orgLoading
+                          <option value="" disabled>
+                            {companyLoading
                               ? "Loading companies..."
                               : "Choose company"}
                           </option>
 
-                          {!orgLoading &&
-                            organizations.map((org) => (
-                              <option key={org._id} value={org._id}>
-                                {org.name}
+                          {!companyLoading &&
+                            companyData.map((company) => (
+                              <option key={company._id} value={company._id}>
+                                {company.companyName}
                               </option>
                             ))}
                         </select>
@@ -599,17 +733,16 @@ formData.append("image", logo);
                         />
                       </div>
 
-                      {orgError && (
-                        <p className="mt-2 text-xs text-red-500">{orgError}</p>
-                      )}
-
-                      {!orgLoading &&
-                        !orgError &&
-                        organizations.length === 0 && (
+                      {!companyLoading &&
+                        (companyData.length === 0 ? (
                           <p className="mt-2 text-xs text-base-content/50">
                             No active company found.
                           </p>
-                        )}
+                        ) : (
+                          <p className="mt-2 text-xs text-base-content/50">
+                            {companyData.length} company found.
+                          </p>
+                        ))}
 
                       {selectedRole === "agent" && (
                         <p className="mt-2 text-xs leading-5 text-amber-500">
@@ -645,6 +778,10 @@ formData.append("image", logo);
                     <p className="-m-2 px-3 text-xs text-red-500">
                       {errors.username.message}
                     </p>
+                  ) : selectedRole === "owner" && errors.companyname ? (
+                    <p className="-m-2 px-3 text-xs text-red-500">
+                      {errors.companyname.message}
+                    </p>
                   ) : errors.email ? (
                     <p className="-m-2 px-3 text-xs text-red-500">
                       {errors.email.message}
@@ -653,9 +790,9 @@ formData.append("image", logo);
                     <p className="-m-2 px-3 text-xs text-red-500">
                       {errors.password.message}
                     </p>
-                  ) : errors.companyName ? (
+                  ) : selectedRole !== "owner" && errors.companyselection ? (
                     <p className="-m-2 px-3 text-xs text-red-500">
-                      {errors.companyName.message}
+                      {errors.companyselection.message}
                     </p>
                   ) : null}
                 </form>

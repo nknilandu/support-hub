@@ -119,9 +119,9 @@ export default function Navbar() {
 
         {/*===================== Desktop  nav ================ */}
         <div className="hidden items-center rounded-2xl border border-base-content/10 bg-base-100/50 px-2 py-1 backdrop-blur-xl lg:flex">
-          {loggedInNavLinks.map((index, link) => (
+          {loggedInNavLinks.map((i, link) => (
             <ScrollLink
-              key={link.to || index}
+              key={i}
               to={link.to}
               smooth
               offset={-20}
@@ -298,9 +298,9 @@ export default function Navbar() {
 
           {/* Nav tabs */}
           <div className="flex flex-col gap-2">
-            {mobileLoggedInNavLinks.map((link) => (
+            {mobileLoggedInNavLinks.map((i, link) => (
               <ScrollLink
-                key={link.to}
+                key={i}
                 to={link.to}
                 smooth
                 offset={-20}
