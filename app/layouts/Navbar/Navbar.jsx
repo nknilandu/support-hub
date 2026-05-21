@@ -18,7 +18,8 @@ import GradientButton from "../../../components/ui/Button/GradientButton";
 import GradientText from "../../../components/ui/Text/GradientText";
 import TextBadge from "../../../components/ui/Badge/TextBadge";
 import { AuthContext } from "../../../providers/AuthProvider";
-
+import { Link, useNavigate } from "react-router";
+import Swal from "sweetalert2";
 
 const navLinks = [
   { label: "Features", to: "features" },
@@ -49,9 +50,9 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [theme, setTheme] = useState("light");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { user, loading } = useContext(AuthContext)
+  const { user, loading, logOut } = useContext(AuthContext);
 
-  console.log(user)
+  const navigate = useNavigate();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("supporthub-theme") || "light";
@@ -64,14 +65,12 @@ export default function Navbar() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 12);
     };
-
     handleScroll();
-
     window.addEventListener("scroll", handleScroll, { passive: true });
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // toggle theme
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
 
@@ -80,8 +79,38 @@ export default function Navbar() {
     document.documentElement.setAttribute("data-theme", nextTheme);
   };
 
+  // close menu
   const closeMenu = () => {
     setIsOpen(false);
+  };
+
+  // ++++++++ logOut ++++++++++++
+  const handleLogout = () => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You want to logout?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, logout!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        logOut()
+          .then(() => {
+            Swal.fire({
+              title: "Logged out!",
+              text: "You have been logged out successfully.",
+              icon: "success",
+            });
+
+            navigate("/login");
+          })
+          .catch((error) => {
+            Swal.fire("Error", error.message, "error");
+          });
+      }
+    });
   };
 
   return (
@@ -117,7 +146,7 @@ export default function Navbar() {
 
         {/*===================== Desktop  nav ================ */}
         <div className="hidden items-center rounded-2xl border border-base-content/10 bg-base-100/50 px-2 py-1 backdrop-blur-xl lg:flex">
-          {loggedInNavLinks.map((i, link) => (
+          {loggedInNavLinks.map((link, i) => (
             <ScrollLink
               key={i}
               to={link.to}
@@ -134,96 +163,157 @@ export default function Navbar() {
         </div>
 
         {/*=============== desktop right side ===================*/}
-        <div className="hidden items-center gap-3 lg:flex">
+
+        <div className="hidden items-center lg:flex">
           {/* Notification */}
-          <button
-            type="button"
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl  text-base-content/70 backdrop-blur-xl transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
-          >
-            <Bell size={17} strokeWidth={2} />
+          {loading ? (
+            <span className="loading loading-spinner loading-sm"></span>
+          ) : user ? (
+            <>
+              <button
+                type="button"
+                className=" relative flex h-10 w-10 items-center justify-center rounded-xl  text-base-content/70 backdrop-blur-xl transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+              >
+                <Bell size={17} strokeWidth={2} />
 
-            {hasNotifications && (
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-base-100" />
-            )}
-          </button>
+                {hasNotifications && (
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-base-100" />
+                )}
+              </button>
 
-          {/* Theme */}
-          <GradientButton
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            shadow
-            buttonClassName="px-3 from-base-100 to-base-200 text-base-content/90"
-            glowClassName="opacity-30 blur-xs"
-          >
-            {theme === "dark" ? (
-              <Sun size={17} strokeWidth={2} />
-            ) : (
-              <Moon size={17} strokeWidth={2} />
-            )}
-          </GradientButton>
+              {/* theme */}
+              <GradientButton
+                type="button"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+                shadow
+                buttonClassName=" px-3 from-base-100 to-base-200 text-base-content/90"
+                glowClassName="opacity-30 blur-xs"
+                className="mx-3"
+              >
+                {theme === "dark" ? (
+                  <Sun size={17} strokeWidth={2} />
+                ) : (
+                  <Moon size={17} strokeWidth={2} />
+                )}
+              </GradientButton>
 
-          <GradientButton
-            type="button"
-            onClick={() => setIsProfileOpen((prev) => !prev)}
-            shadow
-            className="w-10"
-            buttonClassName="p-0 from-base-100 to-base-200 text-base-content/90"
-            glowClassName="opacity-30 blur-xs"
-          >
-            {/* <User size={17} strokeWidth={2} /> */}
-            {user.imageUrl ? (
-              <img
-                src={user.imageUrl}
-                alt=""
-                className="h-full w-full rounded-xl object-cover object-center"
-              />
-            ) : (
-              <User size={17} strokeWidth={2} />
-            )}
-          </GradientButton>
+              {/* profile button */}
+              <GradientButton
+                disabled={loading}
+                type="button"
+                onClick={() => setIsProfileOpen((prev) => !prev)}
+                shadow
+                className="w-10"
+                buttonClassName="p-0 from-base-100 to-base-200 text-base-content/90"
+                glowClassName="opacity-30 blur-xs"
+              >
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="userPhoto"
+                    className="h-full w-full rounded-xl object-cover object-center"
+                  />
+                ) : (
+                  <User size={17} strokeWidth={2} />
+                )}
+              </GradientButton>
 
-          {/* Profile */}
-          <div className="relative">
-            {isProfileOpen && (
-              <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100/95 p-4 shadow-xl backdrop-blur-xl">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-content">
-                    <User size={17} strokeWidth={2} />
-                  </div>
+              {/* Profile */}
+              <div className="relative">
+                {isProfileOpen && (
+                  <div className="absolute right-0 top-10 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100 p-4 shadow-xl backdrop-blur-xl">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-200 border text-primary/20">
+                        {user.photoURL ? (
+                          <img
+                            src={user.photoURL}
+                            alt="userPhoto"
+                            className="h-full w-full rounded-full object-cover object-center"
+                          />
+                        ) : (
+                          <User size={17} strokeWidth={2} />
+                        )}
+                      </div>
 
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-base-content">
-                      {user.name}
-                    </p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-base-content">
+                          {user.displayName}
+                        </p>
 
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
-                      <Mail size={12} strokeWidth={2} />
-                      <span className="truncate">{user.email}</span>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
+                          <Mail size={12} strokeWidth={2} />
+                          <span className="truncate">{user.email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <Link
+                        to={"/profile"}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
+                      >
+                        <Pencil size={13} strokeWidth={2} />
+                        Edit
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
+                      >
+                        <LogOut size={13} strokeWidth={2} />
+                        Logout
+                      </button>
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
-                  >
-                    <Pencil size={13} strokeWidth={2} />
-                    Edit
-                  </button>
-
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
-                  >
-                    <LogOut size={13} strokeWidth={2} />
-                    Logout
-                  </button>
-                </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            // +++++++++++++++++++++++
+            <>
+              {/* theme */}
+              <GradientButton
+                type="button"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+                shadow
+                buttonClassName=" px-3 from-base-100 to-base-200 text-base-content/90"
+                glowClassName="opacity-30 blur-xs"
+                className="mx-3"
+              >
+                {theme === "dark" ? (
+                  <Sun size={17} strokeWidth={2} />
+                ) : (
+                  <Moon size={17} strokeWidth={2} />
+                )}
+              </GradientButton>
+
+              {/* ================ */}
+
+              <div className="flex flex-wrap items-center justify-start gap-3 w-fit">
+                <Link to="/login">
+                  <GradientButton
+                    shadow
+                    buttonClassName="px-6 from-base-100 to-base-200 text-base-content/90"
+                    glowClassName="opacity-30 blur-xs"
+                  >
+                    Login
+                  </GradientButton>
+                </Link>
+                <Link to="/register">
+                  <GradientButton
+                    buttonClassName="w-fit rounded-xl px-6"
+                    shadow
+                    glowClassName="opacity-60 blur-md"
+                  >
+                    Sign Up
+                  </GradientButton>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Mobile controls */}
@@ -275,28 +365,43 @@ export default function Navbar() {
       >
         <div className="mx-auto max-w-7xl px-6 py-5">
           {/* User info */}
-          <div className="flex gap-3 items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-content">
-              <User size={17} strokeWidth={2} />
-            </div>
+          {user ? (
+            <div className="flex gap-3 items-center">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-200 border text-primary/20">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="userPhoto"
+                    className="h-full w-full rounded-full object-cover object-center"
+                  />
+                ) : (
+                  <User size={17} strokeWidth={2} />
+                )}
+              </div>
 
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-base-content">
-                {user.name}
-              </p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-base-content">
+                  {user.displayName}
+                </p>
 
-              <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
-                <Mail size={12} strokeWidth={2} />
-                <span className="truncate">{user.email}</span>
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
+                  <Mail size={12} strokeWidth={2} />
+                  <span className="truncate">{user.email}</span>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-center items-center gap-3">
+              <span className="loading loading-spinner"></span>
+              <p>Loading User</p>
+            </div>
+          )}
 
           <div className="my-4 h-px bg-base-content/10" />
 
           {/* Nav tabs */}
           <div className="flex flex-col gap-2">
-            {mobileLoggedInNavLinks.map((i, link) => (
+            {mobileLoggedInNavLinks.map((link, i) => (
               <ScrollLink
                 key={i}
                 to={link.to}
