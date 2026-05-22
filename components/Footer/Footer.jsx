@@ -4,8 +4,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import GradientText from "../../../components/ui/Text/GradientText";
-import TextBadge from "../../../components/ui/Badge/TextBadge"
+import GradientText from "../ui/Text/GradientText";
+import TextBadge from "../ui/Badge/TextBadge"
 import { FaGithub } from "react-icons/fa";
 import { TiSocialLinkedin } from "react-icons/ti";
 import { RiTwitterXLine } from "react-icons/ri";

@@ -8,9 +8,9 @@ import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
 import GradientShadow from "../../../components/ui/Shadow/GradientShadowWrapper";
 
 import { useForm } from "react-hook-form";
-import { AuthContext } from "../../../providers/AuthProvider";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router";
+import { AuthContext } from "../../../app/providers/AuthProvider";
 
 const infoCards = [
   {

@@ -22,9 +22,9 @@ import GradientCard from "../../../components/ui/Card/GradientCard";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
 import { FcGoogle } from "react-icons/fc";
 import GradientShadow from "../../../components/ui/Shadow/GradientShadowWrapper";
-import { AuthContext } from "../../../providers/AuthProvider";
 import { toast } from "react-toastify";
 import { Link, useLocation, useNavigate } from "react-router";
+import { AuthContext } from "../../../app/providers/AuthProvider";
 
 const demoRoles = [
   {

@@ -26,7 +26,7 @@ import { FcGoogle } from "react-icons/fc";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
-import { AuthContext } from "../../../providers/AuthProvider";
+import { AuthContext } from "../../../app/providers/AuthProvider";
 
 const roles = [
   {

@@ -13,11 +13,11 @@ import {
   Bot,
 } from "lucide-react";
 
-import { cn } from "../../../src/lib/cn";
-import GradientButton from "../../../components/ui/Button/GradientButton";
-import GradientText from "../../../components/ui/Text/GradientText";
-import TextBadge from "../../../components/ui/Badge/TextBadge";
-import { AuthContext } from "../../../providers/AuthProvider";
+import { cn } from "../../src/lib/cn";
+import GradientButton from "../ui/Button/GradientButton";
+import GradientText from "../ui/Text/GradientText";
+import TextBadge from "../ui/Badge/TextBadge";
+import { AuthContext } from "../../app/providers/AuthProvider";
 import { Link, NavLink, useNavigate } from "react-router";
 import Swal from "sweetalert2";
 
@@ -54,7 +54,9 @@ const hasNotifications = notifications.length > 0;
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("theme") || "light";
+  });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, loading, logOut, userRole, setUserRole } =
     useContext(AuthContext);
@@ -62,13 +64,17 @@ export default function Navbar() {
   const navigate = useNavigate();
   const links = navByRole[userRole] || [];
 
+  // +++++++++++ control theme +++++++++++++++++
   useEffect(() => {
-    const savedTheme = localStorage.getItem("supporthub-theme") || "light";
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
-    setTheme(savedTheme);
-    document.documentElement.setAttribute("data-theme", savedTheme);
-  }, []);
+  const handleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
+  };
 
+  //=======================
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 12);
@@ -77,15 +83,6 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // toggle theme
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-
-    setTheme(nextTheme);
-    localStorage.setItem("supporthub-theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-  };
 
   // close menu
   const closeMenu = () => {
@@ -203,7 +200,7 @@ export default function Navbar() {
               {/* theme */}
               <GradientButton
                 type="button"
-                onClick={toggleTheme}
+                onClick={handleTheme}
                 aria-label="Toggle theme"
                 shadow
                 buttonClassName=" px-3 from-base-100 to-base-200 text-base-content/90"
@@ -295,7 +292,7 @@ export default function Navbar() {
               {/* theme */}
               <GradientButton
                 type="button"
-                onClick={toggleTheme}
+                onClick={handleTheme}
                 aria-label="Toggle theme"
                 shadow
                 buttonClassName=" px-3 from-base-100 to-base-200 text-base-content/90"
@@ -339,7 +336,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2 lg:hidden">
           <GradientButton
             type="button"
-            onClick={toggleTheme}
+            onClick={handleTheme}
             aria-label="Toggle theme"
             shadow
             buttonClassName="px-3 from-base-100 to-base-200 text-base-content/90"

@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState } from "react";
-import { app } from "../firebase/firebase.config";
+import { app } from "../../firebase/firebase.config";
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
@@ -59,6 +59,7 @@ const AuthProvider = ({ children }) => {
     });
   }, []);
 
+  // check user role
    useEffect(() => {
       if (user) {
         fetch(`http://localhost:3021/users/role?email=${user.email}`, {

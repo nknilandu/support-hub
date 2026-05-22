@@ -10,28 +10,54 @@ import ErrorPage from "../pages/error/ErrorPage/ErrorPage";
 import ErrorApp from "../pages/error/ErrorApp/ErrorApp";
 import LoadingPage from "../pages/loading/LoadingPage/LoadingPage";
 import { ToastContainer } from "react-toastify";
-import AuthProvider from "../providers/AuthProvider";
+
 import Register from "../pages/auth/Register/Register";
 import Login from "../pages/auth/Login/Login";
+import RootLayout from "../app/layouts/RootLayout/RootLayout";
+import AuthProvider from "../app/providers/AuthProvider";
+import AuthLayout from "../app/layouts/AuthLayout/AuthLayout";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    Component: Home,
+    Component: RootLayout,
+    errorElement: <ErrorApp></ErrorApp>,
+    children: [
+      {
+        index: true,
+        Component: Home
+      },
+      {
+        path: "*",
+        Component: ErrorPage,
+      },
+    ]
   },
   {
-    path: "/login",
-    Component: Login,
-  },
-  {
-    path: "/register",
-    Component: Register,
-  },
-  {
-    path: "/forgot-password",
-    Component: ForgotPassword,
+    path: "/",
+    Component: AuthLayout,
+    errorElement: <ErrorApp></ErrorApp>,
+    children: [
+      {
+        path: "login",
+        Component: Login,
+      },
+      {
+        path: "register",
+        Component: Register, 
+      },
+      {
+        path: "forgot-password",
+        Component: ForgotPassword
+      },
+      {
+        path: "*",
+        Component: ErrorPage,
+      },
+    ]
   },
 ]);
+
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
