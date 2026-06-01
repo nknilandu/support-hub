@@ -4,21 +4,26 @@ import logo from "../../../src/assets/logo.png";
 import GradientText from "../../../components/ui/Text/GradientText";
 
 import {
-  Bell,
-  BookOpen,
   LayoutGrid,
-  LifeBuoy,
-  Menu,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Ticket,
   PlusCircle,
   Sparkles,
-  Sun,
-  Ticket,
   User,
   Users,
+  UserRound,
+  CreditCard,
+  BarChart3,
+  History,
+  Settings,
+  Building2,
+  Activity,
+  PanelLeftOpen,
+  PanelLeftClose,
   X,
+  Menu,
+  Bell,
+  Moon,
+  Sun,
 } from "lucide-react";
 import GradientButton from "../../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
@@ -40,92 +45,119 @@ const DashboardLayout = () => {
   });
 
   // ======== nav item =======
+const dashboardNav = {
+  customer: [
+    {
+      label: "Dashboard",
+      icon: LayoutGrid,
+      path: "/customer/dashboard",
+    },
+    {
+      label: "My Tickets",
+      icon: Ticket,
+      path: "/customer/tickets",
+    },
+    {
+      label: "New Ticket",
+      icon: PlusCircle,
+      path: "/customer/tickets/new",
+    },
+    {
+      label: "AI Assistant",
+      icon: Sparkles,
+      path: "/support",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      path: "/settings/profile",
+    },
+  ],
 
-  const dashboardNav = {
-    customer: [
-      {
-        label: "Dashboard",
-        icon: LayoutGrid,
-        path: "/customer/dashboard",
-      },
-      {
-        label: "My Tickets",
-        icon: Ticket,
-        path: "/customer/tickets",
-      },
-      {
-        label: "New Ticket",
-        icon: PlusCircle,
-        path: "/customer/create-ticket",
-      },
-      {
-        label: "Support Portal",
-        icon: LifeBuoy,
-        path: "/support",
-      },
-      {
-        label: "Profile",
-        icon: User,
-        path: "/customer/profile",
-      },
-    ],
+  agent: [
+    {
+      label: "Dashboard",
+      icon: LayoutGrid,
+      path: "/agent/dashboard",
+    },
+    {
+      label: "My Tickets",
+      icon: Ticket,
+      path: "/agent/tickets",
+    },
+    {
+      label: "Activity",
+      icon: Activity,
+      path: "/agent/activity",
+    },
+    {
+      label: "AI Assistant",
+      icon: Sparkles,
+      path: "/agent/ai-assistant",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      path: "/settings/profile",
+    },
+  ],
 
-    agent: [
-      {
-        label: "Dashboard",
-        icon: LayoutGrid,
-        path: "/agent/dashboard",
-      },
-      {
-        label: "Assigned Tickets",
-        icon: Ticket,
-        path: "/agent/tickets",
-      },
-      {
-        label: "Knowledge Base",
-        icon: BookOpen,
-        path: "/agent/knowledge-base",
-      },
-      {
-        label: "AI Assistant",
-        icon: Sparkles,
-        path: "/agent/ai-assistant",
-      },
-      {
-        label: "Profile",
-        icon: User,
-        path: "/agent/profile",
-      },
-    ],
+  owner: [
+    {
+      label: "Dashboard",
+      icon: LayoutGrid,
+      path: "/owner/dashboard",
+    },
+    {
+      label: "Tickets",
+      icon: Ticket,
+      path: "/owner/tickets",
+    },
+    {
+      label: "Agents",
+      icon: Users,
+      path: "/owner/agents",
+    },
+    {
+      label: "Customers",
+      icon: UserRound,
+      path: "/owner/customers",
+    },
+    {
+      label: "Billing",
+      icon: CreditCard,
+      path: "/owner/billing",
+    },
+    {
+      label: "Usage",
+      icon: BarChart3,
+      path: "/owner/usage",
+    },
+    {
+      label: "Activity Logs",
+      icon: History,
+      path: "/owner/activity-logs",
+    },
+    {
+      label: "Settings",
+      icon: Settings,
+      path: "/owner/settings",
+    },
+  ],
 
-    admin: [
-      {
-        label: "Dashboard",
-        icon: LayoutGrid,
-        path: "/admin/dashboard",
-      },
-      {
-        label: "Users",
-        icon: Users,
-        path: "/admin/users",
-      },
-      {
-        label: "Tickets",
-        icon: Ticket,
-        path: "/admin/tickets",
-      },
-      {
-        label: "Knowledge Base",
-        icon: BookOpen,
-        path: "/admin/knowledge-base",
-      },
-      {
-        label: "Profile",
-        icon: User,
-        path: "/admin/profile",
-      },
-    ],
-  };
+  platform: [
+    {
+      label: "Organizations",
+      icon: Building2,
+      path: "/platform/organizations",
+    },
+    {
+      label: "Metrics",
+      icon: BarChart3,
+      path: "/platform/metrics",
+    },
+  ],
+};
 
   const navItems = dashboardNav[userRole] || [];
 

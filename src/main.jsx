@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Outlet } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import Home from "../pages/Home/Home";
 
@@ -19,6 +19,9 @@ import AuthLayout from "../app/layouts/AuthLayout/AuthLayout";
 import CustomerDashboardPage from "../pages/customer/CustomerDashboardPage";
 import DashboardLayout from "../app/layouts/DashboardLayout/DashboardLayout";
 import PrivateRoute from "../app/routes/PrivateRoute/PrivateRoute";
+import DashboardRedirect from "../app/routes/DashboardRedirect/DashboardRedirect";
+import CustomerTicketsPage from "../pages/customer/CustomerTicketsPage";
+import RoleRoute from "../app/routes/RoleRoute/RoleRoute";
 
 const router = createBrowserRouter([
   {
@@ -29,10 +32,6 @@ const router = createBrowserRouter([
       {
         index: true,
         Component: Home,
-      },
-      {
-        path: "*",
-        Component: ErrorPage,
       },
     ],
   },
@@ -53,38 +52,42 @@ const router = createBrowserRouter([
         path: "forgot-password",
         Component: ForgotPassword,
       },
-      {
-        path: "*",
-        Component: ErrorPage,
-      },
     ],
   },
   {
     path: "/",
     element: (
       <PrivateRoute>
-        <DashboardLayout></DashboardLayout>
+        <DashboardLayout />
       </PrivateRoute>
     ),
-    errorElement: <ErrorApp></ErrorApp>,
     children: [
       {
+        path: "dashboard",
+        element: <DashboardRedirect />,
+      },
+
+      // customer
+      {
         path: "customer",
-        Component: CustomerDashboardPage,
-      },
-      {
-        path: "customer/dashboard",
-        Component: CustomerDashboardPage,
-      },
-      {
-        path: "forgot-password",
-        Component: ForgotPassword,
-      },
-      {
-        path: "*",
-        Component: ErrorPage,
+        element: (
+          <RoleRoute role="customer">
+            <Outlet></Outlet>
+          </RoleRoute>
+        ),
+        children: [
+          {
+            path: "dashboard",
+            Component: CustomerDashboardPage,
+          },
+          
+        ],
       },
     ],
+  },
+  {
+    path: "*",
+    Component: ErrorPage,
   },
 ]);
 

@@ -1,10 +1,8 @@
 import {
   ArrowRight,
-  Bell,
   CheckCircle2,
   Clock3,
   MessageSquareText,
-  Plus,
   Sparkles,
   Ticket,
 } from "lucide-react";
@@ -24,7 +22,6 @@ import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import GradientButton from "../../components/ui/Button/GradientButton";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import TextBadge from "../../components/ui/Badge/TextBadge";
-import GradientText from "../../components/ui/Text/GradientText";
 
 // CHART DATA
 const activityData = [
