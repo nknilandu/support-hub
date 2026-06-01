@@ -16,6 +16,9 @@ import Login from "../pages/auth/Login/Login";
 import RootLayout from "../app/layouts/RootLayout/RootLayout";
 import AuthProvider from "../app/providers/AuthProvider";
 import AuthLayout from "../app/layouts/AuthLayout/AuthLayout";
+import CustomerDashboardPage from "../pages/customer/CustomerDashboardPage";
+import DashboardLayout from "../app/layouts/DashboardLayout/DashboardLayout";
+import PrivateRoute from "../app/routes/PrivateRoute/PrivateRoute";
 
 const router = createBrowserRouter([
   {
@@ -25,13 +28,13 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        Component: Home
+        Component: Home,
       },
       {
         path: "*",
         Component: ErrorPage,
       },
-    ]
+    ],
   },
   {
     path: "/",
@@ -44,20 +47,46 @@ const router = createBrowserRouter([
       },
       {
         path: "register",
-        Component: Register, 
+        Component: Register,
       },
       {
         path: "forgot-password",
-        Component: ForgotPassword
+        Component: ForgotPassword,
       },
       {
         path: "*",
         Component: ErrorPage,
       },
-    ]
+    ],
+  },
+  {
+    path: "/",
+    element: (
+      <PrivateRoute>
+        <DashboardLayout></DashboardLayout>
+      </PrivateRoute>
+    ),
+    errorElement: <ErrorApp></ErrorApp>,
+    children: [
+      {
+        path: "customer",
+        Component: CustomerDashboardPage,
+      },
+      {
+        path: "customer/dashboard",
+        Component: CustomerDashboardPage,
+      },
+      {
+        path: "forgot-password",
+        Component: ForgotPassword,
+      },
+      {
+        path: "*",
+        Component: ErrorPage,
+      },
+    ],
   },
 ]);
-
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

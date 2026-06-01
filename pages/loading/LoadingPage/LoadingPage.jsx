@@ -18,7 +18,7 @@ export default function LoadingPage({
         <div className="mx-auto relative top-0 left-0 h-12 w-12 rounded-full bg-primary/10">
           <div className="absolute h-fit w-fit rounded-full bg-conic from-primary from-0% via-secondary to-transparent to-70% overflow-hidden p-1 animate-[spin_1s_linear_infinite_reverse]">
             <div className="relative h-10 w-10 rounded-full bg-base-200" />
-            <div className="absolute inset-3 animate-ping rounded-full bg-primary/20" />
+            {/* <div className="absolute inset-3 animate-ping rounded-full bg-primary/20" /> */}
           </div>
         </div>
 

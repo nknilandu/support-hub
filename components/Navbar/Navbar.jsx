@@ -74,7 +74,7 @@ export default function Navbar() {
     setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
   };
 
-  //=======================
+  //========= scroll control ==============
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 12);
