@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { createBrowserRouter, Outlet } from "react-router";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import Home from "../pages/Home/Home";
 
@@ -22,6 +22,8 @@ import PrivateRoute from "../app/routes/PrivateRoute/PrivateRoute";
 import DashboardRedirect from "../app/routes/DashboardRedirect/DashboardRedirect";
 import CustomerTicketsPage from "../pages/customer/CustomerTicketsPage";
 import RoleRoute from "../app/routes/RoleRoute/RoleRoute";
+import CustomerCreateTicketPage from "../pages/customer/CustomerCreateTicketPage";
+import CustomerTicketDetailsPage from "../pages/customer/CustomerTicketDetailsPage";
 
 const router = createBrowserRouter([
   {
@@ -66,7 +68,6 @@ const router = createBrowserRouter([
         path: "dashboard",
         element: <DashboardRedirect />,
       },
-
       // customer
       {
         path: "customer",
@@ -77,10 +78,28 @@ const router = createBrowserRouter([
         ),
         children: [
           {
+            index: true,
+            element: <Navigate to="dashboard" replace />,
+          },
+          {
             path: "dashboard",
             Component: CustomerDashboardPage,
           },
-          
+          // Ticket List
+          {
+            path: "tickets",
+            Component: CustomerTicketsPage,
+          },
+          // Create Ticket
+          {
+            path: "tickets/new",
+            Component: CustomerCreateTicketPage,
+          },
+          // Single Ticket
+          {
+            path: "tickets/:ticketId",
+            Component: CustomerTicketDetailsPage,
+          },
         ],
       },
     ],

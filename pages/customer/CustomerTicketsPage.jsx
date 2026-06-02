@@ -3,7 +3,7 @@ import React from 'react';
 const CustomerTicketsPage = () => {
     return (
         <div>
-            customer ticket
+            customer tickets
         </div>
     );
 };

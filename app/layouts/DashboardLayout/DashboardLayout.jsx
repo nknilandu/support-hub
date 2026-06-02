@@ -45,119 +45,119 @@ const DashboardLayout = () => {
   });
 
   // ======== nav item =======
-const dashboardNav = {
-  customer: [
-    {
-      label: "Dashboard",
-      icon: LayoutGrid,
-      path: "/customer/dashboard",
-    },
-    {
-      label: "My Tickets",
-      icon: Ticket,
-      path: "/customer/tickets",
-    },
-    {
-      label: "New Ticket",
-      icon: PlusCircle,
-      path: "/customer/tickets/new",
-    },
-    {
-      label: "AI Assistant",
-      icon: Sparkles,
-      path: "/support",
-    },
-    {
-      label: "Profile",
-      icon: User,
-      path: "/settings/profile",
-    },
-  ],
+  const dashboardNav = {
+    customer: [
+      {
+        label: "Dashboard",
+        icon: LayoutGrid,
+        path: "/customer/dashboard",
+      },
+      {
+        label: "My Tickets",
+        icon: Ticket,
+        path: "/customer/tickets",
+      },
+      {
+        label: "New Ticket",
+        icon: PlusCircle,
+        path: "/customer/tickets/new",
+      },
+      {
+        label: "AI Assistant",
+        icon: Sparkles,
+        path: "/support",
+      },
+      {
+        label: "Profile",
+        icon: User,
+        path: "/settings/profile",
+      },
+    ],
 
-  agent: [
-    {
-      label: "Dashboard",
-      icon: LayoutGrid,
-      path: "/agent/dashboard",
-    },
-    {
-      label: "My Tickets",
-      icon: Ticket,
-      path: "/agent/tickets",
-    },
-    {
-      label: "Activity",
-      icon: Activity,
-      path: "/agent/activity",
-    },
-    {
-      label: "AI Assistant",
-      icon: Sparkles,
-      path: "/agent/ai-assistant",
-    },
-    {
-      label: "Profile",
-      icon: User,
-      path: "/settings/profile",
-    },
-  ],
+    agent: [
+      {
+        label: "Dashboard",
+        icon: LayoutGrid,
+        path: "/agent/dashboard",
+      },
+      {
+        label: "My Tickets",
+        icon: Ticket,
+        path: "/agent/tickets",
+      },
+      {
+        label: "Activity",
+        icon: Activity,
+        path: "/agent/activity",
+      },
+      {
+        label: "AI Assistant",
+        icon: Sparkles,
+        path: "/agent/ai-assistant",
+      },
+      {
+        label: "Profile",
+        icon: User,
+        path: "/settings/profile",
+      },
+    ],
 
-  owner: [
-    {
-      label: "Dashboard",
-      icon: LayoutGrid,
-      path: "/owner/dashboard",
-    },
-    {
-      label: "Tickets",
-      icon: Ticket,
-      path: "/owner/tickets",
-    },
-    {
-      label: "Agents",
-      icon: Users,
-      path: "/owner/agents",
-    },
-    {
-      label: "Customers",
-      icon: UserRound,
-      path: "/owner/customers",
-    },
-    {
-      label: "Billing",
-      icon: CreditCard,
-      path: "/owner/billing",
-    },
-    {
-      label: "Usage",
-      icon: BarChart3,
-      path: "/owner/usage",
-    },
-    {
-      label: "Activity Logs",
-      icon: History,
-      path: "/owner/activity-logs",
-    },
-    {
-      label: "Settings",
-      icon: Settings,
-      path: "/owner/settings",
-    },
-  ],
+    owner: [
+      {
+        label: "Dashboard",
+        icon: LayoutGrid,
+        path: "/owner/dashboard",
+      },
+      {
+        label: "Tickets",
+        icon: Ticket,
+        path: "/owner/tickets",
+      },
+      {
+        label: "Agents",
+        icon: Users,
+        path: "/owner/agents",
+      },
+      {
+        label: "Customers",
+        icon: UserRound,
+        path: "/owner/customers",
+      },
+      {
+        label: "Billing",
+        icon: CreditCard,
+        path: "/owner/billing",
+      },
+      {
+        label: "Usage",
+        icon: BarChart3,
+        path: "/owner/usage",
+      },
+      {
+        label: "Activity Logs",
+        icon: History,
+        path: "/owner/activity-logs",
+      },
+      {
+        label: "Settings",
+        icon: Settings,
+        path: "/owner/settings",
+      },
+    ],
 
-  platform: [
-    {
-      label: "Organizations",
-      icon: Building2,
-      path: "/platform/organizations",
-    },
-    {
-      label: "Metrics",
-      icon: BarChart3,
-      path: "/platform/metrics",
-    },
-  ],
-};
+    platform: [
+      {
+        label: "Organizations",
+        icon: Building2,
+        path: "/platform/organizations",
+      },
+      {
+        label: "Metrics",
+        icon: BarChart3,
+        path: "/platform/metrics",
+      },
+    ],
+  };
 
   const navItems = dashboardNav[userRole] || [];
 
@@ -371,22 +371,29 @@ const dashboardNav = {
                 </button>
 
                 {/* header */}
-                <div className=" xl:flex flex-col min-w-0 flex-1">
-                  <h1 className="flex truncate items-center text-xl font-semibold tracking-tight">
-                    Welcome back,{" "}
+                <div className="xl:flex flex-col min-w-0 flex-1">
+                  <h1 className="flex items-center text-xl font-semibold tracking-tight">
+                    <span className="mr-1">Welcome back,</span>
+
                     {loading ? (
-                      <div className="mx-2 h-5 w-12 skeleton " />
+                      <div className="mx-1 h-5 w-12 skeleton" />
                     ) : (
                       <GradientText className="capitalize">
                         {getFirstName(user?.displayName)}
                       </GradientText>
                     )}
-                    {/* badge */}
+
                     {!loading && userRole && (
                       <TextBadge
-                        className="mt-1 ml-2"
+                        className="ml-2 mt-1"
                         size="sm"
-                        variant={`${userRole.toLowerCase() === "owner" ? "pink" : userRole.toLowerCase() === "agent" ? "green" : "cyan"}`}
+                        variant={
+                          userRole.toLowerCase() === "owner"
+                            ? "pink"
+                            : userRole.toLowerCase() === "agent"
+                              ? "green"
+                              : "cyan"
+                        }
                       >
                         {userRole}
                       </TextBadge>

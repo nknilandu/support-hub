@@ -14,7 +14,7 @@ const RoleRoute = ({ role }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (role?.toLowerCase() !== userRole.toLowerCase()) {
+  if (role?.toLowerCase() !== userRole?.toLowerCase()) {
     return <Navigate to="/dashboard" replace />;
   }
 
