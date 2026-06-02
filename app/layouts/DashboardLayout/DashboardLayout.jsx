@@ -44,7 +44,7 @@ const DashboardLayout = () => {
     return localStorage.getItem("theme") || "light";
   });
 
-  // ======== nav item =======
+  // ======== nav item =========
   const dashboardNav = {
     customer: [
       {
@@ -290,6 +290,7 @@ const DashboardLayout = () => {
                     <NavLink
                       key={item.label}
                       to={item.path}
+                      end={item.path === "/customer/tickets"}
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) =>
                         `

@@ -1,11 +1,9 @@
 import CardWithBlurBlob from "../ui/Card/CardWithBlurBlob";
 
 const StepAIResponse = ({
-  aiResult,
-  onBack,
-  onNeedHuman,
-  onSolved,
+ticketData, setStep
 }) => {
+    console.log(ticketData)
   return (
     <CardWithBlurBlob
       className="max-w-5xl border-primary/20 p-6"
@@ -13,15 +11,15 @@ const StepAIResponse = ({
     >
       {/* STEP 2 JSX */}
 
-      <button onClick={onSolved}>
+      <button onClick={()=>{setStep(4)}}>
         This solved my issue
       </button>
 
-      <button onClick={onNeedHuman}>
+      <button onClick={()=>{setStep(3)}}>
         Need human support
       </button>
 
-      <button onClick={onBack}>
+      <button onClick={()=>{setStep(1)}}>
         Edit issue
       </button>
     </CardWithBlurBlob>
@@ -29,3 +27,17 @@ const StepAIResponse = ({
 };
 
 export default StepAIResponse;
+
+
+
+// <button onClick={()=>{setStep(4)}}>
+//         This solved my issue
+//       </button>
+
+//       <button onClick={()=>{setStep(3)}}>
+//         Need human support
+//       </button>
+
+//       <button onClick={()=>{setStep(1)}}>
+//         Edit issue
+//       </button>

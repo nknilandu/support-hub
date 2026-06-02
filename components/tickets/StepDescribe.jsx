@@ -4,10 +4,9 @@ import SoftIconCard from "../ui/Card/SoftIconCard";
 import CardWithBlurBlob from "../ui/Card/CardWithBlurBlob";
 import { useState } from "react";
 import { RxCross2 } from "react-icons/rx";
-import { toast } from "react-toastify";
 import { useForm } from "react-hook-form";
 
-const StepDescribe = ({ onNext }) => {
+const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
   const categories = [
     "Billing",
     "Technical",
@@ -22,12 +21,19 @@ const StepDescribe = ({ onNext }) => {
     register,
     formState: { errors },
     handleSubmit,
-  } = useForm();
+  } = useForm({
+    defaultValues: {
+      title: ticketData?.title || "",
+      description: ticketData?.description || "",
+    },
+  });
 
   const [files, setFiles] = useState([]);
   const [imageError, setImageError] = useState(null);
   const [btnLoading, setBtnLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(
+    ticketData?.category || "Billing",
+  );
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -44,6 +50,7 @@ const StepDescribe = ({ onNext }) => {
   const handleRemoveFile = (fileName) => {
     setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
   };
+
   //   ========== upload image to imagebb ===============
   const uploadToImgBB = async (file) => {
     const formData = new FormData();
@@ -82,6 +89,9 @@ const StepDescribe = ({ onNext }) => {
         category: selectedCategory,
         attachments: attachmentUrls,
       };
+
+      setTicketData(ticketData);
+      setStep(2);
 
       console.log(ticketData);
       setBtnLoading(false);
@@ -219,6 +229,21 @@ const StepDescribe = ({ onNext }) => {
                     >
                       <RxCross2 />
                     </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {ticketData?.attachments?.length > 0 && (
+              <div className="flex gap-2 mt-3">
+                {ticketData?.attachments?.map((url) => (
+                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-base-content/10">
+                    <img
+                      key={url}
+                      src={url}
+                      alt=""
+                      className="h-full w-full object-cover object-center"
+                    />
                   </div>
                 ))}
               </div>

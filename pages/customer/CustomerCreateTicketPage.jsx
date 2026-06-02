@@ -12,13 +12,7 @@ import StepEscalation from "../../components/tickets/StepEscalation";
 
 const CustomerCreateTicketPage = () => {
   const [step, setStep] = useState(1);
-
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-  });
-
-  const [files, setFiles] = useState([]);
+  const [ticketData, setTicketData] = useState(null);
 
   const aiResult = {
     category: "Technical",
@@ -133,29 +127,15 @@ const CustomerCreateTicketPage = () => {
           {/* +++++++++++++++ */}
           <div>
             {step === 1 && (
-              <StepDescribe
-                formData={formData}
-                setFormData={setFormData}
-                files={files}
-                setFiles={setFiles}
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                onNext={() => setStep(2)}
-              />
+              <StepDescribe ticketData={ticketData} setTicketData={setTicketData} setStep={setStep} />
             )}
 
             {step === 2 && (
-              <StepAIResponse
-                aiResult={aiResult}
-                onBack={() => setStep(1)}
-                onNeedHuman={() => setStep(3)}
-                onSolved={() => setStep(4)}
-              />
+              <StepAIResponse ticketData={ticketData} setStep={setStep} />
             )}
 
             {step === 3 && (
               <StepEscalation
-                formData={formData}
                 aiResult={aiResult}
                 onBack={() => setStep(2)}
                 onSubmit={() => setStep(4)}
@@ -166,11 +146,6 @@ const CustomerCreateTicketPage = () => {
               <StepSuccess
                 resetForm={() => {
                   setStep(1);
-                  setFormData({
-                    title: "",
-                    description: "",
-                  });
-                  setFiles([]);
                 }}
               />
             )}
