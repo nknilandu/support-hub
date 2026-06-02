@@ -24,7 +24,7 @@ const StepDescribe = ({ onNext }) => {
     handleSubmit,
   } = useForm();
 
-  const [files, setFiles] = useState(null);
+  const [files, setFiles] = useState([]);
   const [imageError, setImageError] = useState(null);
   const [btnLoading, setBtnLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(false);
