@@ -8,7 +8,6 @@ import Home from "../pages/Home/Home";
 import ForgotPassword from "../pages/auth/ForgotPassword/ForgotPassword";
 import ErrorPage from "../pages/error/ErrorPage/ErrorPage";
 import ErrorApp from "../pages/error/ErrorApp/ErrorApp";
-import LoadingPage from "../pages/loading/LoadingPage/LoadingPage";
 import { ToastContainer } from "react-toastify";
 
 import Register from "../pages/auth/Register/Register";
@@ -35,6 +34,7 @@ const router = createBrowserRouter([
         index: true,
         Component: Home,
       },
+      
     ],
   },
   {

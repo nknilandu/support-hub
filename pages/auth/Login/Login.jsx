@@ -92,11 +92,11 @@ export default function Login() {
         // success
         const user = res.user;
         setUser(user);
-        toast.success("Successfully Loged in.");
+        toast.success("Successfully Loged in with google.");
         navigate(`${location.state ? location.state : "/"}`);
         setGoogleLoading(false);
 
-        console.log(user)
+        // console.log(user)
       })
       .catch((e) => {
         // error
@@ -115,8 +115,8 @@ export default function Login() {
         const user = res.user;
         setUser(user);
         toast.success("Successfully Loged in.");
-        navigate(`${location.state ? location.state : "/"}`);
         setBtnLoading(false);
+        navigate(`${location.state ? location.state : "/"}`);
       })
       .catch((e) => {
         // error

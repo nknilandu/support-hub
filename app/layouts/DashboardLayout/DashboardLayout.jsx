@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router";
+import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import logo from "../../../src/assets/logo.png";
 import GradientText from "../../../components/ui/Text/GradientText";
 
@@ -24,18 +24,25 @@ import {
   Bell,
   Moon,
   Sun,
+  Mail,
+  Pencil,
+  LogOut,
 } from "lucide-react";
 import GradientButton from "../../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
 import { AuthContext } from "../../providers/AuthProvider";
 import LoadingPage from "../../../pages/loading/LoadingPage/LoadingPage";
 import TextBadge from "../../../components/ui/Badge/TextBadge";
+import Swal from "sweetalert2";
 
 const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const { user, loading, userRole } = useContext(AuthContext);
+  const { user, loading, userRole, setUserRole, logOut } =
+    useContext(AuthContext);
+  const navigate = useNavigate();
 
   const notifications = [{ id: 1, title: "New ticket assigned" }];
   const hasNotifications = notifications.length > 0;
@@ -175,6 +182,36 @@ const DashboardLayout = () => {
 
   const handleTheme = () => {
     setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
+  };
+
+  // ++++++++ logOut ++++++++++++
+  const handleLogout = () => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You want to logout?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, logout!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        logOut()
+          .then(() => {
+            Swal.fire({
+              title: "Logged out!",
+              text: "You have been logged out successfully.",
+              icon: "success",
+            });
+
+            setUserRole(null);
+            navigate("/login");
+          })
+          .catch((error) => {
+            Swal.fire("Error", error.message, "error");
+          });
+      }
+    });
   };
 
   return (
@@ -434,14 +471,67 @@ const DashboardLayout = () => {
                       )}
                     </button>
 
-                    {/* profile */}
-                    <button className="btn btn-square rounded-xl border border-base-content/10 bg-base-100 overflow-hidden">
+                    {/* ===================== profile button ====================*/}
+                    <button
+                      onClick={() => setIsProfileOpen((prev) => !prev)}
+                      className="btn btn-square rounded-xl border border-base-content/10 bg-base-100 overflow-hidden"
+                    >
                       <img
                         src={user?.photoURL}
                         alt="user icon"
                         className="object-cover object-center"
                       />
                     </button>
+
+                    {/* ========================= Profile Menu ======================== */}
+                    <div className="relative">
+                      {isProfileOpen && (
+                        <div className="absolute right-3 top-10 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100 p-4 shadow-xl backdrop-blur-xl">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-200 border text-primary/20">
+                              {user.photoURL ? (
+                                <img
+                                  src={user.photoURL}
+                                  alt="userPhoto"
+                                  className="h-full w-full rounded-full object-cover object-center"
+                                />
+                              ) : (
+                                <User size={17} strokeWidth={2} />
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-base-content">
+                                {user.displayName}
+                              </p>
+
+                              <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
+                                <Mail size={12} strokeWidth={2} />
+                                <span className="truncate">{user.email}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Link
+                            to={"/profile"}
+                             className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary">
+                              <Pencil size={13} strokeWidth={2} />
+                              Edit
+                            </Link>
+
+                            <button
+                              type="button"
+                              onClick={handleLogout}
+                              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
+                            >
+                              <LogOut size={13} strokeWidth={2} />
+                              Logout
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
 

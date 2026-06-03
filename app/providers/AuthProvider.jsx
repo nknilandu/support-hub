@@ -53,11 +53,13 @@ const AuthProvider = ({ children }) => {
 
   // observer
   useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-  }, []);
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    setUser(user);
+    setLoading(false);
+  });
+
+  return unsubscribe;
+}, []);
 
   // check user role
    useEffect(() => {
