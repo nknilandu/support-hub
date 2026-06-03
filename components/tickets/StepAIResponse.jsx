@@ -386,7 +386,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
 
             <div className="mt-5 flex gap-3 justify-end">
               <GradientButton
-                buttonClassName="px-8 from-primary/20 to-secondary/20 text-black/60"
+                buttonClassName="px-8 from-primary/20 to-secondary/20 text-base-content/70"
                 onClick={() => setStep(4)}
               >
                 This solved my issue

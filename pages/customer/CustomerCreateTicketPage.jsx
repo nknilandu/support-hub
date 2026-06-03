@@ -11,22 +11,9 @@ import StepDescribe from "../../components/tickets/StepDescribe";
 import StepEscalation from "../../components/tickets/StepEscalation";
 
 const CustomerCreateTicketPage = () => {
-  const [step, setStep] = useState(2);
+  const [step, setStep] = useState(1);
   const [ticketData, setTicketData] = useState(null);
-
-  const aiResult = {
-    category: "Technical",
-    priority: "High",
-    confidence: "87%",
-    risk: "Low",
-    response:
-      "Based on your description, this looks like a configuration issue. Most customers resolve this issue within a few minutes by following the steps below.",
-    steps: [
-      "Sign out and clear your browser cache.",
-      "Sign back in and reconnect the integration.",
-      "Verify workspace permissions.",
-    ],
-  };
+  const [aiResult, setAiResult] = useState({});
 
   const steps = [
     {
@@ -125,7 +112,11 @@ const CustomerCreateTicketPage = () => {
           {/* +++++++++++++++ */}
           <div>
             {step === 1 && (
-              <StepDescribe ticketData={ticketData} setTicketData={setTicketData} setStep={setStep} />
+              <StepDescribe
+                ticketData={ticketData}
+                setTicketData={setTicketData}
+                setStep={setStep}
+              />
             )}
 
             {step === 2 && (
@@ -135,18 +126,13 @@ const CustomerCreateTicketPage = () => {
             {step === 3 && (
               <StepEscalation
                 aiResult={aiResult}
-                onBack={() => setStep(2)}
-                onSubmit={() => setStep(4)}
+                setAiResult={setAiResult}
+                setStep={setStep}
+                aiResult={aiResult}
               />
             )}
 
-            {step === 4 && (
-              <StepSuccess
-                resetForm={() => {
-                  setStep(1);
-                }}
-              />
-            )}
+            {step === 4 && <StepSuccess setStep={setStep} />}
           </div>
           {/* +++++++++++++++ */}
         </div>
@@ -273,168 +259,3 @@ const CustomerCreateTicketPage = () => {
 };
 
 export default CustomerCreateTicketPage;
-
-// =================== gurbage ===================
-
-//   {step === 2 && (
-//     <CardWithBlurBlob
-//       className="max-w-5xl border-primary/20 p-6"
-//       interactive={false}
-//     >
-//       <div className="flex flex-wrap items-center justify-between gap-3">
-//         <div className="flex items-center gap-3">
-//           <SoftIconCard icon={Sparkles} variant="primary" />
-
-//           <h2 className="text-lg font-semibold">AI First Response</h2>
-//         </div>
-
-//         <div className="flex gap-2">
-//           <TextBadge variant="green">
-//             {aiResult.confidence} confidence
-//           </TextBadge>
-
-//           <TextBadge variant="orange">{aiResult.risk} risk</TextBadge>
-//         </div>
-//       </div>
-
-//       <p className="mt-6 leading-8 text-base-content/80">
-//         {aiResult.response}
-//       </p>
-
-//       <div className="mt-6 space-y-3">
-//         {aiResult.steps.map((item, index) => (
-//           <p key={index} className="text-base-content/70">
-//             {index + 1}. {item}
-//           </p>
-//         ))}
-//       </div>
-
-//       <p className="mt-6 text-xs text-base-content/50">
-//         Reason: Similar past resolutions in this workspace.
-//       </p>
-
-//       <div className="mt-8 grid gap-3 md:grid-cols-2">
-//         <button onClick={() => setStep(4)} className="btn rounded-xl">
-//           <CheckCircle2 size={16} />
-//           This solved my issue
-//         </button>
-
-//         <GradientButton
-//           className="w-full"
-//           buttonClassName="w-full"
-//           onClick={() => setStep(3)}
-//         >
-//           Need human support
-//         </GradientButton>
-//       </div>
-
-//       <button
-//         onClick={() => setStep(1)}
-//         className="mt-6 flex items-center gap-2 text-sm text-base-content/50"
-//       >
-//         <ArrowLeft size={14} />
-//         Edit issue
-//       </button>
-//     </CardWithBlurBlob>
-//   )}
-
-//   {/* ================================= */}
-//   {/* STEP 3 */}
-//   {/* ================================= */}
-
-//   {step === 3 && (
-//     <CardWithBlurBlob className="max-w-6xl p-6" interactive={false}>
-//       <h2 className="text-2xl font-semibold">Escalate to a human agent</h2>
-
-//       <p className="mt-2 text-base-content/60">
-//         We'll attach the AI conversation so the agent has full context.
-//       </p>
-
-//       <div className="mt-8 rounded-2xl border border-base-content/10 p-5">
-//         <p className="text-xs uppercase tracking-wider text-base-content/50">
-//           Ticket Preview
-//         </p>
-
-//         <h3 className="mt-4 text-lg font-medium">
-//           {formData.title || "Untitled Issue"}
-//         </h3>
-
-//         <div className="mt-4 flex flex-wrap gap-2">
-//           <TextBadge variant="slate">{aiResult.category}</TextBadge>
-
-//           <TextBadge variant="orange">{aiResult.priority}</TextBadge>
-
-//           <TextBadge variant="blue">Open</TextBadge>
-//         </div>
-//       </div>
-
-//       <div className="mt-5 rounded-2xl border border-base-content/10 p-5">
-//         <div className="flex items-center gap-3">
-//           <SoftIconCard icon={ShieldCheck} variant="primary" />
-
-//           <div>
-//             <h3 className="font-medium">AI context will be attached</h3>
-
-//             <p className="text-sm text-base-content/60">
-//               The agent sees the AI suggestion, category, priority and
-//               attachments.
-//             </p>
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="mt-8 flex justify-end gap-3">
-//         <button onClick={() => setStep(2)} className="btn rounded-xl">
-//           Back
-//         </button>
-
-//         <GradientButton buttonClassName="px-6" onClick={() => setStep(4)}>
-//           <Ticket size={15} />
-//           Create support ticket
-//         </GradientButton>
-//       </div>
-//     </CardWithBlurBlob>
-//   )}
-
-//   {/* ================================= */}
-//   {/* STEP 4 */}
-//   {/* ================================= */}
-
-//   {step === 4 && (
-//     <CardWithBlurBlob className="max-w-5xl p-10" interactive={false}>
-//       <div className="flex flex-col items-center text-center">
-//         <div className="mb-5">
-//           <SoftIconCard
-//             icon={CheckCircle2}
-//             variant="success"
-//             className="h-14 w-14 rounded-full"
-//             size={24}
-//           />
-//         </div>
-
-//         <h2 className="text-3xl font-semibold">Ticket created</h2>
-
-//         <p className="mt-3 text-base-content/60">
-//           Your ticket TCK-4321 is now open. An agent will reply soon.
-//         </p>
-
-//         <div className="mt-6 flex flex-wrap justify-center gap-3">
-//           <GradientButton>View ticket</GradientButton>
-
-//           <button
-//             onClick={() => {
-//               setStep(1);
-//               setFormData({
-//                 title: "",
-//                 description: "",
-//               });
-//               setFiles([]);
-//             }}
-//             className="btn rounded-xl"
-//           >
-//             Create another ticket
-//           </button>
-//         </div>
-//       </div>
-//     </CardWithBlurBlob>
-//   )}
