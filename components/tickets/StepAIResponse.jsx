@@ -13,6 +13,8 @@ import GradientButton from "../ui/Button/GradientButton";
 import SoftIconCard from "../ui/Card/SoftIconCard";
 import TextBadge from "../ui/Badge/TextBadge";
 import { useState } from "react";
+import HandleSubmitTicket from "./HandleSubmitTicket";
+import { toast } from "react-toastify";
 
 const StepAIResponse = ({ ticketData, setStep }) => {
   const [dataLoading, setDataLoading] = useState(false);
@@ -385,14 +387,22 @@ const StepAIResponse = ({ ticketData, setStep }) => {
             <p className="mt-5 text-base-content/80">{aiResult.reason}</p>
 
             <div className="mt-5 flex gap-3 justify-end">
-              <GradientButton
-                buttonClassName="px-8 from-primary/20 to-secondary/20 text-base-content/70"
-                onClick={() => setStep(4)}
+              <HandleSubmitTicket
+                resolutionType="ai"
+                aiResult={aiResult}
+                onSuccess={(data) => {
+                  console.log("ticket Created", data);
+                  toast("ticket created");
+                  setStep(4);
+                }}
               >
                 This solved my issue
-              </GradientButton>
+              </HandleSubmitTicket>
 
-              <GradientButton buttonClassName="px-8" onClick={() => setStep(3)}>
+              <GradientButton
+                buttonClassName="px-8 from-primary/70 to-secondary/70 "
+                onClick={() => setStep(3)}
+              >
                 Need human support
               </GradientButton>
             </div>
