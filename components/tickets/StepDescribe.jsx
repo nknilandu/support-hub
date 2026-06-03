@@ -8,8 +8,8 @@ import { useForm } from "react-hook-form";
 
 const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
   const categories = [
-    "Billing",
     "Technical",
+    "Billing",
     "Account",
     "Refund",
     "Bug",
@@ -32,7 +32,7 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
   const [imageError, setImageError] = useState(null);
   const [btnLoading, setBtnLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(
-    ticketData?.category || "Billing",
+    ticketData?.category || "Technical",
   );
 
   const handleFileChange = (e) => {

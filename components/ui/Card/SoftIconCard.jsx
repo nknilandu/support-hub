@@ -1,3 +1,5 @@
+import { cn } from "../../../src/lib/cn";
+
 export default function SoftIconCard({
   icon: Icon,
   size = 18,
@@ -34,8 +36,11 @@ export default function SoftIconCard({
 
   return (
     <div
-      className={`flex h-10 w-10 items-center justify-center rounded-xl border ${variantClass} ${className}`}
-    >
+       className={cn(
+        "flex h-10 w-10 items-center justify-center rounded-xl border",
+        variantClass,
+        className
+      )}    >
       {Icon && (
         <Icon
           size={size}

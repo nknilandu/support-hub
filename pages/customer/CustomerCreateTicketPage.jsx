@@ -11,7 +11,7 @@ import StepDescribe from "../../components/tickets/StepDescribe";
 import StepEscalation from "../../components/tickets/StepEscalation";
 
 const CustomerCreateTicketPage = () => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(2);
   const [ticketData, setTicketData] = useState(null);
 
   const aiResult = {
@@ -46,8 +46,6 @@ const CustomerCreateTicketPage = () => {
       label: "Confirm",
     },
   ];
-
-  const [selectedCategory, setSelectedCategory] = useState("Technical");
 
   return (
     <section className="p-4 lg:p-5">

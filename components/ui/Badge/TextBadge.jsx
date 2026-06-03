@@ -9,6 +9,9 @@ export default function TextBadge({
     primary: "bg-primary/10 text-primary border-primary/20",
     secondary: "bg-secondary/10 text-secondary border-secondary/20",
     info: "bg-info/10 text-info border-info/20",
+    warning: "bg-warning/10 text-warning border-warning/20",
+    error: "bg-error/10 text-error border-error/20",
+    success: "bg-success/10 text-success border-success/20",
 
     cyan: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
     sky: "bg-sky-500/10 text-sky-600 border-sky-500/20",
@@ -26,6 +29,7 @@ export default function TextBadge({
     sm: "px-2 py-0.5 text-[9px]",
     md: "px-2 py-0.5 text-[10px]",
     lg: "px-2 py-0.5 text-xs",
+    xl: "px-3 py-1 text-xs font-semibold",
   };
 
   const variantClass = variants[variant] || variants.primary;
