@@ -2,8 +2,16 @@ import { ShieldCheck } from "lucide-react";
 import GradientButton from "../ui/Button/GradientButton";
 import CardWithBlurBlob from "../ui/Card/CardWithBlurBlob";
 import TextBadge from "../ui/Badge/TextBadge";
+import HandleSubmitTicket from "./HandleSubmitTicket";
+import { toast } from "react-toastify";
 
-const StepSuccess = ({ setStep }) => {
+const StepSuccess = ({
+  setTicketData,
+  aiResult,
+  setAiResult,
+  setStep,
+  setTicket,
+}) => {
   return (
     <CardWithBlurBlob className="p-6 " interactive={false}>
       <h2 className="text-2xl font-semibold text-base-content/90">
@@ -14,16 +22,23 @@ const StepSuccess = ({ setStep }) => {
         We'll attach the AI conversation so the agent has full context.
       </p>
 
-      <div className="mt-5 rounded-2xl border-2 border-dashed border-base-content/10 p-5">
+      <div className="mt-5 rounded-2xl border-3 border-dashed border-base-content/10 p-5">
         <p className="text-xs uppercase tracking-wider text-base-content/50">
           Ticket Preview
         </p>
 
-        <h3 className="mt-4 text-lg font-medium">{"Untitled Issue"}</h3>
+        <h3 className="mt-4 text-lg font-medium">{aiResult?.ticketTitle}</h3>
+        <p className="text-base-content/70 text-sm mt-1 mb-5">
+          {aiResult?.summary}
+        </p>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <TextBadge variant="slate">{"aiResult.category"}</TextBadge>
-          <TextBadge variant="orange">{"aiResult.priority"}</TextBadge>
+        <div className="flex flex-wrap gap-2">
+          <TextBadge variant="cyan">{aiResult?.category}</TextBadge>
+          {aiResult?.states.map((item, i) => (
+            <TextBadge key={i} variant={item.variant}>
+              {item.value} {item.title}
+            </TextBadge>
+          ))}
           <TextBadge variant="blue">Open</TextBadge>
         </div>
       </div>
@@ -55,9 +70,20 @@ const StepSuccess = ({ setStep }) => {
           Back
         </GradientButton>
 
-        <GradientButton buttonClassName="px-8" onClick={() => setStep(4)}>
+        <HandleSubmitTicket
+          resolutionType="human"
+          aiResult={aiResult}
+          onSuccess={(data) => {
+            // console.log("ticket Created", data);
+            setTicket(data);
+            toast.success("Successfully support ticket created");
+            setTicketData(null);
+            setAiResult(null);
+            setStep(4);
+          }}
+        >
           Create support ticket
-        </GradientButton>
+        </HandleSubmitTicket>
       </div>
 
       {/* =============== */}

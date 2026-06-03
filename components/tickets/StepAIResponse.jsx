@@ -16,12 +16,12 @@ import { useState } from "react";
 import HandleSubmitTicket from "./HandleSubmitTicket";
 import { toast } from "react-toastify";
 
-const StepAIResponse = ({ ticketData, setStep }) => {
+const StepAIResponse = ({ ticketData, setTicketData, aiResult, setAiResult, setStep }) => {
   const [dataLoading, setDataLoading] = useState(false);
 
-  console.log(ticketData);
+  
 
-  const aiResult = {
+  const resultData = {
     ticketTitle: "Unable to connect Slack integration",
     summary:
       "The issue appears to be related to workspace integration configuration.",
@@ -124,6 +124,14 @@ const StepAIResponse = ({ ticketData, setStep }) => {
     },
   };
 
+  useState(()=>{
+    setAiResult(resultData)
+  }, [])
+
+  console.log(ticketData);
+  console.log(aiResult);
+  
+
   return (
     <CardWithBlurBlob className="p-6" interactive={false}>
       <div>
@@ -142,7 +150,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
           ) : (
             <TextBadge variant="cyan" size="xl">
               <Brain size={15} className="mr-1" />
-              {aiResult.category}
+              {aiResult?.category}
             </TextBadge>
           )}
         </div>
@@ -161,16 +169,16 @@ const StepAIResponse = ({ ticketData, setStep }) => {
           <div>
             <div>
               <h2 className="mt-6 font-semibold text-xl text-base-content/80">
-                {aiResult.ticketTitle}
+                {aiResult?.ticketTitle}
               </h2>
-              <p className="mt-2 text-base-content/80">{aiResult.summary}</p>
+              <p className="mt-2 text-base-content/80">{aiResult?.summary}</p>
 
               <div className="mt-5 w-full h-1 border-t border-base-content/10" />
             </div>
             {/* ============================== */}
             <div className="flex flex-wrap gap-3 mt-3">
-              {aiResult.metrics.map((item) => (
-                <div className="flex justify-start items-center w-fit mr-6">
+              {aiResult?.metrics.map((item, i) => (
+                <div key={i} className="flex justify-start items-center w-fit mr-6">
                   <div className="w-2 h-2 bg-success rounded-full"></div>
                   <p className="ml-1 text-base-content/60 text-xs">
                     {item.label}
@@ -185,7 +193,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
             {/* +++++++++++++++++++++ */}
 
             <div className="grid gap-4 sm:grid-cols-3 mt-5">
-              {aiResult.states.map((state, index) => (
+              {aiResult?.states.map((state, index) => (
                 <CardWithBlurBlob
                   key={index}
                   interactive={false}
@@ -237,7 +245,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
                   Likely Root Cause
                 </h2>
               </div>
-              <p className="mt-2 text-base-content/80">{aiResult.rootCause}</p>
+              <p className="mt-2 text-base-content/80">{aiResult?.rootCause}</p>
 
               <div className="mt-5 w-full h-1 border-t border-base-content/10" />
             </div>
@@ -259,7 +267,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
               {/* ======== */}
 
               <div className="mt-5 grid sm:grid-cols-2 gap-2">
-                {aiResult.recommendations.map((item, i) => (
+                {aiResult?.recommendations?.map((item, i) => (
                   <div
                     key={i}
                     className="group flex items-center justify-between gap-4 rounded-2xl border-2 p-3 transition-all border-base-content/10 border-dashed hover:border-primary/20"
@@ -309,7 +317,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
               {/* ======================== */}
 
               <div className="space-y-6 mt-8">
-                {aiResult.steps.map((step, index) => (
+                {aiResult?.steps?.map((step, index) => (
                   <div key={index} className="relative flex gap-5">
                     {/* Timeline */}
                     <div className="relative flex flex-col justify-start items-center">
@@ -317,7 +325,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
                         {step.id}
                       </div>
 
-                      {index !== aiResult.steps.length - 1 && (
+                      {index !== aiResult?.steps.length - 1 && (
                         <div className="absolute top-10 h-8 w-px bg-base-content/20" />
                       )}
                     </div>
@@ -345,7 +353,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
 
             <div
               className={`mt-6 p-4 border rounded-2xl shrink-0 ${
-                aiResult.escalation.recommended
+                aiResult?.escalation.recommended
                   ? "border-warning/20 bg-warning/5"
                   : "border-success/20 bg-success/5"
               }`}
@@ -356,10 +364,10 @@ const StepAIResponse = ({ ticketData, setStep }) => {
       h-9 w-9 shrink-0
       flex items-center justify-center
       rounded-xl text-base-100
-      ${aiResult.escalation.recommended ? "bg-warning" : "bg-success"}
+      ${aiResult?.escalation.recommended ? "bg-warning" : "bg-success"}
     `}
                 >
-                  {aiResult.escalation.recommended ? (
+                  {aiResult?.escalation.recommended ? (
                     <AlertTriangle size={18} />
                   ) : (
                     <CheckCircle2 size={18} />
@@ -368,13 +376,13 @@ const StepAIResponse = ({ ticketData, setStep }) => {
 
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold">
-                    {aiResult.escalation.recommended
+                    {aiResult?.escalation.recommended
                       ? "Human Review Recommended"
                       : "Self-Service Recommended"}
                   </h3>
 
                   <p className="mt-1 text-sm text-base-content/60">
-                    {aiResult.escalation.recommended
+                    {aiResult?.escalation.recommended
                       ? "This issue may require agent assistance due to complexity, risk, or account-specific factors."
                       : "AI believes this issue can likely be resolved without agent involvement by following the suggested steps."}
                   </p>
@@ -384,7 +392,7 @@ const StepAIResponse = ({ ticketData, setStep }) => {
 
             {/* +++++++++++++++++++++ */}
 
-            <p className="mt-5 text-base-content/80">{aiResult.reason}</p>
+            <p className="mt-5 text-base-content/80">{aiResult?.reason}</p>
 
             <div className="mt-5 flex gap-3 justify-end">
               <HandleSubmitTicket
@@ -393,6 +401,8 @@ const StepAIResponse = ({ ticketData, setStep }) => {
                 onSuccess={(data) => {
                   console.log("ticket Created", data);
                   toast("ticket created");
+                  setTicketData(null)
+                  setAiResult(null)
                   setStep(4);
                 }}
               >

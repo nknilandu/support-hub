@@ -12,8 +12,9 @@ import StepEscalation from "../../components/tickets/StepEscalation";
 
 const CustomerCreateTicketPage = () => {
   const [step, setStep] = useState(1);
+  const [ticket, setTicket] = useState(null);
   const [ticketData, setTicketData] = useState(null);
-  const [aiResult, setAiResult] = useState({});
+  const [aiResult, setAiResult] = useState(null);
 
   const steps = [
     {
@@ -120,19 +121,32 @@ const CustomerCreateTicketPage = () => {
             )}
 
             {step === 2 && (
-              <StepAIResponse ticketData={ticketData} setStep={setStep} />
+              <StepAIResponse
+                ticketData={ticketData}
+                setTicketData={setTicketData}
+                aiResult={aiResult}
+                setAiResult={setAiResult}
+                setStep={setStep}
+              />
             )}
 
             {step === 3 && (
               <StepEscalation
+                setTicketData={setTicketData}
                 aiResult={aiResult}
                 setAiResult={setAiResult}
+                setTicket={setTicket}
                 setStep={setStep}
-                aiResult={aiResult}
               />
             )}
 
-            {step === 4 && <StepSuccess setStep={setStep} />}
+            {step === 4 && (
+              <StepSuccess
+                ticket={ticket}
+                setTicket={setTicket}
+                setStep={setStep}
+              />
+            )}
           </div>
           {/* +++++++++++++++ */}
         </div>
