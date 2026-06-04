@@ -7,6 +7,7 @@ import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import { Link } from "react-router";
 import { AuthContext } from "../../app/providers/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
+import Pagination from "../../components/ui/Pagination/pagination";
 
 const CustomerTicketsPage = () => {
   const { user } = useContext(AuthContext);
@@ -15,6 +16,7 @@ const CustomerTicketsPage = () => {
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [category, setCategory] = useState("");
+  const [page, setPage] = useState(1);
 
   //   ==== handle reset ========
   const handleReset = () => {
@@ -26,15 +28,15 @@ const CustomerTicketsPage = () => {
   };
   //   ========== load data from database ==============
   const {
-    data: tickets = [],
+    data,
     isLoading: loading,
     refetch,
   } = useQuery({
-    queryKey: ["myTickets", search, status, priority, category],
+    queryKey: ["myTickets", search, status, priority, category, page],
     enabled: !!user?.accessToken,
     queryFn: async () => {
       const res = await fetch(
-        `http://localhost:3021/tickets/my-tickets?search=${search}&status=${status}&priority=${priority}&category=${category}`,
+        `http://localhost:3021/tickets/my-tickets?search=${search}&status=${status}&priority=${priority}&category=${category}&page=${page}&limit=10`,
         {
           headers: {
             authorization: `Bearer ${user.accessToken}`,
@@ -45,12 +47,14 @@ const CustomerTicketsPage = () => {
       if (!res.ok) {
         throw new Error("Failed to fetch tickets");
       }
-      const result = await res.json();
-      return result.data || [];
+      return res.json();
     },
   });
 
-  console.log(tickets);
+  const tickets = data?.data || [];
+  const pagination = data?.pagination || {};
+
+  // console.log(tickets)
 
   //  ++++++++++++++++++
 
@@ -375,20 +379,18 @@ const CustomerTicketsPage = () => {
             ) : tickets.length === 0 ? (
               <span>No ticket found</span>
             ) : (
-              <span>Showing {tickets.length} tickets</span>
+              <span>Showing {tickets.length} of {pagination.total} tickets</span>
             )}
           </p>
 
           {/* ========= pagination ========== */}
 
           {!loading && tickets.length !== 0 && (
-            <div className="join">
-              <button className="join-item btn btn-sm">Previous</button>
-
-              <button className="join-item btn btn-sm btn-active">1</button>
-
-              <button className="join-item btn btn-sm">Next</button>
-            </div>
+            <Pagination
+              page={page}
+              setPage={setPage}
+              totalPages={pagination.totalPages || 1}
+            ></Pagination>
           )}
 
           {/* ==================== */}
