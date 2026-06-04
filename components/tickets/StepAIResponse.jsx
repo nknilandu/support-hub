@@ -16,10 +16,15 @@ import { useState } from "react";
 import HandleSubmitTicket from "./HandleSubmitTicket";
 import { toast } from "react-toastify";
 
-const StepAIResponse = ({ ticketData, setTicketData, aiResult, setAiResult, setStep }) => {
+const StepAIResponse = ({
+  setTicket,
+  ticketData,
+  setTicketData,
+  aiResult,
+  setAiResult,
+  setStep,
+}) => {
   const [dataLoading, setDataLoading] = useState(false);
-
-  
 
   const resultData = {
     ticketTitle: "Unable to connect Slack integration",
@@ -124,13 +129,12 @@ const StepAIResponse = ({ ticketData, setTicketData, aiResult, setAiResult, setS
     },
   };
 
-  useState(()=>{
-    setAiResult(resultData)
-  }, [])
+  useState(() => {
+    setAiResult(resultData);
+  }, []);
 
   console.log(ticketData);
   console.log(aiResult);
-  
 
   return (
     <CardWithBlurBlob className="p-6" interactive={false}>
@@ -178,7 +182,10 @@ const StepAIResponse = ({ ticketData, setTicketData, aiResult, setAiResult, setS
             {/* ============================== */}
             <div className="flex flex-wrap gap-3 mt-3">
               {aiResult?.metrics.map((item, i) => (
-                <div key={i} className="flex justify-start items-center w-fit mr-6">
+                <div
+                  key={i}
+                  className="flex justify-start items-center w-fit mr-6"
+                >
                   <div className="w-2 h-2 bg-success rounded-full"></div>
                   <p className="ml-1 text-base-content/60 text-xs">
                     {item.label}
@@ -401,8 +408,9 @@ const StepAIResponse = ({ ticketData, setTicketData, aiResult, setAiResult, setS
                 onSuccess={(data) => {
                   console.log("ticket Created", data);
                   toast("ticket created");
-                  setTicketData(null)
-                  setAiResult(null)
+                  setTicketData(null);
+                  setAiResult(null);
+                  setTicket(data);
                   setStep(4);
                 }}
               >

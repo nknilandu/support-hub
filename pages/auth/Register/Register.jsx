@@ -96,7 +96,7 @@ export default function Register() {
     handleSubmit,
   } = useForm();
 
-  // ================= get company data ===================
+  // ================= load company data from database ===================
   useEffect(() => {
     fetch("http://localhost:3021/companies")
       .then((res) => res.json())

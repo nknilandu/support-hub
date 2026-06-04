@@ -122,6 +122,7 @@ const CustomerCreateTicketPage = () => {
 
             {step === 2 && (
               <StepAIResponse
+                setTicket={setTicket}
                 ticketData={ticketData}
                 setTicketData={setTicketData}
                 aiResult={aiResult}

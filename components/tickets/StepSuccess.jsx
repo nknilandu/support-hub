@@ -34,7 +34,7 @@ const StepSuccess = ({ ticket, setTicket, setStep }) => {
         {/* ======================== */}
 
         <div className="mt-5 flex flex-col sm:flex-row gap-3 justify-end ">
-          <Link to={`/customer/tickets/${ticket.id}`}>
+          <Link to={`/customer/tickets/${ticket?.id}`}>
           <GradientButton
             className="w-full sm:w-fit"
             buttonClassName="px-8 from-primary/20 to-secondary/20 text-base-content/70"
@@ -52,7 +52,7 @@ const StepSuccess = ({ ticket, setTicket, setStep }) => {
             className="w-full sm:w-fit"
             buttonClassName="px-8"
             onClick={() => {
-              setStep(4);
+              setStep(1);
               setTicket(null);
             }}
           >

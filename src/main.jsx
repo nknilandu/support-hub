@@ -23,6 +23,7 @@ import CustomerTicketsPage from "../pages/customer/CustomerTicketsPage";
 import RoleRoute from "../app/routes/RoleRoute/RoleRoute";
 import CustomerCreateTicketPage from "../pages/customer/CustomerCreateTicketPage";
 import CustomerTicketDetailsPage from "../pages/customer/CustomerTicketDetailsPage";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const router = createBrowserRouter([
   {
@@ -34,7 +35,6 @@ const router = createBrowserRouter([
         index: true,
         Component: Home,
       },
-      
     ],
   },
   {
@@ -111,11 +111,16 @@ const router = createBrowserRouter([
   },
 ]);
 
+// Create a client
+const queryClient = new QueryClient();
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-      <ToastContainer />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+        <ToastContainer />
+      </AuthProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );
