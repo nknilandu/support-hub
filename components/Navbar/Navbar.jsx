@@ -20,6 +20,7 @@ import TextBadge from "../ui/Badge/TextBadge";
 import { AuthContext } from "../../app/providers/AuthProvider";
 import { Link, NavLink, useNavigate } from "react-router";
 import Swal from "sweetalert2";
+import { useQuery } from "@tanstack/react-query";
 
 const navLinks = [
   { label: "Features", to: "features" },
@@ -48,9 +49,6 @@ const navByRole = {
   ],
 };
 
-const notifications = [{ id: 1, title: "New ticket assigned" }];
-const hasNotifications = notifications.length > 0;
-
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -63,6 +61,27 @@ export default function Navbar() {
 
   const navigate = useNavigate();
   const links = navByRole[userRole] || [];
+
+  // ============ fatching notification =============
+  const { data: notifications } = useQuery({
+    queryKey: ["customerDashboardNotification"],
+    enabled: !!user?.accessToken,
+    queryFn: async () => {
+      const res = await fetch("http://localhost:3021/notifications?limit=3", {
+        headers: {
+          authorization: `Bearer ${user.accessToken}`,
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to fetch tickets");
+      }
+      return result.notifications;
+    },
+  });
+  const hasNotifications = notifications?.length > 0;
 
   // +++++++++++ control theme +++++++++++++++++
   useEffect(() => {

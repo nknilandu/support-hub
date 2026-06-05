@@ -34,6 +34,7 @@ import { AuthContext } from "../../providers/AuthProvider";
 import LoadingPage from "../../../pages/loading/LoadingPage/LoadingPage";
 import TextBadge from "../../../components/ui/Badge/TextBadge";
 import Swal from "sweetalert2";
+import { useQuery } from "@tanstack/react-query";
 
 const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -44,12 +45,30 @@ const DashboardLayout = () => {
     useContext(AuthContext);
   const navigate = useNavigate();
 
-  const notifications = [{ id: 1, title: "New ticket assigned" }];
-  const hasNotifications = notifications.length > 0;
-
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("theme") || "light";
   });
+
+  // ============ fatching notification =============
+  const { data: notifications } = useQuery({
+    queryKey: ["customerDashboardNotification"],
+    enabled: !!user?.accessToken,
+    queryFn: async () => {
+      const res = await fetch("http://localhost:3021/notifications?limit=3", {
+        headers: {
+          authorization: `Bearer ${user.accessToken}`,
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to fetch tickets");
+      }
+      return result.notifications;
+    },
+  });
+  const hasNotifications = notifications?.length > 0;
 
   // ======== nav item =========
   const dashboardNav = {
@@ -264,7 +283,7 @@ const DashboardLayout = () => {
               className={`flex w-full items-center gap-3 ${collapsed ? "justify-center" : "justify-between"}`}
             >
               {collapsed || (
-                <div className="flex justify-center items-center gap-2">
+                <Link to="/" className="flex justify-center items-center gap-2">
                   <img
                     src={logo}
                     alt="logo"
@@ -280,7 +299,7 @@ const DashboardLayout = () => {
                       AI Workspace
                     </p>
                   </div>
-                </div>
+                </Link>
               )}
 
               {/* desktop collapse */}
@@ -358,33 +377,32 @@ const DashboardLayout = () => {
           {/* AI CARD */}
           {/* ============================= */}
 
-          {!loading && userRole &&
-            (!collapsed && (
-              <div className="p-3">
-                <CardWithBlurBlob className="p-3">
-                  <div className="flex items-center gap-3">
-                    <img src={logo} alt="logo" className="h-8 w-8" />
+          {!loading && userRole && !collapsed && (
+            <div className="p-3">
+              <CardWithBlurBlob className="p-3">
+                <div className="flex items-center gap-3">
+                  <img src={logo} alt="logo" className="h-8 w-8" />
 
-                    <div className="min-w-0">
-                      <h3 className="truncate text-xs font-semibold">
-                        AI Assistant
-                      </h3>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-xs font-semibold">
+                      AI Assistant
+                    </h3>
 
-                      <p className="truncate text-[10px] text-base-content/50">
-                        First-response suggestions
-                      </p>
-                    </div>
+                    <p className="truncate text-[10px] text-base-content/50">
+                      First-response suggestions
+                    </p>
                   </div>
+                </div>
 
-                  <GradientButton
-                    className="mt-3 w-full"
-                    buttonClassName="btn-sm w-full"
-                  >
-                    Ask AI
-                  </GradientButton>
-                </CardWithBlurBlob>
-              </div>
-            ))}
+                <GradientButton
+                  className="mt-3 w-full"
+                  buttonClassName="btn-sm w-full"
+                >
+                  Ask AI
+                </GradientButton>
+              </CardWithBlurBlob>
+            </div>
+          )}
         </aside>
 
         {/* ============================= */}
@@ -514,8 +532,9 @@ const DashboardLayout = () => {
 
                           <div className="mt-4 grid grid-cols-2 gap-2">
                             <Link
-                            to={"/profile"}
-                             className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary">
+                              to={"/profile"}
+                              className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
+                            >
                               <Pencil size={13} strokeWidth={2} />
                               Edit
                             </Link>

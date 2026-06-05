@@ -68,8 +68,6 @@ const CustomerDashboardPage = () => {
     },
   });
 
-  // console.log(notificationData);
-
   // STATS DATA
   const stats = [
     {
@@ -548,12 +546,14 @@ const CustomerDashboardPage = () => {
                   "Get an AI-generated draft before opening a ticket to save
                   time."
                 </p>
+                <Link to="/">
                 <GradientButton
                   className="mt-5 w-full"
                   buttonClassName="btn-sm w-full rounded-xl"
                 >
                   Ask AI Assistant
                 </GradientButton>
+                </Link>
               </CardWithBlurBlob>
             )}
 
