@@ -358,7 +358,7 @@ const DashboardLayout = () => {
           {/* AI CARD */}
           {/* ============================= */}
 
-          {loading ||
+          {!loading && userRole &&
             (!collapsed && (
               <div className="p-3">
                 <CardWithBlurBlob className="p-3">

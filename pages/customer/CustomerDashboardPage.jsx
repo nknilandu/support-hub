@@ -28,15 +28,6 @@ import { AuthContext } from "../../app/providers/AuthProvider";
 import { Link } from "react-router";
 
 const CustomerDashboardPage = () => {
-
-  const activities = [
-    { text: "Agent replied to TCK-4218", time: "3h ago", variant: "info" },
-    { text: "TCK-4220 marked resolved", time: "4d ago", variant: "success" },
-    { text: "You created TCK-4219", time: "5d ago", variant: "primary" },
-  ];
-
-  // =========================
-
   const { user } = useContext(AuthContext);
 
   // =========================
@@ -56,6 +47,28 @@ const CustomerDashboardPage = () => {
       return res.json();
     },
   });
+
+  // ============ fatching notification =============
+  const { data: notificationData, isLoading: notifyLoading } = useQuery({
+    queryKey: ["customerDashboardNotification"],
+    enabled: !!user?.accessToken,
+    queryFn: async () => {
+      const res = await fetch("http://localhost:3021/notifications?limit=3", {
+        headers: {
+          authorization: `Bearer ${user.accessToken}`,
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to fetch tickets");
+      }
+      return result.notifications;
+    },
+  });
+
+  // console.log(notificationData);
 
   // STATS DATA
   const stats = [
@@ -77,7 +90,7 @@ const CustomerDashboardPage = () => {
       title: "Total tickets",
       value: data?.metrics?.totalTickets,
       meta: "Last 30 days",
-      icon: CheckCircle2,
+      icon: MessageSquareText,
       variant: "success",
     },
     {
@@ -95,8 +108,6 @@ const CustomerDashboardPage = () => {
     { name: "Pending", value: data?.statusChart?.pending },
     { name: "Resolved", value: data?.statusChart?.resolved },
   ];
-
-  console.log(data);
 
   return (
     <section className="relative min-h-full p-4 lg:p-5">
@@ -502,7 +513,7 @@ const CustomerDashboardPage = () => {
 
               {/* ================== */}
               {!loading && data?.recentTickets?.length === 0 && (
-                <div className="py-18 px-5 text-center flex flex-col justify-center items-center">
+                <div className="py-14 px-5 text-center flex flex-col justify-center items-center">
                   <SoftIconCard icon={Ticket} variant="slate"></SoftIconCard>
                   <p className="mt-3 text-xl text-base-content/60 mb-3">
                     No tickets found
@@ -548,7 +559,7 @@ const CustomerDashboardPage = () => {
 
             {/* Activity Feed */}
             <CardWithBlurBlob className="p-5" interactive={false}>
-              {loading ? (
+              {notifyLoading ? (
                 <div>
                   <div className="skeleton h-4 w-30 mb-6"></div>
 
@@ -564,26 +575,52 @@ const CustomerDashboardPage = () => {
                     ))}
                   </div>
                 </div>
+              ) : notificationData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-5 py-8 text-center">
+                  <SoftIconCard
+                    icon={MessageSquareText}
+                    className="mb-2"
+                    variant="slate"
+                  ></SoftIconCard>
+
+                  <h3 className="text-base-content/60">
+                    No Recent Activity Yet
+                  </h3>
+
+                  <p className="mt-2 max-w-sm text-xs text-base-content/60">
+                    Your latest ticket updates, agent replies, and status
+                    changes will appear here once you start creating support
+                    tickets.
+                  </p>
+                </div>
               ) : (
                 <div>
                   <h3 className="text-sm font-semibold mb-5">
                     Recent Activity
                   </h3>
                   <div className="space-y-4">
-                    {activities.map((act, i) => (
+                    {notificationData.map((act, i) => (
                       <div key={i} className="flex gap-3 items-start">
                         <SoftIconCard
                           icon={MessageSquareText}
                           size={14}
-                          variant={act.variant}
+                          variant={
+                            act.type === "ticket_created"
+                              ? "cyan"
+                              : act.type === "ticket_resolved"
+                                ? "green"
+                                : act.type === "agent_reply"
+                                  ? "purple"
+                                  : "slate"
+                          }
                           className="h-8 w-8 rounded-xl shrink-0"
                         />
                         <div className="min-w-0">
                           <p className="text-xs font-medium truncate">
-                            {act.text}
+                            {act.ticketNumber}
                           </p>
                           <p className="text-[10px] text-base-content/40 mt-1">
-                            {act.time}
+                            {act.title}
                           </p>
                         </div>
                       </div>
@@ -615,7 +652,7 @@ const CustomerDashboardPage = () => {
                       <CheckCircle2 size={16} className="text-success mt-0.5" />
 
                       <p className="text-xs text-base-content/70">
-                        {data?.insights?.resolutionRate || 42}% of your tickets
+                        {data?.insights?.resolutionRate || 0}% of your tickets
                         were resolved within 24 hours.
                       </p>
                     </div>
@@ -632,7 +669,7 @@ const CustomerDashboardPage = () => {
                       <CheckCircle2 size={16} className="text-success mt-0.5" />
 
                       <p className="text-xs text-base-content/70">
-                        AI helped resolve {data?.insights?.aiResolved || 8}{" "}
+                        AI helped resolve {data?.insights?.aiResolved || 0}{" "}
                         support requests.
                       </p>
                     </div>
