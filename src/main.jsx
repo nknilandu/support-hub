@@ -24,6 +24,7 @@ import RoleRoute from "../app/routes/RoleRoute/RoleRoute";
 import CustomerCreateTicketPage from "../pages/customer/CustomerCreateTicketPage";
 import CustomerTicketDetailsPage from "../pages/customer/CustomerTicketDetailsPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Profile from "../pages/Profile/Profile";
 
 const router = createBrowserRouter([
   {
@@ -69,6 +70,7 @@ const router = createBrowserRouter([
         path: "dashboard",
         element: <DashboardRedirect />,
       },
+      
       // customer
       {
         path: "customer",
@@ -100,6 +102,10 @@ const router = createBrowserRouter([
           {
             path: "tickets/:ticketId",
             Component: CustomerTicketDetailsPage,
+          },
+          {
+            path: "profile",
+            Component: Profile,
           },
         ],
       },

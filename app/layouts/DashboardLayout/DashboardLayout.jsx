@@ -96,7 +96,7 @@ const DashboardLayout = () => {
       {
         label: "Profile",
         icon: User,
-        path: "/settings/profile",
+        path: "/customer/profile",
       },
     ],
 
@@ -287,7 +287,7 @@ const DashboardLayout = () => {
                   <img
                     src={logo}
                     alt="logo"
-                    className="h-7 w-7 object-contain"
+                    className="h-7 w-7 object-center object-cover"
                   />
 
                   <div className="w-full">
@@ -356,7 +356,7 @@ const DashboardLayout = () => {
                 ${
                   isActive
                     ? "bg-gradient-to-r from-primary/10 to-secondary/10 text-base-content"
-                    : "text-base-content/70 hover:bg-base-200"
+                    : "text-base-content/70 hover:bg-base-300"
                 }
 
                 ${collapsed ? "xl:justify-center xl:px-0" : "gap-3"}
@@ -381,7 +381,11 @@ const DashboardLayout = () => {
             <div className="p-3">
               <CardWithBlurBlob className="p-3">
                 <div className="flex items-center gap-3">
-                  <img src={logo} alt="logo" className="h-8 w-8" />
+                  <img
+                    src={logo}
+                    alt="logo"
+                    className="h-8 w-8 object-center object-cover"
+                  />
 
                   <div className="min-w-0">
                     <h3 className="truncate text-xs font-semibold">
@@ -497,7 +501,7 @@ const DashboardLayout = () => {
                       <img
                         src={user?.photoURL}
                         alt="user icon"
-                        className="object-cover object-center"
+                        className="w-full h-full object-cover object-center"
                       />
                     </button>
 

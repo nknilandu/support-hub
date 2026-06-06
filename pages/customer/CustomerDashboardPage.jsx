@@ -68,6 +68,8 @@ const CustomerDashboardPage = () => {
     },
   });
 
+  // console.log(notificationData)
+
   // STATS DATA
   const stats = [
     {
@@ -547,12 +549,12 @@ const CustomerDashboardPage = () => {
                   time."
                 </p>
                 <Link to="/">
-                <GradientButton
-                  className="mt-5 w-full"
-                  buttonClassName="btn-sm w-full rounded-xl"
-                >
-                  Ask AI Assistant
-                </GradientButton>
+                  <GradientButton
+                    className="mt-5 w-full"
+                    buttonClassName="btn-sm w-full rounded-xl"
+                  >
+                    Ask AI Assistant
+                  </GradientButton>
                 </Link>
               </CardWithBlurBlob>
             )}
@@ -617,10 +619,10 @@ const CustomerDashboardPage = () => {
                         />
                         <div className="min-w-0">
                           <p className="text-xs font-medium truncate">
-                            {act.ticketNumber}
+                            {act?.title}
                           </p>
                           <p className="text-[10px] text-base-content/40 mt-1">
-                            {act.title}
+                            {act?.message}
                           </p>
                         </div>
                       </div>

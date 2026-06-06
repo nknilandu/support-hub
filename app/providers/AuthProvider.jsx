@@ -64,14 +64,14 @@ const AuthProvider = ({ children }) => {
   // check user role
    useEffect(() => {
       if (user) {
-        fetch(`http://localhost:3021/users/role?email=${user.email}`, {
+        fetch("http://localhost:3021/users/me", {
           headers: {
             Authorization: `Bearer ${user.accessToken}`,
           }
         })
           .then((res) => res.json())
           .then((data) => {
-            setUserRole(data.role || null);
+            setUserRole(data?.user?.role || null);
           });
       }
     }, [user]);
