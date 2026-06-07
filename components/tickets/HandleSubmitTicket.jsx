@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 
 const HandleSubmitTicket = ({
   aiResult,
+  ticketData,
   resolutionType,
   onSuccess,
   children,
@@ -27,6 +28,7 @@ const HandleSubmitTicket = ({
       createdAt: new Date(),
       updatedAt: new Date(),
       aiResult,
+      ticketData
     };
 
     fetch("http://localhost:3021/tickets", {

@@ -6,6 +6,7 @@ import HandleSubmitTicket from "./HandleSubmitTicket";
 import { toast } from "react-toastify";
 
 const StepSuccess = ({
+  ticketData,
   setTicketData,
   aiResult,
   setAiResult,
@@ -73,6 +74,7 @@ const StepSuccess = ({
         <HandleSubmitTicket
           resolutionType="human"
           aiResult={aiResult}
+          ticketData={ticketData}
           onSuccess={(data) => {
             // console.log("ticket Created", data);
             setTicket(data);

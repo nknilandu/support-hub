@@ -1,4 +1,4 @@
-import { Sparkles, Upload } from "lucide-react";
+import { ArrowRight, Sparkles, Upload } from "lucide-react";
 import GradientButton from "../ui/Button/GradientButton";
 import SoftIconCard from "../ui/Card/SoftIconCard";
 import CardWithBlurBlob from "../ui/Card/CardWithBlurBlob";
@@ -6,7 +6,13 @@ import { useState } from "react";
 import { RxCross2 } from "react-icons/rx";
 import { useForm } from "react-hook-form";
 
-const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
+const StepDescribe = ({
+  ticketData,
+  setTicketData,
+  aiResult,
+  setAiResult,
+  setStep,
+}) => {
   const {
     register,
     formState: { errors },
@@ -77,6 +83,7 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
   const handleCreateTicket = async (data) => {
     try {
       setBtnLoading(true);
+      setAiResult(null)
       let attachmentUrls = [];
 
       if (files.length) {
@@ -208,23 +215,47 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
               AI suggestions are not final decisions.
             </p>
 
-            <GradientButton
-              type="submit"
-              disabled={btnLoading}
-              className="w-full md:w-fit"
-              buttonClassName={`px-6 ${btnLoading && "from-primary/40 to-secondary/40"}`}
-            >
-              {btnLoading ? (
-                <div className="px-18">
-                  <span className="loading loading-spinner loading-sm"></span>
-                </div>
-              ) : (
-                <div className="flex justify-center items-center gap-2">
-                  <Sparkles size={15} />
-                  <span>Get AI first response</span>
-                </div>
+            {/* ===================== */}
+            <div className="flex justify-center items-center gap-3">
+              <GradientButton
+                type="submit"
+                disabled={btnLoading}
+                className="w-full md:w-fit"
+                buttonClassName={`px-6 ${
+                  btnLoading
+                    ? "from-primary/40 to-secondary/40"
+                    : aiResult
+                      ? "from-primary/70 to-secondary/70"
+                      : ""
+                }`}
+              >
+                {btnLoading ? (
+                  <div className="px-18">
+                    <span className="loading loading-spinner loading-sm"></span>
+                  </div>
+                ) : (
+                  <div className="flex justify-center items-center gap-2">
+                    <Sparkles size={15} />
+                    {aiResult ? (
+                      <span>Get a new response</span>
+                    ) : (
+                      <span>Get AI first response</span>
+                    )}
+                  </div>
+                )}
+              </GradientButton>
+              {aiResult && (
+                <GradientButton
+                  onClick={() => {
+                    setStep(2);
+                    
+                  }}
+                >
+                  <span>Get previous response</span>
+                  <ArrowRight size={15} />
+                </GradientButton>
               )}
-            </GradientButton>
+            </div>
           </div>
         </form>
       </CardWithBlurBlob>

@@ -116,6 +116,8 @@ const CustomerCreateTicketPage = () => {
               <StepDescribe
                 ticketData={ticketData}
                 setTicketData={setTicketData}
+                aiResult={aiResult}
+                setAiResult={setAiResult}
                 setStep={setStep}
               />
             )}
@@ -133,6 +135,7 @@ const CustomerCreateTicketPage = () => {
 
             {step === 3 && (
               <StepEscalation
+                ticketData={ticketData}
                 setTicketData={setTicketData}
                 aiResult={aiResult}
                 setAiResult={setAiResult}
