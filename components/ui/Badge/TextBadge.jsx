@@ -21,6 +21,7 @@ export default function TextBadge({
     green: "bg-green-500/10 text-green-600 border-green-500/20",
     red: "bg-red-500/10 text-red-600 border-red-500/20",
     orange: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+    yellow: "bg-warning/10 text-warning border-warning/20",
     slate: "bg-slate-500/10 text-slate-600 border-slate-500/20",
   };
 

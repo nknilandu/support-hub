@@ -28,108 +28,196 @@ const StepAIResponse = ({
   const [dataLoading, setDataLoading] = useState(false);
 
   const resultData = {
-    ticketTitle: "Unable to connect Slack integration",
-    summary:
-      "The issue appears to be related to workspace integration configuration.",
-    category: "Technical",
-    rootCause: "detailed description between 5-10 sentences",
+  //   ticketTitle: "Unable to connect Slack integration",
+  //   summary:
+  //     "The issue appears to be related to workspace integration configuration.",
+  //   category: "Technical",
+  //   rootCause: "detailed description between 5-10 sentences",
+  //   metrics: [
+  //     { label: "Estimated resolution", value: "5-10 minutes" },
+  //     { label: "Self-serve success rate", value: "92%" },
+  //     { label: "Similar tickets", value: "10" },
+  //   ],
+  //   states: [
+      
+  //     {
+  //       title: "Confidence Score",
+  //       value: "87%",
+  //       description: "Above average",
+  //       variant: "green", // for only Confidence Score give varient green(if 85-100), orange (if 70-85), yellow (if 50-70), pink (30-50) red (<50)
 
-    metrics: [
-      {
-        label: "Estimated resolution",
-        value: "5-10 minutes",
-      },
-      {
-        label: "Self-serve success rate",
-        value: "92%",
-      },
-      {
-        label: "Similar tickets",
-        value: "10",
-      },
-    ],
+  //     },
+  //     {
+  //       title: "Priority",
+  //       value: "High", // for Priority Low(green), medium(yellow), high(orange), critical(red)
+  //       description: "Affects core workflow",
+  //       variant: "orange",
+  //     },
+  //     {
+  //       title: "Risk Level",
+  //       value: "Low",  // for Priority Low(green), Medium(yellow), high(orange), critical(red)
+  //       description: "Minimal data exposure",
+  //       variant: "green",
+  //     },
 
-    states: [
-      {
-        title: "Confidence Score",
-        value: "87%",
-        description: "Above average",
-        variant: "success",
-      },
-      {
-        title: "Priority",
-        value: "High",
-        description: "Affects core workflow",
-        variant: "orange",
-      },
-      {
-        title: "Risk Level",
-        value: "Low",
-        description: "Minimal data exposure",
-        variant: "green",
-      },
-    ],
+  //     // states array must contains "Confidence Score", "Priority", "Risk Level"
+  //   ],
+  //   recommendations: [
+  //     {
+  //       title: "Reconnect Integration",
+  //       impact: "High",
+  //       variant: "red",
+  //       description: "Disconnect and reconnect the affected integration.",
+  //     },
+  //     {
+  //       title: "Verify Permissions",
+  //       impact: "Medium",
+  //       variant: "orange",
+  //       description: "Ensure all required workspace permissions are granted.",
+  //     },
+  //     {
+  //       title: "Verify Permissions",
+  //       impact: "Medium",
+  //       variant: "orange",
+  //       description: "Ensure all required workspace permissions are granted.",
+  //     },
+  //   ],
+  //   steps: [
+  //     {
+  //       id: 1,
+  //       title: "Clear browser cache",
+  //       description:
+  //         "Remove cached files and sign out from your current session.",
+  //       impact: "High",
+  //       estimatedTime: "1 min",
+  //     },
+  //     {
+  //       id: 2,
+  //       title: "Sign back in",
+  //       description: "Authenticate again to refresh your account session.",
+  //       impact: "Medium",
+  //       estimatedTime: "30 sec",
+  //     },
+  //     {
+  //       id: 3,
+  //       title: "Reconnect integration",
+  //       description: "Disconnect and reconnect the affected integration.",
+  //       impact: "High",
+  //       estimatedTime: "2 min",
+  //     },
+  //     {
+  //       id: 4,
+  //       title: "Verify permissions",
+  //       description: "Confirm all required workspace permissions are enabled.",
+  //       impact: "Medium",
+  //       estimatedTime: "1 min",
+  //     },
+  //   ],
+  //   escalation: {
+  //     recommended: false,
+  //     reason: "85 similar tickets were resolved without agent involvement.",
+  //     confidence: 92,
 
-    recommendations: [
-      {
-        title: "Reconnect Integration",
-        impact: "High",
-        variant: "red",
-        description: "Disconnect and reconnect the affected integration.",
-      },
-      {
-        title: "Verify Permissions",
-        impact: "Medium",
-        variant: "orange",
-        description: "Ensure all required workspace permissions are granted.",
-      },
-      {
-        title: "Verify Permissions",
-        impact: "Medium",
-        variant: "orange",
-        description: "Ensure all required workspace permissions are granted.",
-      },
-    ],
+  //     // must contains this things
+  //   },
+  // };
 
-    steps: [
-      {
-        id: 1,
-        title: "Clear browser cache",
-        description:
-          "Remove cached files and sign out from your current session.",
-        impact: "High",
-        estimatedTime: "1 min",
-      },
-      {
-        id: 2,
-        title: "Sign back in",
-        description: "Authenticate again to refresh your account session.",
-        impact: "Medium",
-        estimatedTime: "30 sec",
-      },
-      {
-        id: 3,
-        title: "Reconnect integration",
-        description: "Disconnect and reconnect the affected integration.",
-        impact: "High",
-        estimatedTime: "2 min",
-      },
-      {
-        id: 4,
-        title: "Verify permissions",
-        description: "Confirm all required workspace permissions are enabled.",
-        impact: "Medium",
-        estimatedTime: "1 min",
-      },
-    ],
 
-    escalation: {
-      recommended: false,
-      reason: "85 similar tickets were resolved without agent involvement.",
-      confidence: 92,
+  "ticketTitle": "401 Unauthorized Access After Login",
+  "summary": "User cannot access dashboard after login, receiving 401 unauthorized error and immediate session expiration.",
+  "category": "Technical",
+  "rootCause": "The authentication token expires too quickly, causing the session to end immediately after login. The server returns a 401 status when the token is considered invalid. Session management settings are likely misconfigured, leading to premature timeout. Permissions or scopes assigned to the user may be insufficient for dashboard access. The API endpoint protecting the dashboard may be rejecting requests due to missing or expired credentials. These combined issues prevent the user from maintaining an active session long enough to load the dashboard.",
+  "visualEvidence": [],
+  "visualInsights": {
+    "detectedErrors": 0,
+    "detectedWarnings": 0,
+    "affectedComponents": []
+  },
+  "visualConfidence": null,
+  "metrics": [
+    {
+      "label": "HTTP Status",
+      "value": "401"
     },
-  };
-
+    {
+      "label": "Issue",
+      "value": "Unauthorized Access"
+    },
+    {
+      "label": "Session Expiry",
+      "value": "Immediate"
+    }
+  ],
+  "states": [
+    {
+      "title": "Confidence Score",
+      "value": "55%",
+      "description": "Moderate confidence due to limited diagnostic data.",
+      "variant": "orange"
+    },
+    {
+      "title": "Priority",
+      "value": "High",
+      "description": "User cannot access core dashboard functionality.",
+      "variant": "orange"
+    },
+    {
+      "title": "Risk Level",
+      "value": "High",
+      "description": "Potential service disruption for all users.",
+      "variant": "orange"
+    }
+  ],
+  "recommendations": [
+    {
+      "title": "Check authentication token expiration settings",
+      "impact": "High",
+      "variant": "red",
+      "description": "Adjust token TTL to prevent premature expiration."
+    },
+    {
+      "title": "Validate session management configuration",
+      "impact": "Medium",
+      "variant": "orange",
+      "description": "Ensure session store is correctly configured and not timing out."
+    },
+    {
+      "title": "Inspect API endpoint permissions",
+      "impact": "Low",
+      "variant": "green",
+      "description": "Confirm required scopes and roles are granted."
+    }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "title": "Verify token expiration settings",
+      "description": "Review and adjust token TTL to match expected session duration.",
+      "impact": "High",
+      "estimatedTime": "15 minutes"
+    },
+    {
+      "id": 2,
+      "title": "Audit session management configuration",
+      "description": "Check server configuration for session timeout settings.",
+      "impact": "Medium",
+      "estimatedTime": "30 minutes"
+    },
+    {
+      "id": 3,
+      "title": "Validate API permission assignments",
+      "description": "Ensure user roles have appropriate access rights to the dashboard API.",
+      "impact": "Low",
+      "estimatedTime": "20 minutes"
+    }
+  ],
+  "escalation": {
+    "recommended": false,
+    "reason": "Issue can be resolved by configuration changes without escalation.",
+    "confidence": 92
+  }
+}
+  
   // optional (have to remove)
   useEffect(() => {
     setAiResult(resultData);
@@ -208,14 +296,16 @@ const StepAIResponse = ({
             {/* +++++++++++++++++++++ */}
 
             {aiResult?.states && (
-              <div className="grid gap-4 sm:grid-cols-3 mt-5">
+              <div
+                className={`grid gap-4 ${aiResult?.states?.length >= 3 ? "sm:grid-cols-2 md:grid-cols-3" : aiResult?.states?.length === 2 ? "sm:grid-cols-2" : "grid-cols-1"} mt-5`}
+              >
                 {aiResult?.states.map((state, index) => (
                   <CardWithBlurBlob
                     key={index}
                     interactive={false}
                     className="p-4"
                   >
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center gap-3">
                       <div>
                         <p className="text-sm font-medium text-base-content/50">
                           {state.title}
@@ -227,10 +317,10 @@ const StepAIResponse = ({
 
                       {String(state.value).includes("%") ? (
                         <div
-                          className="radial-progress text-primary text-[11px] font-semibold"
+                          className={`shrink-0 radial-progress text-${state.variant}-500 text-[10px] font-semibold`}
                           style={{
                             "--value": parseInt(state.value, 10),
-                            "--size": "2.5rem",
+                            "--size": "2.7rem",
                           }}
                           aria-valuenow={parseInt(state.value, 10)}
                           role="progressbar"
@@ -288,15 +378,17 @@ const StepAIResponse = ({
                 </div>
                 {/* ======== */}
 
-                <div className="mt-5 grid sm:grid-cols-2 gap-2">
+                <div
+                  className={`mt-5 grid ${aiResult?.recommendations?.length >= 2 ? "sm:grid-cols-2 " : "grid-cols-1"} gap-2`}
+                >
                   {aiResult?.recommendations?.map((item, i) => (
                     <div
                       key={i}
                       className="group flex items-center justify-between gap-4 rounded-2xl border-2 p-3 transition-all border-base-content/10 border-dashed hover:border-primary/20"
                     >
-                      <div className="flex items-center gap-4">
+                      <div className=" flex items-center gap-4">
                         {/* Icon */}
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
+                        <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
                           <CheckCircle2 size={16} className="text-success" />
                         </div>
 
@@ -441,20 +533,22 @@ const StepAIResponse = ({
             {/* +++++++++++++++++++++ */}
 
             <div className="mt-5 flex gap-3 justify-end">
-              <HandleSubmitTicket
-                resolutionType="ai"
-                aiResult={aiResult}
-                onSuccess={(data) => {
-                  console.log("ticket Created", data);
-                  toast.success("Ticket created successfully");
-                  setTicketData(null);
-                  setAiResult(null);
-                  setTicket(data);
-                  setStep(4);
-                }}
-              >
-                This solved my issue
-              </HandleSubmitTicket>
+              {aiResult?.escalation?.recommended || (
+                <HandleSubmitTicket
+                  resolutionType="ai"
+                  aiResult={aiResult}
+                  onSuccess={(data) => {
+                    console.log("ticket Created", data);
+                    toast.success("Ticket created successfully");
+                    setTicketData(null);
+                    setAiResult(null);
+                    setTicket(data);
+                    setStep(4);
+                  }}
+                >
+                  This solved my issue
+                </HandleSubmitTicket>
+              )}
 
               <GradientButton
                 buttonClassName="px-8 from-primary/70 to-secondary/70 "

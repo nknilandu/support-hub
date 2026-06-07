@@ -7,23 +7,12 @@ import { RxCross2 } from "react-icons/rx";
 import { useForm } from "react-hook-form";
 
 const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
-  const categories = [
-    "Technical",
-    "Billing",
-    "Account",
-    "Refund",
-    "Bug",
-    "Feature",
-    "Other",
-  ];
-
   const {
     register,
     formState: { errors },
     handleSubmit,
   } = useForm({
     defaultValues: {
-      title: ticketData?.title || "",
       description: ticketData?.description || "",
     },
   });
@@ -31,22 +20,35 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
   const [files, setFiles] = useState([]);
   const [imageError, setImageError] = useState(null);
   const [btnLoading, setBtnLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(
-    ticketData?.category || "Technical",
-  );
 
+  // ===============
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    const updatedFiles = [...files, ...selectedFiles];
     setImageError(null);
+    const remainingSlots = 3 - files.length;
 
-    if (updatedFiles.length > 3) {
-      setImageError("You can upload maximum 3 files");
+    // already full
+    if (remainingSlots <= 0) {
+      setImageError("Maximum 3 files already selected");
+      e.target.value = "";
       return;
     }
-    setFiles(updatedFiles);
+
+    if (selectedFiles.length > remainingSlots) {
+      setImageError(`You can only add ${remainingSlots} more file(s)`);
+      // take only allowed number
+      const allowedFiles = selectedFiles.slice(0, remainingSlots);
+      setFiles((prev) => [...prev, ...allowedFiles]);
+      e.target.value = "";
+      return;
+    }
+
+    // normal case
+    setFiles((prev) => [...prev, ...selectedFiles]);
+    e.target.value = "";
   };
 
+  // =============
   const handleRemoveFile = (fileName) => {
     setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
   };
@@ -83,22 +85,20 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
         );
       }
 
-      const ticketData = {
-        title: data.title,
+      const newTicketData = {
         description: data.description,
-        category: selectedCategory,
         attachments: attachmentUrls,
       };
 
-      setTicketData(ticketData);
+      setTicketData(newTicketData);
       setStep(2);
 
-      console.log(ticketData);
-      setBtnLoading(false);
+      // console.log(newTicketData);
 
       // save ticket
     } catch (error) {
       console.error(error);
+    } finally {
       setBtnLoading(false);
     }
   };
@@ -107,60 +107,10 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
     <div>
       <CardWithBlurBlob className="p-6" interactive={false}>
         <form onSubmit={handleSubmit(handleCreateTicket)} className="space-y-6">
-          {/* title */}
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Ticket title
-            </label>
-
-            <input
-              {...register("title", {
-                required: "Ticket title is required",
-              })}
-              type="text"
-              disabled={btnLoading}
-              placeholder="Short summary of the issue"
-              className=" h-10 w-full rounded-xl border border-base-content/10 bg-base-100   px-4 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-            />
-
-            {errors.title && (
-              <p className="mt-2 text-xs text-red-500">
-                {errors.title.message}
-              </p>
-            )}
-          </div>
-
-          {/* category */}
-          <div>
-            <label className="mb-3 block text-sm font-medium">Category</label>
-
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  disabled={btnLoading}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`
-          rounded-xl border px-4 py-2 text-xs font-medium transition
-
-          ${
-            selectedCategory === category
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-base-content/10 bg-base-100 text-base-content/70 hover:border-primary/30"
-          }
-        `}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* description */}
           <div>
             <label className="mb-2 block text-sm font-medium">
-              Description
+              Describe your problem here
             </label>
 
             <textarea
@@ -214,7 +164,7 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
               <p className="mt-2 text-xs text-red-500">{imageError}</p>
             )}
 
-            {files.length > 0 && !imageError && (
+            {files.length > 0 && (
               <div className="flex mt-4 flex-wrap justify-start items-center gap-2">
                 {files.map((file, index) => (
                   <div
@@ -237,9 +187,11 @@ const StepDescribe = ({ ticketData, setTicketData, setStep }) => {
             {ticketData?.attachments?.length > 0 && (
               <div className="flex gap-2 mt-3">
                 {ticketData?.attachments?.map((url) => (
-                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-base-content/10">
+                  <div
+                    key={url}
+                    className="h-10 w-10 overflow-hidden rounded-lg border border-base-content/10"
+                  >
                     <img
-                      key={url}
                       src={url}
                       alt=""
                       className="h-full w-full object-cover object-center"
