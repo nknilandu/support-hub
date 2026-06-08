@@ -158,6 +158,8 @@ const StepDescribe = ({
                 JPG, PNG, WEBP, PDF
               </p>
 
+              
+
               <input
                 type="file"
                 disabled={btnLoading}
@@ -207,6 +209,18 @@ const StepDescribe = ({
                 ))}
               </div>
             )}
+
+{/* Vision Model Warning */}
+
+            <div className="mt-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs">
+  <p className="font-medium text-yellow-600">
+    ⚠️ Image Analysis Limitation
+  </p>
+
+  <p className="mt-1 text-yellow-600/80">
+    Free model is currently active. Image-based issue detection is disabled or limited. Upgrade required for full vision-powered diagnostics.
+  </p>
+</div>
           </div>
 
           {/* footer */}
