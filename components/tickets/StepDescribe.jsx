@@ -83,7 +83,7 @@ const StepDescribe = ({
   const handleCreateTicket = async (data) => {
     try {
       setBtnLoading(true);
-      setAiResult(null)
+      setAiResult(null);
       let attachmentUrls = [];
 
       if (files.length) {
@@ -94,13 +94,17 @@ const StepDescribe = ({
 
       const newTicketData = {
         description: data.description,
-        attachments: attachmentUrls,
       };
 
-      setTicketData(newTicketData);
-      setStep(2);
+      if (attachmentUrls.length) {
+        newTicketData.attachments = attachmentUrls;
+      }
 
-      // console.log(newTicketData);
+      setTicketData({
+        ...ticketData,
+        ...newTicketData,
+      });
+      setStep(2);
 
       // save ticket
     } catch (error) {
@@ -158,8 +162,6 @@ const StepDescribe = ({
                 JPG, PNG, WEBP, PDF
               </p>
 
-              
-
               <input
                 type="file"
                 disabled={btnLoading}
@@ -210,17 +212,19 @@ const StepDescribe = ({
               </div>
             )}
 
-{/* Vision Model Warning */}
+            {/* Vision Model Warning */}
 
             <div className="mt-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs">
-  <p className="font-medium text-yellow-600">
-    ⚠️ Image Analysis Limitation
-  </p>
+              <p className="font-medium text-yellow-600">
+                ⚠️ Image Analysis Limitation
+              </p>
 
-  <p className="mt-1 text-yellow-600/80">
-    Free model is currently active. Image-based issue detection is disabled or limited. Upgrade required for full vision-powered diagnostics.
-  </p>
-</div>
+              <p className="mt-1 text-yellow-600/80">
+                Free model is currently active. Image-based issue detection is
+                disabled or limited. Upgrade required for full vision-powered
+                diagnostics.
+              </p>
+            </div>
           </div>
 
           {/* footer */}
@@ -262,7 +266,6 @@ const StepDescribe = ({
                 <GradientButton
                   onClick={() => {
                     setStep(2);
-                    
                   }}
                 >
                   <span>Get previous response</span>

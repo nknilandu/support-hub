@@ -16,6 +16,9 @@ const CustomerCreateTicketPage = () => {
   const [ticketData, setTicketData] = useState(null);
   const [aiResult, setAiResult] = useState(null);
 
+
+  // console.log(ticketData)
+
   const steps = [
     {
       id: 1,

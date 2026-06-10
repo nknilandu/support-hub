@@ -71,7 +71,7 @@ const StepAIResponse = ({
       });
   }, [ticketData, user, setAiResult, aiResult]);
 
-  // console.log(aiResult)
+  // ======================================================
 
   return (
     <CardWithBlurBlob className="p-6" interactive={false}>

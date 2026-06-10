@@ -561,7 +561,7 @@ const CustomerDashboardPage = () => {
 
             {/* Activity Feed */}
             <CardWithBlurBlob className="p-5" interactive={false}>
-              {notifyLoading ? (
+              {notifyLoading || loading ? (
                 <div>
                   <div className="skeleton h-4 w-30 mb-6"></div>
 
