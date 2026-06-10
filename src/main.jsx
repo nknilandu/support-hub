@@ -25,6 +25,7 @@ import CustomerCreateTicketPage from "../pages/customer/CustomerCreateTicketPage
 import CustomerTicketDetailsPage from "../pages/customer/CustomerTicketDetailsPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Profile from "../pages/Profile/Profile";
+import CustomerAiAssistant from "../pages/customer/CustomerAiAssistant";
 
 const router = createBrowserRouter([
   {
@@ -102,6 +103,10 @@ const router = createBrowserRouter([
           {
             path: "tickets/:ticketId",
             Component: CustomerTicketDetailsPage,
+          },
+          {
+            path: "ai-assistant",
+            Component: CustomerAiAssistant,
           },
           {
             path: "profile",

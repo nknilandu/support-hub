@@ -91,7 +91,7 @@ const DashboardLayout = () => {
       {
         label: "AI Assistant",
         icon: Sparkles,
-        path: "/support",
+        path: "/customer/ai-assistant",
       },
       {
         label: "Profile",
@@ -432,7 +432,7 @@ const DashboardLayout = () => {
 
                 {/* header */}
                 <div className="xl:flex flex-col min-w-0 flex-1">
-                  <h1 className="flex items-center text-xl font-semibold tracking-tight">
+                  <h1 className="flex items-center text-xl font-semibold tracking-tight truncate">
                     <span className="mr-1">Welcome back,</span>
 
                     {loading ? (

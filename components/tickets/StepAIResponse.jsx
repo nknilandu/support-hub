@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   Brain,
@@ -103,7 +104,7 @@ const StepAIResponse = ({
           ) : (
             aiResult?.category && (
               <TextBadge variant="cyan" size="xl">
-                <Brain size={15} className="mr-1" />
+                <Activity size={15} className="mr-1" />
                 {aiResult?.category}
               </TextBadge>
             )
