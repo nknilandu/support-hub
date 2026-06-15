@@ -15,11 +15,13 @@ import {
 import GradientButton from "../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
+import { toast } from "react-toastify";
 
 const CustomerAiAssistant = () => {
   const [open, setOpen] = useState(false);
   const [activeChat, setActiveChat] = useState(1);
   const [listLoading, setListLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   // =============
   const suggestions = [
@@ -104,6 +106,46 @@ const CustomerAiAssistant = () => {
     const maxHeight = 72; // প্রায় 3 lines
     textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
   };
+
+  // ++++++++++++++++++++++++++++++++++++++++++++++++
+const handleSend = async () => {
+
+    if (!message.trim()) return;
+
+
+ fetch("http://localhost:3021/ai/chat`", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user.accessToken}`,
+      },
+      body: JSON.stringify({
+        message,
+      conversationId,
+      conversationHistory,
+      userContext,}),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success) {
+          throw new Error(data.message || "Ticket analysis failed");
+        }
+        console.log(data);
+
+        
+      })
+      .catch((err) => {
+        toast.error(err.message || "Something went wrong");
+        console.error(err);
+      })
+      .finally(() => {
+
+      });
+
+  }
+
+
+// ======================================
 
   return (
     <CardWithBlurBlob
@@ -288,47 +330,6 @@ const CustomerAiAssistant = () => {
         >
           {/* ================================================== */}
 
-          {/* <div className="h-full flex flex-col items-center justify-center px-4">
-      <SoftIconCard
-        icon={Sparkles}
-        variant="primary"
-        className="mb-5"
-      />
-
-      <h2 className="text-3xl font-bold mb-3 text-center">
-        How can I help today?
-      </h2>
-
-      <p className="text-sm text-base-content/60 text-center max-w-xl mb-8">
-        Ask questions, troubleshoot issues, analyze tickets, and get instant
-        support guidance.
-      </p>
-
-      <div className="grid md:grid-cols-2 gap-3 w-full max-w-3xl">
-        {suggestions.map((item, index) => {
-          const Icon = item.icon;
-
-          return (
-            <div
-              key={index}
-              className="rounded-2xl border border-base-content/10 px-5 py-4 hover:bg-base-200 transition cursor-pointer"
-            >
-              <div className="flex gap-4 items-start">
-                <Icon size={18} className="mt-1 text-primary" />
-
-                <div>
-                  <h4 className="font-medium text-sm">{item.title}</h4>
-                  <p className="text-xs text-base-content/60 mt-1">
-                    {item.subtitle}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div> */}
-
           {/* ======================================
            */}
 
@@ -387,6 +388,46 @@ const CustomerAiAssistant = () => {
           </div> */}
           <div className="flex-1">
             {/* ############################################# */}
+
+            <div className="h-full flex flex-col items-center justify-center px-4">
+              <SoftIconCard
+                icon={Sparkles}
+                variant="primary"
+                className="mb-5"
+              />
+
+              <h2 className="text-3xl font-bold mb-3 text-center">
+                How can I help today?
+              </h2>
+
+              <p className="text-sm text-base-content/60 text-center max-w-xl mb-8">
+                Ask questions, troubleshoot issues, analyze tickets, and get
+                instant support guidance.
+              </p>
+
+              <div className="grid md:grid-cols-2 gap-3 w-full max-w-3xl">
+                {suggestions.map((item, index) => (
+                  <div
+                    key={index}
+                    onClick={() =>
+                      setMessage(`${item.title}\n${item.subtitle}`)
+                    }
+                    className="rounded-2xl border border-base-content/10 px-5 py-4 hover:bg-base-200 transition cursor-pointer"
+                  >
+                    <div className="flex gap-4 items-start">
+                      <item.icon size={18} className="mt-1 text-primary" />
+
+                      <div>
+                        <h4 className="font-medium text-sm">{item.title}</h4>
+                        <p className="text-xs text-base-content/60 mt-1">
+                          {item.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           {/* ================================ */}
 
@@ -398,6 +439,8 @@ const CustomerAiAssistant = () => {
                 // ref={textareaRef}
                 rows={1}
                 onInput={handleInput}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 placeholder="Ask anything about your issue..."
                 className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
               />

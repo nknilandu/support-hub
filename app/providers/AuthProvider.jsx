@@ -19,12 +19,11 @@ const auth = getAuth(app);
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState(null);
 
   //google singin
   const googleSignIn = () => {
-    return signInWithPopup(auth, provider)
-  }
+    return signInWithPopup(auth, provider);
+  };
 
   // create user
   const createUser = (email, password) => {
@@ -53,28 +52,58 @@ const AuthProvider = ({ children }) => {
 
   // observer
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    setUser(user);
-    setLoading(false);
-  });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
 
-  return unsubscribe;
-}, []);
+    return unsubscribe;
+  }, []);
 
   // check user role
-   useEffect(() => {
-      if (user) {
-        fetch("http://localhost:3021/users/me", {
-          headers: {
-            Authorization: `Bearer ${user.accessToken}`,
-          }
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            setUserRole(data?.user?.role || null);
-          });
+  // useEffect(() => {
+  //   const fetchRole = async () => {
+  //     if (!user) {
+  //       setUserRole(null);
+  //       return;
+  //     }
+
+  //     const token = await user.getIdToken();
+  //     const res = await fetch("http://localhost:3021/users/me", {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     });
+
+  //     const data = await res.json();
+  //     setUserRole(data?.user?.role || null);
+  //   };
+
+  //   fetchRole();
+  // }, [user]);
+
+  const fetchUserRole = async (firebaseUser = user) => {
+    try {
+      if (!firebaseUser) {
+        return null;
       }
-    }, [user]);
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch("http://localhost:3021/users/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch user role");
+      }
+
+      const data = await res.json();
+      return data?.user?.role || null;
+    } catch (error) {
+      console.log("fetchUserRole error:", error);
+      return null;
+    }
+  };
 
   const authData = {
     googleSignIn,
@@ -86,12 +115,12 @@ const AuthProvider = ({ children }) => {
     setUser,
     loading,
     updateUserProfile,
-    userRole,
-    setUserRole
-
+    fetchUserRole,
   };
 
-  return <AuthContext value={authData}>{children}</AuthContext>;
+  return (
+    <AuthContext.Provider value={authData}>{children}</AuthContext.Provider>
+  );
 };
 
 export default AuthProvider;

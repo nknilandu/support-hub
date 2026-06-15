@@ -74,8 +74,12 @@ const infoCards = [
 ];
 
 export default function Register() {
-  const { googleSignIn, createUser, setUser, updateUserProfile } =
-    useContext(AuthContext);
+  const {
+    googleSignIn,
+    createUser,
+    setUser,
+    updateUserProfile,
+  } = useContext(AuthContext);
 
   const [selectedRole, setSelectedRole] = useState("customer");
   const [showPassword, setShowPassword] = useState(false);
@@ -94,6 +98,7 @@ export default function Register() {
     register,
     formState: { errors },
     handleSubmit,
+    getValues,
   } = useForm();
 
   // ================= load company data from database ===================
@@ -114,285 +119,497 @@ export default function Register() {
   }, []);
 
   // ++++++++++++ save data to db ============
-  const saveUserToDB = (url, infoData, token) => {
-    return fetch(url, {
+  const saveUserToDB = async (url, infoData, token) => {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(infoData),
-    }).then((res) => res.json());
+    });
+    return await res.json();
   };
 
-  // ++++++++++++ google signup +++++++++++++++++
-  const googleSubmit = () => {
-    setGoogleLoading(true);
+  // =========== handle Google Submit ==============
+  const googleSubmit = async () => {
+    try {
+      setGoogleLoading(true);
 
-    const usernameInput = document.getElementById("username")?.value;
-    const companyNameInput = document.getElementById("companyname")?.value;
+      const usernameInput = getValues("username");
+      const companyNameInput = getValues("companyname");
 
-    if (selectedRole === "owner" && !companyNameInput) {
-      toast.error("Company name is required");
-      setGoogleLoading(false);
-      return;
-    }
+      if (selectedRole === "owner" && !companyNameInput) {
+        toast.error("Company name is required");
+        return;
+      }
 
-    if (
-      (selectedRole === "customer" || selectedRole === "agent") &&
-      !selectedCompany
-    ) {
-      toast.error("Company selection is required");
-      setGoogleLoading(false);
-      return;
-    }
+      if (
+        (selectedRole === "customer" || selectedRole === "agent") &&
+        !selectedCompany
+      ) {
+        toast.error("Company selection is required");
+        return;
+      }
 
-    googleSignIn()
-      .then((res) => {
-        const user = res.user;
-        setUser(user);
+      // 1. ========================== Google Sign In =========================
+      const res = await googleSignIn();
+      const userData = res.user;
 
-        const finalName = usernameInput || user.displayName || "User";
+      const finalName = usernameInput || userData.displayName || "User";
+      let finalPhoto = userData.photoURL || null;
 
-        // if profile image then ImgBB upload
-        if (profileImage) {
-          const formData = new FormData();
-          formData.append("image", profileImage);
+      // 2. =========================== Upload image (if selected) ===================
+      if (profileImage) {
+        const formData = new FormData();
+        formData.append("image", profileImage);
 
-          return fetch(
-            `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
-            {
-              method: "POST",
-              body: formData,
-            },
-          )
-            .then((imgRes) => imgRes.json())
-            .then((imgData) => {
-
-              if (!imgData.success) {
-                throw new Error("Image upload failed");
-              }
-
-              return {
-                user,
-                finalName,
-                finalPhoto: imgData.data.display_url,
-              };
-            });
-        }
-
-        // else profile image then use Google photo
-        return {
-          user,
-          finalName,
-          finalPhoto: user.photoURL || null,
-        };
-      })
-
-      // Firebase profile update
-      .then(({ user, finalName, finalPhoto }) => {
-        return updateUserProfile({
-          displayName: finalName,
-          photoURL: finalPhoto,
-        }).then(() => {
-          return { user, finalName, finalPhoto };
-        });
-      })
-
-      // Save user to DB
-      .then(({ user, finalName, finalPhoto }) => {
-        const userInfo = {
-          uid: user.uid,
-          displayName: finalName,
-          photoURL: finalPhoto,
-          email: user.email,
-          status: "active",
-          role: selectedRole,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        if (selectedRole !== "owner" && selectedCompany) {
-          userInfo.companyName = selectedCompany.companyName;
-          userInfo.companyId = selectedCompany._id;
-        }
-
-        return saveUserToDB(
-          "http://localhost:3021/users",
-          userInfo,
-          user.accessToken,
-        ).then((dbResult) => {
-          return {
-            user,
-            dbResult,
-            finalPhoto,
-            companyNameInput,
-          };
-        });
-      })
-
-      // Owner = company create
-      .then(({ user, dbResult, finalPhoto, companyNameInput }) => {
-        if (!dbResult.success) {
-          throw new Error(dbResult.message || "User save failed");
-        }
-
-        // same email already exists
-        if (dbResult.existing) {
-          return {
-            success: true,
-            message: "User already exists",
-          };
-        }
-
-        if (selectedRole === "owner") {
-          const companyInfo = {
-            companyName: companyNameInput,
-            companyLogo: finalPhoto,
-            ownerId: dbResult.insertedId,
-            ownerUid: user.uid,
-            status: "active",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-
-          return saveUserToDB(
-            "http://localhost:3021/companies",
-            companyInfo,
-            user.accessToken,
-          );
-        }
-
-        return {
-          success: true,
-          message: "User created successfully",
-        };
-      })
-
-      // Final response
-      .then((finalResult) => {
-        if (!finalResult.success) {
-          throw new Error(finalResult.message || "Signup failed");
-        }
-
-        toast.success("Account created successfully");
-        navigate(`${location.state ? location.state : "/"}`);
-      })
-      .catch((e) => {
-        console.log(e);
-        toast.error(e.message);
-      })
-      .finally(() => {
-        setGoogleLoading(false);
-        setBtnLoading(false);
-      });
-  };
-  // +++++++++++++++++ button submit +++++++++++++++++
-
-  const onSubmit = (data) => {
-    setBtnLoading(true);
-
-    const logo = profileImage;
-    const formData = new FormData();
-    formData.append("image", logo);
-
-    // upload image to imgbb
-    fetch(
-      `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
-      {
-        method: "POST",
-        body: formData,
-      },
-    )
-      .then((res) => res.json())
-      .then((result) => {
-        if (!result.success) {
+        const imgRes = await fetch(
+          `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+        const imgData = await imgRes.json();
+        if (!imgData.success) {
           throw new Error("Image upload failed");
         }
+        finalPhoto = imgData.data.display_url;
+      }
 
-        const photoLink = result.data.display_url;
+      // 3. ======================== Update Firebase profile =========================
+      await updateUserProfile({
+        displayName: finalName,
+        photoURL: finalPhoto,
+      });
 
-        // create user on firebase
-        return createUser(data.email, data.password).then((res) => {
-          const user = res.user;
-          setUser(user);
+      // 4. ======================== Get Firebase token ===========================
+      const token = await userData.getIdToken();
 
-          // update user profile on firebase
-          return updateUserProfile({
-            displayName: data.username,
-            photoURL: photoLink,
-          }).then(() => {
-            return { user, photoLink };
-          });
-        });
-      })
-      .then(({ user, photoLink }) => {
-        const userInfo = {
-          uid: user.uid,
-          displayName: data.username,
-          photoURL: photoLink,
-          email: data.email,
+      // 5. ======================== Save user in DB ===========================
+      const userInfo = {
+        uid: userData.uid,
+        displayName: finalName,
+        photoURL: finalPhoto,
+        email: userData.email,
+        status: "active",
+        role: selectedRole,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      if (selectedRole !== "owner" && selectedCompany) {
+        userInfo.companyName = selectedCompany.companyName;
+        userInfo.companyId = selectedCompany._id;
+      }
+
+      const dbResult = await saveUserToDB(
+        "http://localhost:3021/users",
+        userInfo,
+        token,
+      );
+
+      if (!dbResult.success) {
+        throw new Error(dbResult.message || "User save failed");
+      }
+
+      // 6. ============================== Company create (only owner) =====================
+      if (selectedRole === "owner") {
+        const companyInfo = {
+          companyName: companyNameInput,
+          companyLogo: finalPhoto,
+          ownerId: dbResult.insertedId,
+          ownerUid: userData.uid,
           status: "active",
-          role: selectedRole,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
 
-        if (selectedRole !== "owner" && selectedCompany) {
-          userInfo.companyName = selectedCompany.companyName;
-          userInfo.companyId = selectedCompany._id;
+        const companyResult = await saveUserToDB(
+          "http://localhost:3021/companies",
+          companyInfo,
+          token,
+        );
+
+        if (!companyResult.success) {
+          throw new Error(companyResult.message || "Company creation failed");
         }
+      }
 
-        return saveUserToDB(
-          "http://localhost:3021/users",
-          userInfo,
-          user.accessToken,
-        ).then((dbResult) => {
-          return { dbResult, user, photoLink };
-        });
-      })
-      .then(({ dbResult, user, photoLink }) => {
-        if (!dbResult.success) {
-          throw new Error(dbResult.message || "User save failed");
-        }
-
-        if (selectedRole === "owner") {
-          const companyInfo = {
-            companyName: data.companyname,
-            companyLogo: photoLink,
-            ownerId: dbResult.insertedId,
-            ownerUid: user.uid,
-            status: "active",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-
-          return saveUserToDB(
-            "http://localhost:3021/companies",
-            companyInfo,
-            user.accessToken,
-          );
-        }
-
-        return { success: true };
-      })
-      .then((finalResult) => {
-        if (!finalResult.success) {
-          throw new Error("Company save failed");
-        }
-
-        toast.success("Account created successfully");
-        navigate(`${location.state ? location.state : "/"}`);
-      })
-      .catch((e) => {
-        console.log(e);
-        toast.error(e.message);
-      })
-      .finally(() => {
-        setBtnLoading(false);
-        setGoogleLoading(false);
-      });
+      // =================== GET USER ===================
+      setUser(userData);
+      // ===========
+      toast.success("Account created successfully");
+      navigate(location.state || "/");
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || "Something went wrong");
+    } finally {
+      setGoogleLoading(false);
+      setBtnLoading(false);
+    }
   };
+
+  // =========== old code ============
+  //  const googleSubmit = () => {
+  //   setGoogleLoading(true);
+
+  //   const usernameInput = getValues("username");
+  //   const companyNameInput = getValues("companyname");
+
+  //   if (selectedRole === "owner" && !companyNameInput) {
+  //     toast.error("Company name is required");
+  //     setGoogleLoading(false);
+  //     return;
+  //   }
+
+  //   if (
+  //     (selectedRole === "customer" || selectedRole === "agent") &&
+  //     !selectedCompany
+  //   ) {
+  //     toast.error("Company selection is required");
+  //     setGoogleLoading(false);
+  //     return;
+  //   }
+
+  //   googleSignIn()
+  //     .then((res) => {
+  //       const user = res.user;
+
+  //       const finalName = usernameInput || user.displayName || "User";
+
+  //       // if profile image then ImgBB upload
+  //       if (profileImage) {
+  //         const formData = new FormData();
+  //         formData.append("image", profileImage);
+
+  //         return fetch(
+  //           `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+  //           {
+  //             method: "POST",
+  //             body: formData,
+  //           },
+  //         )
+  //           .then((imgRes) => imgRes.json())
+  //           .then((imgData) => {
+  //             if (!imgData.success) {
+  //               throw new Error("Image upload failed");
+  //             }
+
+  //             return {
+  //               user,
+  //               finalName,
+  //               finalPhoto: imgData.data.display_url,
+  //             };
+  //           });
+  //       }
+
+  //       // else profile image then use Google photo
+  //       return {
+  //         user,
+  //         finalName,
+  //         finalPhoto: user.photoURL || null,
+  //       };
+  //     })
+
+  //     // Firebase profile update
+  //     .then(({ user, finalName, finalPhoto }) => {
+  //       return updateUserProfile({
+  //         displayName: finalName,
+  //         photoURL: finalPhoto,
+  //       }).then(() => {
+  //         return { user, finalName, finalPhoto };
+  //       });
+  //     })
+
+  //     // Save user to DB
+  //     .then(({ user, finalName, finalPhoto }) => {
+  //       const userInfo = {
+  //         uid: user.uid,
+  //         displayName: finalName,
+  //         photoURL: finalPhoto,
+  //         email: user.email,
+  //         status: "active",
+  //         role: selectedRole,
+  //         createdAt: new Date(),
+  //         updatedAt: new Date(),
+  //       };
+
+  //       if (selectedRole !== "owner" && selectedCompany) {
+  //         userInfo.companyName = selectedCompany.companyName;
+  //         userInfo.companyId = selectedCompany._id;
+  //       }
+
+  //       return saveUserToDB("http://localhost:3021/users", userInfo, user).then(
+  //         (dbResult) => {
+  //           return {
+  //             user,
+  //             dbResult,
+  //             finalPhoto,
+  //             companyNameInput,
+  //           };
+  //         },
+  //       );
+  //     })
+
+  //     // Owner = company create
+  //     .then(({ user, dbResult, finalPhoto, companyNameInput }) => {
+  //       if (!dbResult.success) {
+  //         throw new Error(dbResult.message || "User save failed");
+  //       }
+
+  //       // same email already exists
+  //       if (dbResult.existing) {
+  //         return {
+  //           success: true,
+  //           message: "User already exists",
+  //         };
+  //       }
+
+  //       if (selectedRole === "owner") {
+  //         const companyInfo = {
+  //           companyName: companyNameInput,
+  //           companyLogo: finalPhoto,
+  //           ownerId: dbResult.insertedId,
+  //           ownerUid: user.uid,
+  //           status: "active",
+  //           createdAt: new Date(),
+  //           updatedAt: new Date(),
+  //         };
+
+  //         return saveUserToDB(
+  //           "http://localhost:3021/companies",
+  //           companyInfo,
+  //           user,
+  //         );
+  //       }
+
+  //       return {
+  //         success: true,
+  //         message: "User created successfully",
+  //       };
+  //     })
+
+  //     // Final response
+  //     .then((finalResult) => {
+  //       if (!finalResult.success) {
+  //         throw new Error(finalResult.message || "Signup failed");
+  //       }
+
+  //       toast.success("Account created successfully");
+  //       navigate(`${location.state ? location.state : "/"}`);
+  //     })
+  //     .catch((e) => {
+  //       console.log(e);
+  //       toast.error(e.message);
+  //     })
+  //     .finally(() => {
+  //       setGoogleLoading(false);
+  //       setBtnLoading(false);
+  //     });
+  // };
+
+  // +++++++++++++++++ button submit +++++++++++++++++
+  const onSubmit = async (data) => {
+    try {
+      setBtnLoading(true);
+
+      // ======================= upload image ========================
+      const formData = new FormData();
+      formData.append("image", profileImage);
+
+      const imageRes = await fetch(
+        `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+      const imageResult = await imageRes.json();
+      if (!imageResult.success) {
+        throw new Error("Image upload failed");
+      }
+      const photoLink = imageResult.data.display_url;
+
+      // ======================= create firebase user ========================
+      const userCredential = await createUser(data.email, data.password);
+      const userData = userCredential.user;
+
+      // ======================= update profile ========================
+      await updateUserProfile({
+        displayName: data.username,
+        photoURL: photoLink,
+      });
+
+      //===================== Get Firebase JWT token =================
+      const token = await userData.getIdToken();
+
+      // ======================= save user db ========================
+      const userInfo = {
+        uid: userData.uid,
+        displayName: data.username,
+        photoURL: photoLink,
+        email: userData.email,
+        status: "active",
+        role: selectedRole,
+      };
+
+      if (selectedRole !== "owner" && selectedCompany) {
+        userInfo.companyName = selectedCompany.companyName;
+        userInfo.companyId = selectedCompany._id;
+      }
+
+      // Save user to DB
+      const dbResult = await saveUserToDB(
+        "http://localhost:3021/users",
+        userInfo,
+        token,
+      );
+
+      if (!dbResult.success) {
+        throw new Error(dbResult.message || "User save failed");
+      }
+
+      // ======================= save company db ========================
+      if (selectedRole === "owner") {
+        const companyInfo = {
+          companyName: data.companyname,
+          companyLogo: photoLink,
+          ownerId: dbResult.insertedId,
+          ownerUid: userData.uid,
+          status: "active",
+        };
+
+        const companyResult = await saveUserToDB(
+          "http://localhost:3021/companies",
+          companyInfo,
+          token,
+        );
+
+        if (!companyResult.success) {
+          throw new Error(companyResult.message || "Company save failed");
+        }
+      }
+      // =================== GET USER ===================
+      setUser(userData);
+
+      // ============
+      toast.success("Account created successfully");
+      navigate("/");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBtnLoading(false);
+      setGoogleLoading(false);
+    }
+  };
+
+  //=========== old code ============
+  //  const onSubmit = (data) => {
+  //   setBtnLoading(true);
+
+  //   const logo = profileImage;
+  //   const formData = new FormData();
+  //   formData.append("image", logo);
+
+  //   // upload image to imgbb
+  //   fetch(
+  //     `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+  //     {
+  //       method: "POST",
+  //       body: formData,
+  //     },
+  //   )
+  //     .then((res) => res.json())
+  //     .then((result) => {
+  //       if (!result.success) {
+  //         throw new Error("Image upload failed");
+  //       }
+
+  //       const photoLink = result.data.display_url;
+
+  //       // create user on firebase
+  //       return createUser(data.email, data.password).then((res) => {
+  //         const userData = res.user;
+
+  //         // update user profile on firebase
+  //         return updateUserProfile({
+  //           displayName: data.username,
+  //           photoURL: photoLink,
+  //         }).then(() => {
+  //           return { userData, photoLink };
+  //         });
+  //       });
+  //     })
+  //     .then(async ({ userData, photoLink }) => {
+  //       const userInfo = {
+  //         uid: userData.uid,
+  //         displayName: data.username,
+  //         photoURL: photoLink,
+  //         email: userData.email,
+  //         status: "active",
+  //         role: selectedRole,
+  //         createdAt: new Date(),
+  //         updatedAt: new Date(),
+  //       };
+
+  //       if (selectedRole !== "owner" && selectedCompany) {
+  //         userInfo.companyName = selectedCompany.companyName;
+  //         userInfo.companyId = selectedCompany._id;
+  //       }
+
+  //       const dbResult = await saveUserToDB(
+  //         "http://localhost:3021/users",
+  //         userInfo,
+  //         userData.accessToken);
+  //       return { dbResult, userData, photoLink };
+  //     })
+  //     .then(({ dbResult, userData, photoLink }) => {
+  //       if (!dbResult.success) {
+  //         throw new Error(dbResult.message || "User save failed");
+  //       }
+
+  //       setUser(userData);
+  //       console.log(userData);
+
+  //       if (selectedRole === "owner") {
+  //         const companyInfo = {
+  //           companyName: data.companyname,
+  //           companyLogo: photoLink,
+  //           ownerId: dbResult.insertedId,
+  //           ownerUid: userData.uid,
+  //           status: "active",
+  //           createdAt: new Date(),
+  //           updatedAt: new Date(),
+  //         };
+
+  //         return saveUserToDB(
+  //           "http://localhost:3021/companies",
+  //           companyInfo,
+  //           userData.accessToken,
+  //         );
+  //       }
+
+  //       return { success: true };
+  //     })
+  //     .then((finalResult) => {
+  //       if (!finalResult.success) {
+  //         throw new Error("Company save failed");
+  //       }
+
+  //       toast.success("Account created successfully");
+  //       navigate(`${location.state ? location.state : "/"}`);
+  //     })
+  //     .catch((e) => {
+  //       console.log(e);
+  //       toast.error(e.message);
+  //     })
+  //     .finally(() => {
+  //       setBtnLoading(false);
+  //       setGoogleLoading(false);
+  //     });
+  // };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-base-200/40">

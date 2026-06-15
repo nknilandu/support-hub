@@ -56,11 +56,30 @@ export default function Navbar() {
     return localStorage.getItem("theme") || "light";
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { user, loading, logOut, userRole, setUserRole } =
-    useContext(AuthContext);
+  const { user, loading, logOut, fetchUserRole } = useContext(AuthContext);
+  const [userRole, setUserRole] = useState(null);
 
   const navigate = useNavigate();
   const links = navByRole[userRole] || [];
+
+  console.log(links);
+
+  // =========== fatching userRole ===============
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!user) {
+      setUserRole(null);
+      return;
+    }
+    const loadRole = async () => {
+      const role = await fetchUserRole(user);
+      setUserRole(role);
+    };
+
+    loadRole();
+    console.log("aa");
+  }, [user]);
 
   // ============ fatching notification =============
   const { data: notifications } = useQuery({
@@ -127,7 +146,6 @@ export default function Navbar() {
               text: "You have been logged out successfully.",
               icon: "success",
             });
-
             setUserRole(null);
             navigate("/login");
           })

@@ -85,46 +85,89 @@ export default function Login() {
     console.log("Demo login:", role.label);
   };
 
-  const googleSubmit = () => {
+  // =========== handle Google Submit ==============
+  const googleSubmit = async () => {
     setGoogleLoading(true);
-    googleSignIn()
-      .then((res) => {
-        // success
-        const user = res.user;
-        setUser(user);
-        toast.success("Successfully Loged in with google.");
-        navigate(`${location.state ? location.state : "/"}`);
-        setGoogleLoading(false);
 
-        // console.log(user)
-      })
-      .catch((e) => {
-        // error
-        console.log(e.message);
-        toast.error(e.message);
-        setGoogleLoading(false);
-      });
+    try {
+      const res = await googleSignIn();
+      const userData = res.user;
+
+      // =================== GET USER ===================
+      setUser(userData);
+
+      toast.success("Successfully logged in with Google.");
+      navigate(location.state || "/");
+    } catch (e) {
+      console.log(e.message);
+      toast.error(e.message);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
-  const onSubmit = (data) => {
+  // ================= handle button Submit ==============
+  const onSubmit = async (data) => {
     setBtnLoading(true);
 
-    loginUser(data.email, data.password)
-      .then((res) => {
-        // success
-        const user = res.user;
-        setUser(user);
-        toast.success("Successfully Loged in.");
-        setBtnLoading(false);
-        navigate(`${location.state ? location.state : "/"}`);
-      })
-      .catch((e) => {
-        // error
-        console.log(e.message);
-        toast.error(e.message);
-        setBtnLoading(false);
-      });
+    try {
+      const res = await loginUser(data.email, data.password);
+      const user = res.user;
+
+      // =================== GET USER ===================
+      setUser(user);
+      toast.success("Successfully logged in.");
+
+      navigate(location.state || "/");
+    } catch (e) {
+      console.log(e.message);
+      toast.error(e.message);
+    } finally {
+      setBtnLoading(false);
+    }
   };
+
+  // old code
+  // const googleSubmit = () => {
+  //   setGoogleLoading(true);
+  //   googleSignIn()
+  //     .then((res) => {
+  //       // success
+  //       const user = res.user;
+  //       setUser(user);
+  //       toast.success("Successfully Loged in with google.");
+  //       navigate(`${location.state ? location.state : "/"}`);
+  //       setGoogleLoading(false);
+
+  //       // console.log(user)
+  //     })
+  //     .catch((e) => {
+  //       // error
+  //       console.log(e.message);
+  //       toast.error(e.message);
+  //       setGoogleLoading(false);
+  //     });
+  // };
+
+  // const onSubmit = (data) => {
+  //   setBtnLoading(true);
+
+  //   loginUser(data.email, data.password)
+  //     .then((res) => {
+  //       // success
+  //       const user = res.user;
+  //       setUser(user);
+  //       toast.success("Successfully Loged in.");
+  //       setBtnLoading(false);
+  //       navigate(`${location.state ? location.state : "/"}`);
+  //     })
+  //     .catch((e) => {
+  //       // error
+  //       console.log(e.message);
+  //       toast.error(e.message);
+  //       setBtnLoading(false);
+  //     });
+  // };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-base-200/40">
