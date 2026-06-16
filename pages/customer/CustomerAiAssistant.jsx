@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   Copy,
   Gauge,
@@ -16,12 +16,15 @@ import GradientButton from "../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import { toast } from "react-toastify";
+import { AuthContext } from "../../app/providers/AuthProvider";
 
 const CustomerAiAssistant = () => {
   const [open, setOpen] = useState(false);
   const [activeChat, setActiveChat] = useState(1);
   const [listLoading, setListLoading] = useState(true);
   const [message, setMessage] = useState("");
+
+  const { loading, user } = useContext(AuthContext);
 
   // =============
   const suggestions = [
@@ -103,17 +106,15 @@ const CustomerAiAssistant = () => {
 
     textarea.style.height = "auto";
 
-    const maxHeight = 72; // প্রায় 3 lines
+    const maxHeight = 72; // approx 3 lines
     textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
   };
 
   // ++++++++++++++++++++++++++++++++++++++++++++++++
-const handleSend = async () => {
-
+  const handleSend = async () => {
     if (!message.trim()) return;
 
-
- fetch("http://localhost:3021/ai/chat`", {
+    fetch("http://localhost:3021/ai/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -121,9 +122,7 @@ const handleSend = async () => {
       },
       body: JSON.stringify({
         message,
-      conversationId,
-      conversationHistory,
-      userContext,}),
+      }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -131,21 +130,15 @@ const handleSend = async () => {
           throw new Error(data.message || "Ticket analysis failed");
         }
         console.log(data);
-
-        
       })
       .catch((err) => {
         toast.error(err.message || "Something went wrong");
         console.error(err);
       })
-      .finally(() => {
+      .finally(() => {});
+  };
 
-      });
-
-  }
-
-
-// ======================================
+  // ======================================
 
   return (
     <CardWithBlurBlob
@@ -446,7 +439,11 @@ const handleSend = async () => {
               />
 
               <div className="flex self-end">
-                <GradientButton size="sm" buttonClassName="h-8 w-8 p-1">
+                <GradientButton
+                  onClick={handleSend}
+                  size="sm"
+                  buttonClassName="h-8 w-8 p-1"
+                >
                   <SendHorizonal size={16} />
                 </GradientButton>
               </div>
