@@ -522,7 +522,7 @@ const CustomerDashboardPage = () => {
                     You don’t have any support tickets yet. Create your first
                     ticket to get help from our support system or AI assistant.
                   </p>
-                  <Link to="new">
+                  <Link to="/customer/tickets/new">
                     <GradientButton className="mt-5" buttonClassName="px-8">
                       Create Ticket
                     </GradientButton>
@@ -548,7 +548,7 @@ const CustomerDashboardPage = () => {
                   "Get an AI-generated draft before opening a ticket to save
                   time."
                 </p>
-                <Link to="/">
+                <Link to="/customer/ai-assistant">
                   <GradientButton
                     className="mt-5 w-full"
                     buttonClassName="btn-sm w-full rounded-xl"

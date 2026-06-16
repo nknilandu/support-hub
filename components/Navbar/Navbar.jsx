@@ -76,9 +76,7 @@ export default function Navbar() {
       const role = await fetchUserRole(user);
       setUserRole(role);
     };
-
     loadRole();
-    console.log("aa");
   }, [user]);
 
   // ============ fatching notification =============
@@ -146,7 +144,6 @@ export default function Navbar() {
               text: "You have been logged out successfully.",
               icon: "success",
             });
-            setUserRole(null);
             navigate("/login");
           })
           .catch((error) => {
@@ -302,13 +299,15 @@ export default function Navbar() {
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-2">
-                      <Link
-                        to={"/profile"}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
-                      >
-                        <Pencil size={13} strokeWidth={2} />
-                        Edit
-                      </Link>
+                      {userRole !== null && (
+                        <Link
+                          to={`${userRole}/profile`}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
+                        >
+                          <Pencil size={13} strokeWidth={2} />
+                          Edit
+                        </Link>
+                      )}
 
                       <button
                         type="button"

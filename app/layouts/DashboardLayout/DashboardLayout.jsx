@@ -40,14 +40,28 @@ const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  const { user, loading, userRole, setUserRole, logOut } =
-    useContext(AuthContext);
+  const [userRole, setUserRole] = useState(null);
+  const { user, loading, logOut, fetchUserRole } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("theme") || "light";
   });
+
+  // ============ fetching user role ==============
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!user) {
+      setUserRole(null);
+      return;
+    }
+
+    const loadRole = async () => {
+      const role = await fetchUserRole(user);
+      setUserRole(role);
+    };
+    loadRole();
+  }, [user]);
 
   // ============ fatching notification =============
   const { data: notifications } = useQuery({
@@ -398,12 +412,16 @@ const DashboardLayout = () => {
                   </div>
                 </div>
 
+                <Link to={`${userRole}/ai-assistant`}>
                 <GradientButton
                   className="mt-3 w-full"
                   buttonClassName="btn-sm w-full"
                 >
                   Ask AI
                 </GradientButton>
+                </Link>
+
+                
               </CardWithBlurBlob>
             </div>
           )}
@@ -535,13 +553,15 @@ const DashboardLayout = () => {
                           </div>
 
                           <div className="mt-4 grid grid-cols-2 gap-2">
-                            <Link
-                              to={"/profile"}
-                              className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
-                            >
-                              <Pencil size={13} strokeWidth={2} />
-                              Edit
-                            </Link>
+                            {userRole !== null && (
+                              <Link
+                                to={`${userRole}/profile`}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
+                              >
+                                <Pencil size={13} strokeWidth={2} />
+                                Edit
+                              </Link>
+                            )}
 
                             <button
                               type="button"
