@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   Copy,
   Gauge,
@@ -17,16 +17,119 @@ import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../app/providers/AuthProvider";
+import { useQuery } from "@tanstack/react-query";
+import { formatRelativeDate } from "../../src/lib/formatRelativeDate";
 
 const CustomerAiAssistant = () => {
   const [open, setOpen] = useState(false);
-  const [activeChat, setActiveChat] = useState(1);
-  const [listLoading, setListLoading] = useState(true);
+  const [activeChat, setActiveChat] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+
   const [message, setMessage] = useState("");
+  const [search, setSearch] = useState("");
 
   const { loading, user } = useContext(AuthContext);
 
-  // =============
+  // =========================
+  const {
+    data: conversations,
+    isLoading: listLoading = [],
+    refetch: refetchList,
+  } = useQuery({
+    queryKey: ["ai-conversations", search],
+    enabled: !!user?.accessToken,
+    queryFn: async () => {
+      const res = await fetch(
+        `http://localhost:3021/ai/conversations?search=${search}`,
+        {
+          headers: {
+            authorization: `Bearer ${user.accessToken}`,
+          },
+        },
+      );
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to fetch conversations");
+      }
+      return result.data;
+    },
+  });
+
+  // =================================
+  const {
+    data: messages = [],
+    isLoading: messageLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["conversation-messages", conversationId],
+    enabled: !!user?.accessToken && !!conversationId,
+    queryFn: async () => {
+      const res = await fetch(
+        `http://localhost:3021/ai/conversations/${conversationId}/messages`,
+        {
+          headers: {
+            authorization: `Bearer ${user.accessToken}`,
+          },
+        },
+      );
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to fetch conversations");
+      }
+      return result.data;
+    },
+  });
+
+  console.log(conversationId);
+  console.log(messages);
+
+  // ++++++++++++++++++++++++++++++++++++++++++++++++
+  const handleSend = async () => {
+    if (!message.trim()) return;
+
+    try {
+      const res = await fetch("http://localhost:3021/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.accessToken}`,
+        },
+        body: JSON.stringify({
+          message,
+          conversationId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "AI chat failed");
+      }
+
+      const newId = data.conversationId;
+
+      setConversationId(newId);
+      setActiveChat(newId);
+      setMessage("");
+
+      (refetch(), refetchList());
+    } catch (err) {
+      toast.error(err.message || "Something went wrong");
+      console.error(err);
+    }
+  };
+
+  // ====================
+  const handleInput = (e) => {
+    const textarea = e.target;
+
+    textarea.style.height = "auto";
+
+    const maxHeight = 72; // approx 3 lines
+    textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
+  };
+
+  // ======================================
   const suggestions = [
     {
       icon: Ticket,
@@ -50,95 +153,7 @@ const CustomerAiAssistant = () => {
     },
   ];
 
-  // =============
-  const conversations = [
-    {
-      id: 1,
-      title: "Billing invoice missing line items",
-      preview: "Can you help me verify the latest invoice?",
-      date: "Today",
-      active: true,
-    },
-    {
-      id: 2,
-      title: "Login issue after password reset",
-      preview: "I can access email but not dashboard.",
-      date: "Today",
-    },
-    {
-      id: 3,
-      title: "Export ticket report",
-      preview: "Need CSV export for last month tickets.",
-      date: "Yesterday",
-    },
-    {
-      id: 4,
-      title: "Email notification not received",
-      preview: "Users are not getting ticket updates.",
-      date: "2 days ago",
-    },
-    {
-      id: 5,
-      title: "API authentication error",
-      preview: "Bearer token returns unauthorized.",
-      date: "Last week",
-    },
-  ];
-
-  const messages = [
-    {
-      id: 1,
-      sender: "user",
-      text: "My latest invoice is missing seat upgrades.",
-      time: "01:13 PM",
-    },
-    {
-      id: 2,
-      sender: "ai",
-      text: "I can help you with that. Please provide invoice number.",
-      time: "02:13 PM",
-    },
-  ];
-
-  // ====================
-  const handleInput = (e) => {
-    const textarea = e.target;
-
-    textarea.style.height = "auto";
-
-    const maxHeight = 72; // approx 3 lines
-    textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
-  };
-
-  // ++++++++++++++++++++++++++++++++++++++++++++++++
-  const handleSend = async () => {
-    if (!message.trim()) return;
-
-    fetch("http://localhost:3021/ai/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${user.accessToken}`,
-      },
-      body: JSON.stringify({
-        message,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.success) {
-          throw new Error(data.message || "Ticket analysis failed");
-        }
-        console.log(data);
-      })
-      .catch((err) => {
-        toast.error(err.message || "Something went wrong");
-        console.error(err);
-      })
-      .finally(() => {});
-  };
-
-  // ======================================
+  // =============================================
 
   return (
     <CardWithBlurBlob
@@ -195,7 +210,7 @@ const CustomerAiAssistant = () => {
             <div className="w-full flex justify-between items-center gap-2">
               <div className="flex justify-center items-center gap-3 min-w-0">
                 <MessagesSquare size={16} className="shrink-0" />
-                <h3 className="font-semibold truncate">Conversations</h3>
+                <h3 className="font-semibold truncate">History</h3>
               </div>
 
               <GradientButton
@@ -224,9 +239,8 @@ const CustomerAiAssistant = () => {
             />
             <input
               type="text"
-              disabled={listLoading}
-              // value={search}
-              // onChange={(e) => setSearch(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search conversations..."
               className="
       w-full
@@ -277,31 +291,34 @@ const CustomerAiAssistant = () => {
             <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
               {conversations.map((item) => (
                 <CardWithBlurBlob
-                  key={item.id}
-                  onClick={() => setActiveChat(item.id)}
+                  key={item._id}
+                  onClick={() => {
+                    setActiveChat(item._id);
+                    setConversationId(item._id);
+                  }}
                   interactive={false}
                   blobClassName="bg-transparent"
                   blobHoverColor="group-hover:none"
                   className={`
        rounded-xl px-3 py-2 transition hover:bg-base-300 border-none
-      ${activeChat === item.id && "bg-gradient-to-r from-primary/10 to-secondary/10"}
+      ${activeChat === item._id && "bg-gradient-to-r from-primary/10 to-secondary/10"}
     `}
                 >
                   <div className="flex justify-between gap-2">
                     {/* text */}
                     <div className="min-w-0 flex-1">
                       <h4 className="text-sm font-medium truncate">
-                        {item.title}
+                        {item?.preview}
                       </h4>
 
                       <p className="text-xs text-base-content/60 truncate">
-                        {item.preview}
+                        {item?.details}
                       </p>
                     </div>
 
                     {/* date */}
                     <span className="text-[10px] text-base-content/40 shrink-0">
-                      {item.date}
+                      {formatRelativeDate(item?.updatedAt)}
                     </span>
                   </div>
                 </CardWithBlurBlob>
