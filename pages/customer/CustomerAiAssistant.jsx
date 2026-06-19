@@ -17,23 +17,27 @@ import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../app/providers/AuthProvider";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatRelativeDate } from "../../src/lib/formatRelativeDate";
 
 const CustomerAiAssistant = () => {
+  const { loading, user } = useContext(AuthContext);
+
   const [open, setOpen] = useState(false);
   const [activeChat, setActiveChat] = useState(null);
   const [conversationId, setConversationId] = useState(null);
 
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
 
-  const { loading, user } = useContext(AuthContext);
+  const queryClient = useQueryClient();
 
   // =========================
   const {
-    data: conversations,
-    isLoading: listLoading = [],
+    data: conversations = [],
+    isLoading: listLoading,
     refetch: refetchList,
   } = useQuery({
     queryKey: ["ai-conversations", search],
@@ -56,11 +60,7 @@ const CustomerAiAssistant = () => {
   });
 
   // =================================
-  const {
-    data: messages = [],
-    isLoading: messageLoading,
-    refetch,
-  } = useQuery({
+  const { data: messages = [], isLoading: messageLoading } = useQuery({
     queryKey: ["conversation-messages", conversationId],
     enabled: !!user?.accessToken && !!conversationId,
     queryFn: async () => {
@@ -79,13 +79,31 @@ const CustomerAiAssistant = () => {
       return result.data;
     },
   });
-
-  console.log(conversationId);
-  console.log(messages);
+  const visibleMessages = [...messages, ...pendingMessages];
+  console.log(visibleMessages);
 
   // ++++++++++++++++++++++++++++++++++++++++++++++++
   const handleSend = async () => {
-    if (!message.trim()) return;
+    const text = message.trim();
+    if (!text || isAiTyping) return;
+
+    const tempUserId = `temp-user-${Date.now()}`;
+
+    const userTempMessage = {
+      _id: tempUserId,
+      sender: "user",
+      message: text,
+      createdAt: new Date().toISOString(),
+      temp: true,
+    };
+
+    const currentConversationId = conversationId;
+
+    setMessage("");
+    setIsAiTyping(true);
+
+    // user message instantly show for both new chat and old chat
+    setPendingMessages((prev) => [...prev, userTempMessage]);
 
     try {
       const res = await fetch("http://localhost:3021/ai/chat", {
@@ -95,8 +113,8 @@ const CustomerAiAssistant = () => {
           Authorization: `Bearer ${user.accessToken}`,
         },
         body: JSON.stringify({
-          message,
-          conversationId,
+          message: text,
+          conversationId: currentConversationId,
         }),
       });
 
@@ -107,15 +125,27 @@ const CustomerAiAssistant = () => {
       }
 
       const newId = data.conversationId;
+      const savedUserMessage = data.messages.user;
+      const savedAiMessage = data.messages.ai;
 
       setConversationId(newId);
       setActiveChat(newId);
-      setMessage("");
 
-      (refetch(), refetchList());
+      queryClient.setQueryData(["conversation-messages", newId], (old = []) => {
+        const oldMessages = Array.isArray(old) ? old : [];
+
+        return [...oldMessages, savedUserMessage, savedAiMessage];
+      });
+
+      // remove temp user message after real DB message added
+      setPendingMessages([]);
+      refetchList();
+      //  =================
     } catch (err) {
       toast.error(err.message || "Something went wrong");
       console.error(err);
+    } finally {
+      setIsAiTyping(false);
     }
   };
 
@@ -216,6 +246,13 @@ const CustomerAiAssistant = () => {
               <GradientButton
                 size="sm"
                 disabled={listLoading}
+                onClick={() => {
+                  setConversationId(null);
+                  setActiveChat(null);
+                  setPendingMessages([]);
+                  setMessage("");
+                  setIsAiTyping(false);
+                }}
                 buttonClassName={`${listLoading && "from-primary/10 to-secondary/20"}`}
               >
                 <Plus size={16} />
@@ -398,8 +435,132 @@ const CustomerAiAssistant = () => {
           </div> */}
           <div className="flex-1">
             {/* ############################################# */}
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              {messageLoading && visibleMessages.length === 0 ? (
+                <div className="space-y-4">
+                  <div className="flex justify-start gap-3">
+                    <SoftIconCard icon={Sparkles} variant="primary" />
 
-            <div className="h-full flex flex-col items-center justify-center px-4">
+                    <div className="w-full max-w-[70%] space-y-2">
+                      <span className="skeleton skeleton-text block h-4 w-40" />
+                      <span className="skeleton skeleton-text block h-4 w-64" />
+                      <span className="skeleton skeleton-text block h-4 w-52" />
+                    </div>
+                  </div>
+                </div>
+              ) : visibleMessages.length > 0 ? (
+                <div className="space-y-5">
+                  {visibleMessages.map((item) =>
+                    item.sender === "user" ? (
+                      <div key={item._id} className="flex justify-end">
+                        <div className="max-w-[75%]">
+                          <div
+                            className={`
+                  rounded-2xl px-5 py-3 text-sm leading-relaxed whitespace-pre-wrap
+                  ${
+                    item.error
+                      ? "bg-error/15 text-error border border-error/30"
+                      : "bg-gradient-to-r from-primary to-secondary text-white"
+                  }
+                `}
+                          >
+                            {item.message}
+                          </div>
+
+                          {item.error && (
+                            <p className="text-xs text-error mt-1 text-right">
+                              Message failed to send
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={item._id} className="flex justify-start gap-3">
+                        <SoftIconCard icon={Sparkles} variant="primary" />
+
+                        <div className="max-w-[75%]">
+                          <div className="rounded-2xl border border-base-content/10 bg-base-100 px-5 py-3 text-sm leading-relaxed shadow-sm whitespace-pre-wrap">
+                            {item.message}
+                          </div>
+
+                          {item.message && (
+                            <div className="flex gap-4 mt-2 text-xs text-base-content/50">
+                              <button
+                                onClick={() =>
+                                  navigator.clipboard.writeText(item.message)
+                                }
+                                className="flex items-center gap-1 hover:text-primary"
+                              >
+                                <Copy size={14} />
+                                Copy
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ),
+                  )}
+
+                  {isAiTyping && (
+                    <div className="flex justify-start gap-3">
+                      <SoftIconCard icon={Sparkles} variant="primary" />
+
+                      <div className="max-w-[75%] rounded-2xl border border-base-content/10 bg-base-100 px-5 py-4 shadow-sm">
+                        <div className="space-y-2">
+                          <span className="skeleton skeleton-text block h-">
+                            Generating a helpful response...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center px-4">
+                  <SoftIconCard
+                    icon={Sparkles}
+                    variant="primary"
+                    className="mb-5"
+                  />
+
+                  <h2 className="text-3xl font-bold mb-3 text-center">
+                    How can I help today?
+                  </h2>
+
+                  <p className="text-sm text-base-content/60 text-center max-w-xl mb-8">
+                    Ask questions, troubleshoot issues, analyze tickets, and get
+                    instant support guidance.
+                  </p>
+
+                  <div className="grid md:grid-cols-2 gap-3 w-full max-w-3xl">
+                    {suggestions.map((item, index) => (
+                      <div
+                        key={index}
+                        onClick={() =>
+                          setMessage(`${item.title}\n${item.subtitle}`)
+                        }
+                        className="rounded-2xl border border-base-content/10 px-5 py-4 hover:bg-base-200 transition cursor-pointer"
+                      >
+                        <div className="flex gap-4 items-start">
+                          <item.icon size={18} className="mt-1 text-primary" />
+
+                          <div>
+                            <h4 className="font-medium text-sm">
+                              {item.title}
+                            </h4>
+                            <p className="text-xs text-base-content/60 mt-1">
+                              {item.subtitle}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* <div className="h-full flex flex-col items-center justify-center px-4">
               <SoftIconCard
                 icon={Sparkles}
                 variant="primary"
@@ -437,7 +598,7 @@ const CustomerAiAssistant = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
           </div>
           {/* ================================ */}
 
@@ -451,6 +612,12 @@ const CustomerAiAssistant = () => {
                 onInput={handleInput}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
                 placeholder="Ask anything about your issue..."
                 className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
               />
@@ -458,6 +625,7 @@ const CustomerAiAssistant = () => {
               <div className="flex self-end">
                 <GradientButton
                   onClick={handleSend}
+                  disabled={isAiTyping || !message.trim()}
                   size="sm"
                   buttonClassName="h-8 w-8 p-1"
                 >
