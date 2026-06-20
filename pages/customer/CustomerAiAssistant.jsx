@@ -1,11 +1,9 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import {
   Copy,
   Gauge,
   MessagesSquare,
-  Paperclip,
   Plus,
-  RefreshCcw,
   Search,
   SendHorizonal,
   Sparkles,
@@ -19,9 +17,11 @@ import { toast } from "react-toastify";
 import { AuthContext } from "../../app/providers/AuthProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatRelativeDate } from "../../src/lib/formatRelativeDate";
+import GradientIconCard from "../../components/ui/Card/GradientIconCard";
+import GradientCard from "../../components/ui/Card/GradientCard";
 
 const CustomerAiAssistant = () => {
-  const { loading, user } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   const [open, setOpen] = useState(false);
   const [activeChat, setActiveChat] = useState(null);
@@ -60,7 +60,7 @@ const CustomerAiAssistant = () => {
   });
 
   // =================================
-  const { data: messages = [], isLoading: messageLoading } = useQuery({
+  const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: ["conversation-messages", conversationId],
     enabled: !!user?.accessToken && !!conversationId,
     queryFn: async () => {
@@ -160,28 +160,62 @@ const CustomerAiAssistant = () => {
   };
 
   // ======================================
-  const suggestions = [
+  const customerSuggestions = [
     {
       icon: Ticket,
-      title: "Analyze my support ticket",
-      subtitle: "Summarize root cause and next steps",
+      title: "Check my support ticket",
+      subtitle: "Get status, priority, and next steps",
     },
     {
       icon: UserRoundSearch,
-      title: "Help me troubleshoot a login issue",
-      subtitle: "Walk me through diagnostics",
+      title: "I can’t log in to my account",
+      subtitle: "Find common login problems and fixes",
     },
     {
       icon: Gauge,
-      title: "Why is my dashboard not loading?",
-      subtitle: "Common causes and quick fixes",
+      title: "My dashboard is not loading",
+      subtitle: "Troubleshoot loading or performance issues",
     },
     {
       icon: Sparkles,
-      title: "Suggest a solution for a customer problem",
-      subtitle: "Draft a reply based on context",
+      title: "Help me explain my issue",
+      subtitle: "Write a clear message for support",
+    },
+    {
+      icon: MessagesSquare,
+      title: "Summarize my conversation",
+      subtitle: "Understand what happened and what to do next",
+    },
+    {
+      icon: Ticket,
+      title: "I need help with billing",
+      subtitle: "Explain invoice, payment, or charge issues",
+    },
+    {
+      icon: UserRoundSearch,
+      title: "Update my account information",
+      subtitle: "Get guidance for profile or account changes",
+    },
+    {
+      icon: Gauge,
+      title: "Something is not working",
+      subtitle: "Diagnose errors and possible solutions",
+    },
+    {
+      icon: Sparkles,
+      title: "Create a support request",
+      subtitle: "Generate a professional support message",
+    },
+    {
+      icon: MessagesSquare,
+      title: "Understand the support reply",
+      subtitle: "Explain the response in simple language",
     },
   ];
+
+  const [suggestions] = useState(() =>
+    [...customerSuggestions].sort(() => Math.random() - 0.5).slice(0, 4),
+  );
 
   // =============================================
 
@@ -220,13 +254,14 @@ const CustomerAiAssistant = () => {
       </div>
 
       {/* body */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* ss1 */}
         <div
           className={`
     border-r border-base-content/15
     overflow-hidden
     flex flex-col
+   
     transition-all duration-300 ease-in-out
 
     ${
@@ -371,101 +406,40 @@ const CustomerAiAssistant = () => {
           className={`
             px-5 pt-5 pb-3 overflow-hidden mx-auto
             transition-all duration-300 ease-in-out flex flex-col
-
+            min-h-0
             ${open ? "w-0 opacity-0 md:w-8/12 md:opacity-100" : "w-full opacity-100 md:w-7/12"}
           `}
         >
           {/* ================================================== */}
 
-          {/* ======================================
-           */}
-
-          {/* <div className="h-full px-4 py-6 overflow-y-auto">
-
-            <div className="flex justify-end mb-6">
-              <div className="max-w-[70%]">
-                <div className="rounded-full bg-gradient-to-r from-primary to-secondary text-white px-6 py-3 font-medium">
-                  My latest invoice is missing seat upgrades. Can you check?
-                </div>
-
-                <p className="text-xs text-base-content/50 mt-2 text-right">
-                  01:13 PM
-                </p>
-              </div>
-
-              <div className="chat chat-start">
-                <div className=" chat-bubble chat-bubble-neutral">
-                  It's insulting!
-                </div>
-              </div>
-
-              <div className="ml-3 h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">
-                SC
-              </div>
-            </div>
-
-       
-            <div className="flex gap-3">
-              <SoftIconCard icon={Sparkles} variant="primary" />
-
-              <div className="max-w-[70%]">
-                <div className="rounded-3xl border border-base-content/10 bg-base-100 px-5 py-4 shadow-sm">
-                  <p className="leading-relaxed">
-                    I can't pull invoices directly, but I can help you draft a
-                    ticket to Billing. Could you confirm the invoice number and
-                    the date the seats were added?
-                  </p>
-                </div>
-
-                <div className="flex gap-5 mt-3 text-xs text-base-content/50">
-                  <span>02:13 PM</span>
-
-                  <button className="flex items-center gap-1 hover:text-primary">
-                    <Copy size={14} />
-                    Copy
-                  </button>
-
-                  <button className="flex items-center gap-1 hover:text-primary">
-                    <RefreshCcw size={14} />
-                    Regenerate
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div> */}
-          <div className="flex-1">
+          <div className="flex-1 min-h-0 flex flex-col">
             {/* ############################################# */}
-            <div className="flex-1 overflow-y-auto px-4 py-6">
-              {messageLoading && visibleMessages.length === 0 ? (
+            <div className=" flex-1 min-h-0 overflow-y-auto flex flex-col pb-5">
+              {messagesLoading && visibleMessages.length === 0 ? (
                 <div className="space-y-4">
-                  <div className="flex justify-start gap-3">
-                    <SoftIconCard icon={Sparkles} variant="primary" />
+                  <div className="flex justify-start gap-5 ">
+                    <GradientIconCard
+                      icon={Sparkles}
+                      variant="primary"
+                      className="shrink-0"
+                    />
 
                     <div className="w-full max-w-[70%] space-y-2">
-                      <span className="skeleton skeleton-text block h-4 w-40" />
-                      <span className="skeleton skeleton-text block h-4 w-64" />
-                      <span className="skeleton skeleton-text block h-4 w-52" />
+                      <span className="skeleton block h-4 w-9/12" />
+                      <span className="skeleton block h-4 w-11/12" />
+                      <span className="skeleton block h-4 w-7/12" />
                     </div>
                   </div>
                 </div>
               ) : visibleMessages.length > 0 ? (
-                <div className="space-y-5">
+                <div className="space-y-5 ">
                   {visibleMessages.map((item) =>
                     item.sender === "user" ? (
-                      <div key={item._id} className="flex justify-end">
-                        <div className="max-w-[75%]">
-                          <div
-                            className={`
-                  rounded-2xl px-5 py-3 text-sm leading-relaxed whitespace-pre-wrap
-                  ${
-                    item.error
-                      ? "bg-error/15 text-error border border-error/30"
-                      : "bg-gradient-to-r from-primary to-secondary text-white"
-                  }
-                `}
-                          >
+                      <div key={item._id} className="flex justify-end w-full">
+                        <div className="max-w-[80%]">
+                          <GradientCard className="px-5 py-3 text-sm from-primary/20 to-secondary/20 leading-relaxed whitespace-pre-wrap text-base-content">
                             {item.message}
-                          </div>
+                          </GradientCard>
 
                           {item.error && (
                             <p className="text-xs text-error mt-1 text-right">
@@ -475,16 +449,23 @@ const CustomerAiAssistant = () => {
                         </div>
                       </div>
                     ) : (
-                      <div key={item._id} className="flex justify-start gap-3">
-                        <SoftIconCard icon={Sparkles} variant="primary" />
+                      <div
+                        key={item._id}
+                        className="flex justify-start gap-5 w-full"
+                      >
+                        <GradientIconCard
+                          icon={Sparkles}
+                          variant="primary"
+                          className="shrink-0"
+                        />
 
-                        <div className="max-w-[75%]">
-                          <div className="rounded-2xl border border-base-content/10 bg-base-100 px-5 py-3 text-sm leading-relaxed shadow-sm whitespace-pre-wrap">
+                        <div className="max-w-[80%]">
+                          <div className="rounded-2xl text-sm leading-relaxed  whitespace-pre-wrap wrap-break-word">
                             {item.message}
                           </div>
 
                           {item.message && (
-                            <div className="flex gap-4 mt-2 text-xs text-base-content/50">
+                            <div className="flex gap-4 mt-3 text-xs text-base-content/50">
                               <button
                                 onClick={() =>
                                   navigator.clipboard.writeText(item.message)
@@ -502,25 +483,27 @@ const CustomerAiAssistant = () => {
                   )}
 
                   {isAiTyping && (
-                    <div className="flex justify-start gap-3">
-                      <SoftIconCard icon={Sparkles} variant="primary" />
+                    <div className="flex justify-start items-center gap-3">
+                      <GradientIconCard
+                        icon={Sparkles}
+                        variant="primary"
+                        className="shrink-0"
+                      />
 
-                      <div className="max-w-[75%] rounded-2xl border border-base-content/10 bg-base-100 px-5 py-4 shadow-sm">
-                        <div className="space-y-2">
-                          <span className="skeleton skeleton-text block h-">
-                            Generating a helpful response...
-                          </span>
-                        </div>
+                      <div className="space-y-2">
+                        <span className="skeleton skeleton-text text-sm">
+                          Generating a helpful response...
+                        </span>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center px-4">
-                  <SoftIconCard
+                <div className="min-h-full w-full flex flex-col items-center justify-center px-4">
+                  <GradientIconCard
                     icon={Sparkles}
                     variant="primary"
-                    className="mb-5"
+                    className="shrink-0 mb-4 h-11 w-11"
                   />
 
                   <h2 className="text-3xl font-bold mb-3 text-center">
@@ -559,46 +542,6 @@ const CustomerAiAssistant = () => {
                 </div>
               )}
             </div>
-
-            {/* <div className="h-full flex flex-col items-center justify-center px-4">
-              <SoftIconCard
-                icon={Sparkles}
-                variant="primary"
-                className="mb-5"
-              />
-
-              <h2 className="text-3xl font-bold mb-3 text-center">
-                How can I help today?
-              </h2>
-
-              <p className="text-sm text-base-content/60 text-center max-w-xl mb-8">
-                Ask questions, troubleshoot issues, analyze tickets, and get
-                instant support guidance.
-              </p>
-
-              <div className="grid md:grid-cols-2 gap-3 w-full max-w-3xl">
-                {suggestions.map((item, index) => (
-                  <div
-                    key={index}
-                    onClick={() =>
-                      setMessage(`${item.title}\n${item.subtitle}`)
-                    }
-                    className="rounded-2xl border border-base-content/10 px-5 py-4 hover:bg-base-200 transition cursor-pointer"
-                  >
-                    <div className="flex gap-4 items-start">
-                      <item.icon size={18} className="mt-1 text-primary" />
-
-                      <div>
-                        <h4 className="font-medium text-sm">{item.title}</h4>
-                        <p className="text-xs text-base-content/60 mt-1">
-                          {item.subtitle}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div> */}
           </div>
           {/* ================================ */}
 
@@ -607,7 +550,6 @@ const CustomerAiAssistant = () => {
               <Sparkles size={18} className="shrink-0" />
 
               <textarea
-                // ref={textareaRef}
                 rows={1}
                 onInput={handleInput}
                 value={message}
@@ -627,7 +569,11 @@ const CustomerAiAssistant = () => {
                   onClick={handleSend}
                   disabled={isAiTyping || !message.trim()}
                   size="sm"
-                  buttonClassName="h-8 w-8 p-1"
+                  buttonClassName={`h-8 w-8 p-1 ${
+                    isAiTyping || !message.trim()
+                      ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed"
+                      : "from-primary to-secondary text-white"
+                  }`}
                 >
                   <SendHorizonal size={16} />
                 </GradientButton>
