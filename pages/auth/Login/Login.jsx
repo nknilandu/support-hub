@@ -97,7 +97,7 @@ export default function Login() {
       setUser(userData);
 
       toast.success("Successfully logged in with Google.");
-      navigate(location.state || "/");
+      navigate(location.state || "/dashboard", { replace: true });
     } catch (e) {
       console.log(e.message);
       toast.error(e.message);
@@ -117,8 +117,8 @@ export default function Login() {
       // =================== GET USER ===================
       setUser(user);
       toast.success("Successfully logged in.");
-
-      navigate(location.state || "/");
+      navigate(location.state || "/dashboard", { replace: true });
+   
     } catch (e) {
       console.log(e.message);
       toast.error(e.message);
@@ -126,48 +126,6 @@ export default function Login() {
       setBtnLoading(false);
     }
   };
-
-  // old code
-  // const googleSubmit = () => {
-  //   setGoogleLoading(true);
-  //   googleSignIn()
-  //     .then((res) => {
-  //       // success
-  //       const user = res.user;
-  //       setUser(user);
-  //       toast.success("Successfully Loged in with google.");
-  //       navigate(`${location.state ? location.state : "/"}`);
-  //       setGoogleLoading(false);
-
-  //       // console.log(user)
-  //     })
-  //     .catch((e) => {
-  //       // error
-  //       console.log(e.message);
-  //       toast.error(e.message);
-  //       setGoogleLoading(false);
-  //     });
-  // };
-
-  // const onSubmit = (data) => {
-  //   setBtnLoading(true);
-
-  //   loginUser(data.email, data.password)
-  //     .then((res) => {
-  //       // success
-  //       const user = res.user;
-  //       setUser(user);
-  //       toast.success("Successfully Loged in.");
-  //       setBtnLoading(false);
-  //       navigate(`${location.state ? location.state : "/"}`);
-  //     })
-  //     .catch((e) => {
-  //       // error
-  //       console.log(e.message);
-  //       toast.error(e.message);
-  //       setBtnLoading(false);
-  //     });
-  // };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-base-200/40">

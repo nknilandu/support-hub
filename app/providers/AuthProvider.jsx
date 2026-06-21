@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { app } from "../../firebase/firebase.config";
 import {
   GoogleAuthProvider,
@@ -61,43 +61,24 @@ const AuthProvider = ({ children }) => {
   }, []);
 
   // check user role
-  // useEffect(() => {
-  //   const fetchRole = async () => {
-  //     if (!user) {
-  //       setUserRole(null);
-  //       return;
-  //     }
-
-  //     const token = await user.getIdToken();
-  //     const res = await fetch("http://localhost:3021/users/me", {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //     });
-
-  //     const data = await res.json();
-  //     setUserRole(data?.user?.role || null);
-  //   };
-
-  //   fetchRole();
-  // }, [user]);
-
   const fetchUserRole = async (firebaseUser = user) => {
     try {
       if (!firebaseUser) {
         return null;
       }
-      const token = await firebaseUser.getIdToken();
+
+      const token = await firebaseUser.getIdToken(true);
       const res = await fetch("http://localhost:3021/users/me", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (!res.ok) {
-        throw new Error("Failed to fetch user role");
-      }
 
       const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        return null;
+      }
       return data?.user?.role || null;
     } catch (error) {
       console.log("fetchUserRole error:", error);

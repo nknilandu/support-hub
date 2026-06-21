@@ -61,7 +61,8 @@ const DashboardLayout = () => {
       setUserRole(role);
     };
     loadRole();
-  }, [user]);
+   
+  }, [user, fetchUserRole]);
 
   // ============ fatching notification =============
   const { data: notifications } = useQuery({

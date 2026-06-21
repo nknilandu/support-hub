@@ -62,8 +62,6 @@ export default function Navbar() {
   const navigate = useNavigate();
   const links = navByRole[userRole] || [];
 
-  console.log(links);
-
   // =========== fatching userRole ===============
 
   /* eslint-disable react-hooks/set-state-in-effect */
