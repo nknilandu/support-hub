@@ -27,6 +27,7 @@ import {
   Mail,
   Pencil,
   LogOut,
+  TicketCheck,
 } from "lucide-react";
 import GradientButton from "../../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
@@ -61,7 +62,6 @@ const DashboardLayout = () => {
       setUserRole(role);
     };
     loadRole();
-   
   }, [user, fetchUserRole]);
 
   // ============ fatching notification =============
@@ -122,14 +122,14 @@ const DashboardLayout = () => {
         path: "/agent/dashboard",
       },
       {
-        label: "My Tickets",
+        label: "Company Tickets",
         icon: Ticket,
         path: "/agent/tickets",
       },
       {
-        label: "Activity",
-        icon: Activity,
-        path: "/agent/activity",
+        label: "My Tickets",
+        icon: TicketCheck,
+        path: "/agent/my-tickets",
       },
       {
         label: "AI Assistant",
@@ -139,7 +139,7 @@ const DashboardLayout = () => {
       {
         label: "Profile",
         icon: User,
-        path: "/settings/profile",
+        path: "/agent/profile",
       },
     ],
 
@@ -188,14 +188,49 @@ const DashboardLayout = () => {
 
     platform: [
       {
+        label: "Dashboard",
+        icon: LayoutGrid,
+        path: "/platform/dashboard",
+      },
+      {
         label: "Organizations",
         icon: Building2,
         path: "/platform/organizations",
       },
       {
+        label: "Owners",
+        icon: Users,
+        path: "/platform/owners",
+      },
+      {
+        label: "Agents",
+        icon: UserRound,
+        path: "/platform/agents",
+      },
+      {
+        label: "Customers",
+        icon: User,
+        path: "/platform/customers",
+      },
+      {
+        label: "Tickets",
+        icon: Ticket,
+        path: "/platform/tickets",
+      },
+      {
         label: "Metrics",
         icon: BarChart3,
         path: "/platform/metrics",
+      },
+      {
+        label: "Activity Logs",
+        icon: History,
+        path: "/platform/activity-logs",
+      },
+      {
+        label: "Settings",
+        icon: Settings,
+        path: "/platform/settings",
       },
     ],
   };
@@ -414,15 +449,13 @@ const DashboardLayout = () => {
                 </div>
 
                 <Link to={`${userRole}/ai-assistant`}>
-                <GradientButton
-                  className="mt-3 w-full"
-                  buttonClassName="btn-sm w-full"
-                >
-                  Ask AI
-                </GradientButton>
+                  <GradientButton
+                    className="mt-3 w-full"
+                    buttonClassName="btn-sm w-full"
+                  >
+                    Ask AI
+                  </GradientButton>
                 </Link>
-
-                
               </CardWithBlurBlob>
             </div>
           )}

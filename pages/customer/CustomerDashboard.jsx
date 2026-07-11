@@ -13,9 +13,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from "recharts";
 
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
@@ -27,7 +29,7 @@ import { useContext } from "react";
 import { AuthContext } from "../../app/providers/AuthProvider";
 import { Link } from "react-router";
 
-const CustomerDashboardPage = () => {
+const CustomerDashboard = () => {
   const { user } = useContext(AuthContext);
 
   // =========================
@@ -68,8 +70,12 @@ const CustomerDashboardPage = () => {
     },
   });
 
-  // console.log(notificationData)
-
+  //Bar cell color
+  const barColors = {
+    open: "#8b5cf6", // Purple
+    pending: "#f59e0b", // Orange
+    resolved: "#10b981", // Green
+  };
   // STATS DATA
   const stats = [
     {
@@ -162,7 +168,7 @@ const CustomerDashboardPage = () => {
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             {/* Activity Area Chart */}
             <CardWithBlurBlob
-              className="w-full xl:w-2/3 p-5 xl:col-span-2"
+              className="w-full xl:w-7/12 p-5 xl:col-span-2"
               interactive={false}
             >
               {loading ? (
@@ -214,7 +220,7 @@ const CustomerDashboardPage = () => {
                         <CartesianGrid
                           strokeDasharray="3 3"
                           vertical={false}
-                          stroke="rgba(255,255,255,0.05)"
+                          stroke="rgba(148,163,184,0.26)"
                         />
                         <XAxis
                           dataKey="day"
@@ -222,6 +228,7 @@ const CustomerDashboardPage = () => {
                           tickLine={false}
                           tick={{ fill: "#94a3b8", fontSize: 10 }}
                         />
+
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "#1e293b",
@@ -248,7 +255,7 @@ const CustomerDashboardPage = () => {
 
             {/* Status Bar Chart */}
             <CardWithBlurBlob
-              className="w-full p-5 xl:w-1/3"
+              className="w-full p-5 xl:w-5/12"
               interactive={false}
             >
               {loading ? (
@@ -276,14 +283,25 @@ const CustomerDashboardPage = () => {
                   </div>
                   <div className="h-[200px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={statusData}>
+                      <BarChart
+                        data={statusData}
+                        margin={{
+                          top: 5,
+                          left: -30,
+                        }}
+                      >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           vertical={false}
-                          stroke="rgba(255,255,255,0.05)"
+                          stroke="rgba(148,163,184,0.26)"
                         />
                         <XAxis
                           dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: "#94a3b8", fontSize: 10 }}
+                        />
+                        <YAxis
                           axisLine={false}
                           tickLine={false}
                           tick={{ fill: "#94a3b8", fontSize: 10 }}
@@ -297,12 +315,14 @@ const CustomerDashboardPage = () => {
                             fontSize: "10px",
                           }}
                         />
-                        <Bar
-                          dataKey="value"
-                          fill="#8b5cf6"
-                          radius={[6, 6, 0, 0]}
-                          barSize={35}
-                        />
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={50}>
+                          {statusData.map((entry, index) => (
+                            <Cell
+                              key={index}
+                              fill={barColors[entry.name.toLowerCase()]}
+                            />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -344,6 +364,7 @@ const CustomerDashboardPage = () => {
                 </div>
               )}
 
+              {/* table */}
               <div className="overflow-x-auto">
                 <table className="table table-zebra">
                   <thead>
@@ -728,4 +749,4 @@ const CustomerDashboardPage = () => {
   );
 };
 
-export default CustomerDashboardPage;
+export default CustomerDashboard;

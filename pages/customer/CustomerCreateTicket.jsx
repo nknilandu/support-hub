@@ -10,7 +10,7 @@ import StepAIResponse from "../../components/tickets/StepAIResponse";
 import StepDescribe from "../../components/tickets/StepDescribe";
 import StepEscalation from "../../components/tickets/StepEscalation";
 
-const CustomerCreateTicketPage = () => {
+const CustomerCreateTicket = () => {
   const [step, setStep] = useState(1);
   const [ticket, setTicket] = useState(null);
   const [ticketData, setTicketData] = useState(null);
@@ -279,4 +279,4 @@ const CustomerCreateTicketPage = () => {
   );
 };
 
-export default CustomerCreateTicketPage;
+export default CustomerCreateTicket;

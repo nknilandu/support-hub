@@ -15,17 +15,21 @@ import Login from "../pages/auth/Login/Login";
 import RootLayout from "../app/layouts/RootLayout/RootLayout";
 import AuthProvider from "../app/providers/AuthProvider";
 import AuthLayout from "../app/layouts/AuthLayout/AuthLayout";
-import CustomerDashboardPage from "../pages/customer/CustomerDashboardPage";
+import CustomerDashboard from "../pages/customer/CustomerDashboard";
 import DashboardLayout from "../app/layouts/DashboardLayout/DashboardLayout";
 import PrivateRoute from "../app/routes/PrivateRoute/PrivateRoute";
 import DashboardRedirect from "../app/routes/DashboardRedirect/DashboardRedirect";
-import CustomerTicketsPage from "../pages/customer/CustomerTicketsPage";
+import CustomerTickets from "../pages/customer/CustomerTickets";
 import RoleRoute from "../app/routes/RoleRoute/RoleRoute";
-import CustomerCreateTicketPage from "../pages/customer/CustomerCreateTicketPage";
-import CustomerTicketDetailsPage from "../pages/customer/CustomerTicketDetailsPage";
+import CustomerCreateTicket from "../pages/customer/CustomerCreateTicket";
+import CustomerTicketDetails from "../pages/customer/CustomerTicketDetails";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Profile from "../pages/Profile/Profile";
 import CustomerAiAssistant from "../pages/customer/CustomerAiAssistant";
+import AgentDashboard from "../pages/agent/AgentDashboard";
+import AgentCompanyTicket from "../pages/agent/AgentCompanyTicket";
+import AgentAssignTicket from "../pages/agent/AgentAssignTicket";
+import AgentAiAssistant from "../pages/agent/AgentAiAssistant";
 
 const router = createBrowserRouter([
   {
@@ -71,7 +75,7 @@ const router = createBrowserRouter([
         path: "dashboard",
         element: <DashboardRedirect />,
       },
-      
+
       // customer
       {
         path: "customer",
@@ -87,26 +91,62 @@ const router = createBrowserRouter([
           },
           {
             path: "dashboard",
-            Component: CustomerDashboardPage,
+            Component: CustomerDashboard,
           },
           // Ticket List
           {
             path: "tickets",
-            Component: CustomerTicketsPage,
+            Component: CustomerTickets,
           },
           // Create Ticket
           {
             path: "tickets/new",
-            Component: CustomerCreateTicketPage,
+            Component: CustomerCreateTicket,
           },
           // Single Ticket
           {
             path: "tickets/:ticketId",
-            Component: CustomerTicketDetailsPage,
+            Component: CustomerTicketDetails,
           },
           {
             path: "ai-assistant",
             Component: CustomerAiAssistant,
+          },
+          {
+            path: "profile",
+            Component: Profile,
+          },
+        ],
+      },
+
+      // agent
+      {
+        path: "agent",
+        element: (
+          <RoleRoute role="agent">
+            <Outlet></Outlet>
+          </RoleRoute>
+        ),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="dashboard" replace />,
+          },
+          {
+            path: "dashboard",
+            Component: AgentDashboard,
+          },
+          {
+            path: "tickets",
+            Component: AgentCompanyTicket,
+          },
+          {
+            path: "my-tickets",
+            Component: AgentAssignTicket,
+          },
+          {
+            path: "ai-assistant",
+            Component: AgentAiAssistant,
           },
           {
             path: "profile",
