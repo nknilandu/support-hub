@@ -27,7 +27,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Profile from "../pages/Profile/Profile";
 import CustomerAiAssistant from "../pages/customer/CustomerAiAssistant";
 import AgentDashboard from "../pages/agent/AgentDashboard";
-import AgentCompanyTicket from "../pages/agent/AgentCompanyTicket";
+import AgentCompanyTicket from "../pages/agent/AgentCompanyTickets";
 import AgentAssignTicket from "../pages/agent/AgentAssignTicket";
 import AgentAiAssistant from "../pages/agent/AgentAiAssistant";
 

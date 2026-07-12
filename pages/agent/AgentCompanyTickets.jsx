@@ -8,8 +8,9 @@ import { Link } from "react-router";
 import { AuthContext } from "../../app/providers/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import Pagination from "../../components/ui/Pagination/pagination";
+import { toast } from "react-toastify";
 
-const CustomerTickets = () => {
+const AgentCompanyTickets = () => {
   const { user } = useContext(AuthContext);
 
   const [search, setSearch] = useState("");
@@ -17,6 +18,7 @@ const CustomerTickets = () => {
   const [priority, setPriority] = useState("");
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
+  const [assignLoading, setAssignLoading] = useState(null);
 
   //   ==== handle reset ========
   const handleReset = () => {
@@ -32,11 +34,11 @@ const CustomerTickets = () => {
     isLoading: loading,
     refetch,
   } = useQuery({
-    queryKey: ["myTickets", search, status, priority, category, page],
+    queryKey: ["companyTickets", search, status, priority, category, page],
     enabled: !!user?.accessToken,
     queryFn: async () => {
       const res = await fetch(
-        `http://localhost:3021/tickets/my-tickets?search=${search}&status=${status}&priority=${priority}&category=${category}&page=${page}&limit=10`,
+        `http://localhost:3021/agent/company-tickets?search=${search}&status=${status}&priority=${priority}&category=${category}&page=${page}&limit=10`,
         {
           headers: {
             authorization: `Bearer ${user.accessToken}`,
@@ -53,8 +55,38 @@ const CustomerTickets = () => {
 
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
+  const currentAgent = data?.currentAgent;
 
-  // console.log(tickets)
+  // console.log(tickets);
+
+  //===================== handle click ====================
+  const handleAssign = async (ticketId) => {
+    try {
+      setAssignLoading(ticketId);
+      const res = await fetch(
+        `http://localhost:3021/agent/tickets/${ticketId}/assign`,
+        {
+          method: "PATCH",
+          headers: {
+            authorization: `Bearer ${user.accessToken}`,
+          },
+        },
+      );
+
+      const data = await res.json();
+      // console.log(data);
+
+      if (data.success) {
+        toast(`Ticket Assigned`);
+        refetch();
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error("Something went wrong");
+    } finally {
+      setAssignLoading(null);
+    }
+  };
 
   //  ++++++++++++++++++
 
@@ -63,15 +95,13 @@ const CustomerTickets = () => {
       {/* header */}
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">My Tickets</h1>
-
-          {/* <TextBadge variant="green">AI Enabled</TextBadge>
-            
-                      <TextBadge variant="blue">Avg response 12m</TextBadge> */}
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Company Tickets
+          </h1>
         </div>
 
         <p className="mt-1 text-sm text-base-content/60">
-          View and manage your support requests.
+          Manage customer tickets assigned to your company queue.
         </p>
       </div>
 
@@ -97,7 +127,7 @@ const CustomerTickets = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by title or ticket number..."
+              placeholder="Search by title or ticket number or customer email..."
               className="
       w-full
       h-11
@@ -133,8 +163,10 @@ const CustomerTickets = () => {
           >
             <option value="">All Status</option>
             <option value="open">Open</option>
-            <option value="pending">Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
             <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
           </select>
 
           {/* Priority */}
@@ -209,9 +241,11 @@ const CustomerTickets = () => {
             <thead>
               <tr className="text-sm uppercase text-base-content/50">
                 <th className="p-5 font-semibold">Ticket</th>
+                <th className="p-5 font-semibold">Customer</th>
                 <th className="p-5 font-semibold">Category</th>
                 <th className="p-5 font-semibold">Priority</th>
                 <th className="p-5 font-semibold">Status</th>
+                <th className="p-5 font-semibold">Assigned</th>
                 <th className="p-5 font-semibold">Updated</th>
                 <th className="p-5 font-semibold"></th>
               </tr>
@@ -222,11 +256,19 @@ const CustomerTickets = () => {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
                     {/* Ticket */}
-                    <td className="max-w-lg p-5">
+                    <td className="max-w-md p-5">
                       <div className="space-y-2">
                         <div className="skeleton h-4 w-3/12"></div>
                         <div className="skeleton h-4 w-6/12"></div>
-                        <div className="skeleton h-4 w-xl"></div>
+                        <div className="skeleton h-4 w-md"></div>
+                      </div>
+                    </td>
+
+                    {/* Customer */}
+                    <td className="max-w-58 p-5">
+                      <div className="space-y-2">
+                        <div className="skeleton h-4 w-2/3"></div>
+                        <div className="skeleton h-4 w-52"></div>
                       </div>
                     </td>
                     {/* Category */}
@@ -241,13 +283,20 @@ const CustomerTickets = () => {
                     <td>
                       <div className="skeleton h-5 w-7/12"></div>
                     </td>
+                    {/* Status */}
+                    <td>
+                      <div className="skeleton h-5 w-7/12"></div>
+                    </td>
                     {/* Updated */}
                     <td>
                       <div className="skeleton h-5 w-7/12"></div>
                     </td>
                     {/* Action */}
                     <td>
-                      <div className="skeleton h-8 w-16"></div>
+                      <div className="flex gap-2">
+                        <div className="skeleton h-8 w-16"></div>
+                        <div className="skeleton h-8 w-16"></div>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -265,31 +314,49 @@ const CustomerTickets = () => {
                 {tickets.map((ticket) => (
                   <tr key={ticket._id}>
                     {/* Ticket */}
-                    <td className="max-w-lg px-5 py-2">
+                    <td className="max-w-md px-5 py-2">
                       <div>
                         <p className="text-xs text-base-content/50">
                           {ticket.ticketNumber}
                         </p>
 
-                        <h3 className="font-medium">
-                          {ticket.aiResult.ticketTitle}
+                        <h3 className="font-medium line-clamp-1">
+                          {ticket.aiResult?.ticketTitle ||
+                            ticket.subject ||
+                            "Untitled Ticket"}
                         </h3>
 
                         <p className="max-w-11/12 text-sm text-base-content/60 line-clamp-1">
-                          {ticket.aiResult.summary}
+                          {ticket.aiResult?.summary ||
+                            ticket.description ||
+                            "No summary available"}
+                        </p>
+                      </div>
+                    </td>
+
+                    {/* Customer */}
+                    <td className="p-5">
+                      <div>
+                        <p className="text-sm font-medium text-base-content/80">
+                          {ticket.email || ticket.customerEmail || "No email"}
+                        </p>
+                        <p className="text-xs text-base-content/50 mt-1">
+                          {ticket.uid || "null"}
                         </p>
                       </div>
                     </td>
 
                     {/* Category */}
-                    <td>
+                    <td className="p-5">
                       <TextBadge variant="cyan">
-                        {ticket.aiResult.category}
+                        {ticket.aiResult?.category ||
+                          ticket.category ||
+                          "General"}
                       </TextBadge>
                     </td>
 
                     {/* Priority */}
-                    <td>
+                    <td className="p-5">
                       <TextBadge
                         variant={
                           ticket?.aiResult?.states?.find(
@@ -320,29 +387,78 @@ const CustomerTickets = () => {
                                   : "gray"
                         }
                       >
-                        {(ticket.status || "open").replace("_", " ")}
+                        {(ticket.status || "open").replaceAll("_", " ")}
                       </TextBadge>
                     </td>
 
-                    {/* Updated */}
+                    {/* Assigned */}
                     <td>
+                      {ticket.assignedAgent ? (
+                        <div>
+                          <p className="text-sm font-medium text-base-content/80">
+                            {ticket.assignedAgent.displayName || "Agent"}
+                          </p>
+
+                          <p className="text-xs text-base-content/50">
+                            {ticket.assignedAgent.email || "email not found"}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs italic text-base-content/40">
+                          Unassigned
+                        </p>
+                      )}
+                    </td>
+
+                    {/* Updated */}
+                    <td className="p-5">
                       <span className="text-sm text-base-content/60">
-                        {new Date(ticket.updatedAt).toLocaleDateString()}
+                        {ticket.updatedAt
+                          ? new Date(ticket.updatedAt).toLocaleDateString()
+                          : "N/A"}
                       </span>
                     </td>
 
                     {/* Action */}
-                    <td>
-                      <GradientButton
-                        size="sm"
-                        buttonClassName="
-              from-primary/10
-              to-secondary/20
-              text-base-content
-            "
-                      >
-                        View
-                      </GradientButton>
+                    <td className="p-5">
+                      <div className="flex items-center gap-2">
+                        {(!ticket.assignedAgent ||
+                          ticket.assignedAgent.email === currentAgent) && (
+                          <Link to={`/agent/tickets/${ticket._id}`}>
+                            <GradientButton
+                              size="sm"
+                              buttonClassName="
+          from-primary/20
+          to-secondary/10
+          text-base-content
+        "
+                            >
+                              View
+                            </GradientButton>
+                          </Link>
+                        )}
+
+                        {!ticket.assignedAgent && ticket.status === "open" && (
+                          <GradientButton
+                            size="sm"
+                            onClick={() => handleAssign(ticket._id)}
+                            disabled={assignLoading === ticket._id}
+                            buttonClassName="
+        from-primary/10
+        to-secondary/20
+        text-base-content
+      "
+                          >
+                            {assignLoading === ticket._id ? (
+                              <div className="px-3">
+                                <span className="loading loading-spinner loading-xs"></span>
+                              </div>
+                            ) : (
+                              "Assign"
+                            )}
+                          </GradientButton>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -354,22 +470,15 @@ const CustomerTickets = () => {
         {/* ================== */}
         {!loading && tickets.length === 0 && (
           <div className="py-20 px-5 text-center flex flex-col justify-center items-center">
-            <SoftIconCard icon={Ticket} variant="slate"></SoftIconCard>
-            <p className="mt-3 text-xl text-base-content/60 mb-3">
-              No tickets found
-            </p>
-            <p className="text-sm text-base-content/60 mt-1 max-w-md">
-              You don’t have any support tickets yet. Create your first ticket
-              to get help from our support system or AI assistant.
-            </p>
-            <Link to="new">
-              <GradientButton className="mt-5" buttonClassName="px-8">
-                Create Ticket
-              </GradientButton>
-            </Link>
+            <SoftIconCard icon={Ticket} variant="slate" />
 
-            <p className="text-xs text-base-content/40 mt-4">
-              Tip: AI can automatically categorize your ticket after submission
+            <p className="mt-3 text-xl text-base-content/60 mb-3">
+              No company tickets found
+            </p>
+
+            <p className="text-sm text-base-content/60 mt-1 max-w-md">
+              No customer tickets are available in your company queue right now,
+              or your current filters did not match any ticket.
             </p>
           </div>
         )}
@@ -405,4 +514,4 @@ const CustomerTickets = () => {
   );
 };
 
-export default CustomerTickets;
+export default AgentCompanyTickets;

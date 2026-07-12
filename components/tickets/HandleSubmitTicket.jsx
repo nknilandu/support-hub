@@ -24,7 +24,6 @@ const HandleSubmitTicket = ({
       aiResolved: resolutionType === "ai",
       escalatedToHuman: resolutionType === "human",
       status: resolutionType === "ai" ? "resolved" : "open",
-      assignedAgents: [],
       createdAt: new Date(),
       updatedAt: new Date(),
       aiResult,
