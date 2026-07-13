@@ -80,7 +80,7 @@ const CustomerAiAssistant = () => {
     },
   });
   const visibleMessages = [...messages, ...pendingMessages];
-  console.log(visibleMessages);
+  // console.log(visibleMessages);
 
   // ++++++++++++++++++++++++++++++++++++++++++++++++
   const handleSend = async () => {

@@ -80,7 +80,7 @@ const AgentAiAssistant = () => {
     },
   });
   const visibleMessages = [...messages, ...pendingMessages];
-  console.log(visibleMessages);
+  // console.log(visibleMessages);
 
   // ++++++++++++++++++++++++++++++++++++++++++++++++
   const handleSend = async () => {
@@ -160,61 +160,60 @@ const AgentAiAssistant = () => {
   };
 
   // ======================================
-  const customerSuggestions = [
+  const agentSuggestions = [
     {
-      icon: Ticket,
-      title: "Check my support ticket",
-      subtitle: "Get status, priority, and next steps",
-    },
-    {
-      icon: UserRoundSearch,
-      title: "I can’t log in to my account",
-      subtitle: "Find common login problems and fixes",
-    },
-    {
-      icon: Gauge,
-      title: "My dashboard is not loading",
-      subtitle: "Troubleshoot loading or performance issues",
+      icon: MessagesSquare,
+      title: "Write a professional customer reply",
+      subtitle: "Create a polite response based on the issue I provide",
     },
     {
       icon: Sparkles,
-      title: "Help me explain my issue",
-      subtitle: "Write a clear message for support",
-    },
-    {
-      icon: MessagesSquare,
-      title: "Summarize my conversation",
-      subtitle: "Understand what happened and what to do next",
+      title: "Improve my support response",
+      subtitle: "Rewrite my message with a clearer and professional tone",
     },
     {
       icon: Ticket,
-      title: "I need help with billing",
-      subtitle: "Explain invoice, payment, or charge issues",
-    },
-    {
-      icon: UserRoundSearch,
-      title: "Update my account information",
-      subtitle: "Get guidance for profile or account changes",
+      title: "Summarize a ticket description",
+      subtitle: "Turn the provided customer issue into a short summary",
     },
     {
       icon: Gauge,
-      title: "Something is not working",
-      subtitle: "Diagnose errors and possible solutions",
+      title: "Create troubleshooting steps",
+      subtitle: "Generate simple step-by-step instructions for an issue",
     },
     {
-      icon: Sparkles,
-      title: "Create a support request",
-      subtitle: "Generate a professional support message",
+      icon: UserRoundSearch,
+      title: "Generate follow-up questions",
+      subtitle: "Suggest questions needed to understand the issue better",
     },
     {
       icon: MessagesSquare,
-      title: "Understand the support reply",
-      subtitle: "Explain the response in simple language",
+      title: "Write an apology message",
+      subtitle: "Create a polite response for delays or inconvenience",
+    },
+    {
+      icon: Sparkles,
+      title: "Explain a technical issue simply",
+      subtitle: "Rewrite technical information in customer-friendly language",
+    },
+    {
+      icon: Ticket,
+      title: "Create an internal ticket note",
+      subtitle: "Write a short professional note for other support agents",
+    },
+    {
+      icon: Gauge,
+      title: "Write a ticket status update",
+      subtitle: "Create a clear progress update for the customer",
+    },
+    {
+      icon: MessagesSquare,
+      title: "Write a ticket closing message",
+      subtitle: "Create a polite message confirming that the issue is resolved",
     },
   ];
-
   const [suggestions] = useState(() =>
-    [...customerSuggestions].sort(() => Math.random() - 0.5).slice(0, 4),
+    [...agentSuggestions].sort(() => Math.random() - 0.5).slice(0, 4),
   );
 
   // =============================================
@@ -507,12 +506,12 @@ const AgentAiAssistant = () => {
                   />
 
                   <h2 className="text-3xl font-bold mb-3 text-center">
-                    How can I help today?
+                    How can I help with your support work?
                   </h2>
 
                   <p className="text-sm text-base-content/60 text-center max-w-xl mb-8">
-                    Ask questions, troubleshoot issues, analyze tickets, and get
-                    instant support guidance.
+                    Draft replies, summarize issues, create troubleshooting
+                    steps, and improve customer communication.
                   </p>
 
                   <div className="grid md:grid-cols-2 gap-3 w-full max-w-3xl">
@@ -560,7 +559,7 @@ const AgentAiAssistant = () => {
                     handleSend();
                   }
                 }}
-                placeholder="Ask anything about your issue..."
+                placeholder="Paste an issue or ask for help writing a response..."
                 className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
               />
 

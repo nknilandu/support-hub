@@ -277,6 +277,7 @@ const AgentDashboard = () => {
                             fontSize: "10px",
                           }}
                           itemStyle={{ color: "#f8fafc" }}
+                          
                         />
 
                         <Legend
@@ -381,6 +382,9 @@ const AgentDashboard = () => {
                             borderRadius: "12px",
                             fontSize: "10px",
                           }}
+
+                           labelStyle={{ color: "#f8fafc" }}
+                           itemStyle={{ color: "#f8fafc" }}
                         />
 
                         <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={70}>
@@ -543,7 +547,7 @@ const AgentDashboard = () => {
                                   : ticket.status === "assigned"
                                     ? "purple"
                                     : ticket.status === "in_progress"
-                                      ? "orange"
+                                      ? "yellow"
                                       : ticket.status === "resolved"
                                         ? "green"
                                         : "gray"

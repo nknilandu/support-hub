@@ -381,7 +381,7 @@ const AgentCompanyTickets = () => {
                             : ticket.status === "assigned"
                               ? "purple"
                               : ticket.status === "in_progress"
-                                ? "orange"
+                                ? "yellow"
                                 : ticket.status === "resolved"
                                   ? "green"
                                   : "gray"

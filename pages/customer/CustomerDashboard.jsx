@@ -72,9 +72,9 @@ const CustomerDashboard = () => {
 
   //Bar cell color
   const barColors = {
-    open: "#8b5cf6", // Purple
+    open: "#3b82f6", // Purple
     pending: "#f59e0b", // Orange
-    resolved: "#10b981", // Green
+    resolved: "#22c55e", // Green
   };
   // STATS DATA
   const stats = [
@@ -248,6 +248,7 @@ const CustomerDashboard = () => {
                             borderRadius: "12px",
                             fontSize: "10px",
                           }}
+                          labelStyle={{ color: "#f8fafc" }}
                           itemStyle={{ color: "#f8fafc" }}
                         />
                         <Area
@@ -326,6 +327,8 @@ const CustomerDashboard = () => {
                             borderRadius: "12px",
                             fontSize: "10px",
                           }}
+                          labelStyle={{ color: "#f8fafc" }}
+                          itemStyle={{ color: "#f8fafc" }}
                         />
                         <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={50}>
                           {statusData.map((entry, index) => (
@@ -486,7 +489,7 @@ const CustomerDashboard = () => {
                                 ticket.status === "open"
                                   ? "cyan"
                                   : ticket.status === "in_progress"
-                                    ? "orange"
+                                    ? "yellow"
                                     : ticket.status === "resolved"
                                       ? "green"
                                       : "gray"
@@ -507,6 +510,7 @@ const CustomerDashboard = () => {
                           <td>
                             <GradientButton
                               // onClick = data?._id
+                              size="sm"
                               buttonClassName="
               from-primary/10
               to-secondary/10
