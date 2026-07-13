@@ -133,8 +133,10 @@ const CustomerTickets = () => {
           >
             <option value="">All Status</option>
             <option value="open">Open</option>
-            <option value="pending">Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
             <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
           </select>
 
           {/* Priority */}
@@ -222,11 +224,11 @@ const CustomerTickets = () => {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
                     {/* Ticket */}
-                    <td className="max-w-lg p-5">
+                    <td className="max-w-md px-5 py-3">
                       <div className="space-y-2">
-                        <div className="skeleton h-4 w-3/12"></div>
-                        <div className="skeleton h-4 w-6/12"></div>
-                        <div className="skeleton h-4 w-xl"></div>
+                        <div className="skeleton h-3 w-3/12"></div>
+                        <div className="skeleton h-3 w-6/12"></div>
+                        <div className="skeleton h-3 w-md"></div>
                       </div>
                     </td>
                     {/* Category */}
@@ -265,7 +267,7 @@ const CustomerTickets = () => {
                 {tickets.map((ticket) => (
                   <tr key={ticket._id}>
                     {/* Ticket */}
-                    <td className="max-w-lg px-5 py-2">
+                    <td className="max-w-md px-5 py-2">
                       <div>
                         <p className="text-xs text-base-content/50">
                           {ticket.ticketNumber}

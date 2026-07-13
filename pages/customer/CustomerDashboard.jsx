@@ -191,12 +191,18 @@ const CustomerDashboard = () => {
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold">Ticket Activity</h3>
                     <p className="text-[11px] text-base-content/50">
-                      Trends in the last 7 days
+                      Trends in the last 12 months
                     </p>
                   </div>
                   <div className="h-[200px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={data?.activityChart}>
+                      <AreaChart
+                        data={data?.activityChart}
+                        margin={{
+                          top: 5,
+                          left: -30,
+                        }}
+                      >
                         <defs>
                           <linearGradient
                             id="colorTickets"
@@ -223,7 +229,13 @@ const CustomerDashboard = () => {
                           stroke="rgba(148,163,184,0.26)"
                         />
                         <XAxis
-                          dataKey="day"
+                          dataKey="month"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: "#94a3b8", fontSize: 10 }}
+                        />
+
+                        <YAxis
                           axisLine={false}
                           tickLine={false}
                           tick={{ fill: "#94a3b8", fontSize: 10 }}
@@ -368,34 +380,14 @@ const CustomerDashboard = () => {
               <div className="overflow-x-auto">
                 <table className="table table-zebra">
                   <thead>
-                    {loading ? (
-                      <tr>
-                        <th>
-                          <div className="skeleton h-5 my-2 ml-1 w-20"></div>
-                        </th>
-                        <th>
-                          <div className="skeleton h-5 my-2 w-20"></div>
-                        </th>
-                        <th>
-                          <div className="skeleton h-5 my-2 w-20"></div>
-                        </th>
-                        <th>
-                          <div className="skeleton h-5 my-2 w-20"></div>
-                        </th>
-                        <th>
-                          <div className="skeleton h-5 my-2 w-20"></div>
-                        </th>
-                      </tr>
-                    ) : (
-                      <tr className="text-sm uppercase text-base-content/50">
-                        <th className="p-5 font-semibold">Ticket</th>
-                        <th className="p-5 font-semibold">Category</th>
-                        <th className="p-5 font-semibold">Priority</th>
-                        <th className="p-5 font-semibold">Status</th>
-                        <th className="p-5 font-semibold">Updated</th>
-                        <th className="p-5 font-semibold"></th>
-                      </tr>
-                    )}
+                    <tr className="text-sm uppercase text-base-content/50">
+                      <th className="p-5 font-semibold">Ticket</th>
+                      <th className="p-5 font-semibold">Category</th>
+                      <th className="p-5 font-semibold">Priority</th>
+                      <th className="p-5 font-semibold">Status</th>
+                      <th className="p-5 font-semibold">Updated</th>
+                      <th className="p-5 font-semibold"></th>
+                    </tr>
                   </thead>
 
                   {loading ? (
@@ -405,9 +397,8 @@ const CustomerDashboard = () => {
                           {/* Ticket */}
                           <td className="max-w-lg p-5">
                             <div className="space-y-2">
-                              <div className="skeleton h-4 w-3/12"></div>
-                              <div className="skeleton h-4 w-6/12"></div>
-                              <div className="skeleton h-4 w-sm"></div>
+                              <div className="skeleton h-3 w-6/12"></div>
+                              <div className="skeleton h-3 w-sm"></div>
                             </div>
                           </td>
                           {/* Category */}
@@ -446,7 +437,7 @@ const CustomerDashboard = () => {
                       {data?.recentTickets?.map((ticket) => (
                         <tr key={ticket._id}>
                           {/* Ticket */}
-                          <td className="max-w-lg p-5">
+                          <td className="max-w-lg px-5 py-2">
                             <div>
                               <p className="text-xs text-base-content/50">
                                 {ticket.ticketNumber}
@@ -632,9 +623,15 @@ const CustomerDashboard = () => {
                               ? "cyan"
                               : act.type === "ticket_resolved"
                                 ? "green"
-                                : act.type === "agent_reply"
-                                  ? "purple"
-                                  : "slate"
+                                : act.type === "ticket_assigned"
+                                  ? "blue"
+                                  : act.type === "profile_updated"
+                                    ? "pink"
+                                    : act.type === "warning"
+                                      ? "yellow"
+                                      : act.type === "agent_reply"
+                                        ? "purple"
+                                        : "slate"
                           }
                           className="h-8 w-8 rounded-xl shrink-0"
                         />

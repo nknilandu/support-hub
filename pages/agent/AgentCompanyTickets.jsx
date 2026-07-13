@@ -256,11 +256,11 @@ const AgentCompanyTickets = () => {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
                     {/* Ticket */}
-                    <td className="max-w-md p-5">
+                    <td className="max-w-md px-5 py-0">
                       <div className="space-y-2">
-                        <div className="skeleton h-4 w-3/12"></div>
-                        <div className="skeleton h-4 w-6/12"></div>
-                        <div className="skeleton h-4 w-md"></div>
+                        <div className="skeleton h-3 w-3/12"></div>
+                        <div className="skeleton h-3 w-6/12"></div>
+                        <div className="skeleton h-3 w-sm"></div>
                       </div>
                     </td>
 
