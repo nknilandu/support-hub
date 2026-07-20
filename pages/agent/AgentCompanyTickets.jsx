@@ -9,6 +9,8 @@ import { AuthContext } from "../../app/providers/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import Pagination from "../../components/ui/Pagination/pagination";
 import { toast } from "react-toastify";
+import LoadingPage from "../loading/LoadingPage/LoadingPage";
+import AgentApprovalStatus from "./AgentApprovalStatus";
 
 const AgentCompanyTickets = () => {
   const { user } = useContext(AuthContext);
@@ -28,14 +30,42 @@ const AgentCompanyTickets = () => {
     setCategory("");
     refetch();
   };
+
   //   ========== load data from database ==============
+
+  const {
+    data: currentAgentData,
+    isLoading: agentLoading,
+    refetch: refetchAgent,
+  } = useQuery({
+    queryKey: ["currentAgent", user?.email],
+    enabled: !!user?.accessToken,
+
+    queryFn: async () => {
+      const res = await fetch("http://localhost:3021/users/me", {
+        headers: {
+          authorization: `Bearer ${user.accessToken}`,
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message);
+      }
+
+      return result.user;
+    },
+  });
+
   const {
     data,
     isLoading: loading,
     refetch,
   } = useQuery({
     queryKey: ["companyTickets", search, status, priority, category, page],
-    enabled: !!user?.accessToken,
+    enabled:
+      !!user?.accessToken && currentAgentData?.verifyIdAgent === "approved",
     queryFn: async () => {
       const res = await fetch(
         `http://localhost:3021/agent/company-tickets?search=${search}&status=${status}&priority=${priority}&category=${category}&page=${page}&limit=10`,
@@ -90,6 +120,16 @@ const AgentCompanyTickets = () => {
 
   //  ++++++++++++++++++
 
+  if (agentLoading) {
+    return <LoadingPage></LoadingPage>;
+  }
+
+  if (currentAgentData?.verifyIdAgent !== "approved") {
+    return (
+      <AgentApprovalStatus agent={currentAgentData} onRefresh={refetchAgent} />
+    );
+  }
+  //  ++++++++++++++++++
   return (
     <div className="p-4 lg:p-5">
       {/* header */}

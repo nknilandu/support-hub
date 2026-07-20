@@ -32,6 +32,8 @@ import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import GradientButton from "../../components/ui/Button/GradientButton";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import TextBadge from "../../components/ui/Badge/TextBadge";
+import LoadingPage from "../loading/LoadingPage/LoadingPage";
+import AgentApprovalStatus from "./AgentApprovalStatus";
 
 // =============================
 const statusColors = {
@@ -52,10 +54,35 @@ const priorityColors = {
 const AgentDashboard = () => {
   const { user } = useContext(AuthContext);
 
+  const {
+    data: currentAgent,
+    isLoading: agentLoading,
+    refetch: refetchAgent,
+  } = useQuery({
+    queryKey: ["currentAgent", user?.email],
+    enabled: !!user?.accessToken,
+
+    queryFn: async () => {
+      const res = await fetch("http://localhost:3021/users/me", {
+        headers: {
+          authorization: `Bearer ${user.accessToken}`,
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message);
+      }
+
+      return result.user;
+    },
+  });
+
   const { data, isLoading: loading } = useQuery({
     queryKey: ["agentDashboard"],
 
-    enabled: !!user?.accessToken,
+    enabled: !!user?.accessToken && currentAgent?.verifyIdAgent === "approved",
 
     queryFn: async () => {
       const res = await fetch(
@@ -77,11 +104,9 @@ const AgentDashboard = () => {
     },
   });
 
-  // console.log(data);
-
   const { data: notificationData = [], isLoading: notifyLoading } = useQuery({
     queryKey: ["agentDashboardNotification"],
-    enabled: !!user?.accessToken,
+    enabled: !!user?.accessToken && currentAgent?.verifyIdAgent === "approved",
     queryFn: async () => {
       const res = await fetch("http://localhost:3021/notifications?limit=4", {
         headers: {
@@ -181,6 +206,16 @@ const AgentDashboard = () => {
     },
   ];
 
+  if (agentLoading) {
+    return <LoadingPage></LoadingPage>;
+  }
+
+  if (currentAgent?.verifyIdAgent !== "approved") {
+    return (
+      <AgentApprovalStatus agent={currentAgent} onRefresh={refetchAgent} />
+    );
+  }
+
   return (
     <section className="relative min-h-full p-4 lg:p-5">
       {/* ========================= */}
@@ -277,7 +312,6 @@ const AgentDashboard = () => {
                             fontSize: "10px",
                           }}
                           itemStyle={{ color: "#f8fafc" }}
-                          
                         />
 
                         <Legend
@@ -382,9 +416,8 @@ const AgentDashboard = () => {
                             borderRadius: "12px",
                             fontSize: "10px",
                           }}
-
-                           labelStyle={{ color: "#f8fafc" }}
-                           itemStyle={{ color: "#f8fafc" }}
+                          labelStyle={{ color: "#f8fafc" }}
+                          itemStyle={{ color: "#f8fafc" }}
                         />
 
                         <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={70}>

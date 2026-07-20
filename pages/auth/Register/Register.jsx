@@ -288,7 +288,6 @@ export default function Register() {
         displayName: data.username,
         photoURL: photoLink,
         email: userData.email,
-        status: "active",
         role: selectedRole,
       };
 
@@ -315,7 +314,6 @@ export default function Register() {
           companyLogo: photoLink,
           ownerId: dbResult.insertedId,
           ownerUid: userData.uid,
-          status: "active",
         };
 
         const companyResult = await saveUserToDB(
