@@ -2,7 +2,6 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
-  Brain,
   CheckCircle2,
   Clock4,
   Lightbulb,

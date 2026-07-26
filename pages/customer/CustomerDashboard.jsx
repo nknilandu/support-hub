@@ -55,7 +55,7 @@ const CustomerDashboard = () => {
     queryKey: ["customerDashboardNotification"],
     enabled: !!user?.accessToken,
     queryFn: async () => {
-      const res = await fetch("http://localhost:3021/notifications?limit=3", {
+      const res = await fetch("http://localhost:3021/notifications?limit=4", {
         headers: {
           authorization: `Bearer ${user.accessToken}`,
         },
@@ -395,7 +395,7 @@ const CustomerDashboard = () => {
 
                   {loading ? (
                     <tbody>
-                      {Array.from({ length: 3 }).map((_, i) => (
+                      {Array.from({ length: 5 }).map((_, i) => (
                         <tr key={i}>
                           {/* Ticket */}
                           <td className="max-w-lg p-5">
@@ -508,17 +508,18 @@ const CustomerDashboard = () => {
 
                           {/* Action */}
                           <td>
-                            <GradientButton
-                              // onClick = data?._id
-                              size="sm"
-                              buttonClassName="
+                            <Link to={`/customer/tickets/${ticket?._id}`}>
+                              <GradientButton
+                                size="sm"
+                                buttonClassName="
               from-primary/10
               to-secondary/10
               text-base-content
             "
-                            >
-                              View
-                            </GradientButton>
+                              >
+                                View
+                              </GradientButton>
+                            </Link>
                           </td>
                         </tr>
                       ))}
@@ -582,7 +583,7 @@ const CustomerDashboard = () => {
                   <div className="skeleton h-4 w-30 mb-6"></div>
 
                   <div className="space-y-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
+                    {Array.from({ length: 4 }).map((_, i) => (
                       <div key={i} className="flex gap-3 items-start">
                         <div className="shrink-0 skeleton h-8 w-8 rounded-xl"></div>
                         <div className="w-full min-w-0">

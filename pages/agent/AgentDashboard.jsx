@@ -484,7 +484,7 @@ const AgentDashboard = () => {
 
                   {loading ? (
                     <tbody>
-                      {Array.from({ length: 3 }).map((_, i) => (
+                      {Array.from({ length: 5 }).map((_, i) => (
                         <tr key={i}>
                           {/* Ticket */}
                           <td className="max-w-lg p-5">

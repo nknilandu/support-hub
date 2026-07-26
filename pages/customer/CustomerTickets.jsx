@@ -335,16 +335,18 @@ const CustomerTickets = () => {
 
                     {/* Action */}
                     <td>
-                      <GradientButton
-                        size="sm"
-                        buttonClassName="
+                      <Link to={`${ticket?._id}`}>
+                        <GradientButton
+                          size="sm"
+                          buttonClassName="
               from-primary/10
               to-secondary/20
               text-base-content
             "
-                      >
-                        View
-                      </GradientButton>
+                        >
+                          View
+                        </GradientButton>
+                      </Link>
                     </td>
                   </tr>
                 ))}
