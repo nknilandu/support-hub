@@ -30,6 +30,7 @@ import AgentDashboard from "../pages/agent/AgentDashboard";
 import AgentCompanyTicket from "../pages/agent/AgentCompanyTickets";
 import AgentAssignTicket from "../pages/agent/AgentAssignTicket";
 import AgentAiAssistant from "../pages/agent/AgentAiAssistant";
+import AgentTicketDetails from "../pages/agent/AgentTicketDetails";
 
 const router = createBrowserRouter([
   {
@@ -147,6 +148,11 @@ const router = createBrowserRouter([
           {
             path: "ai-assistant",
             Component: AgentAiAssistant,
+          },
+           // Single Ticket
+          {
+            path: "tickets/:ticketId",
+            Component: AgentTicketDetails,
           },
           {
             path: "profile",

@@ -3,13 +3,27 @@ import GradientButton from "../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import {
   AlertTriangle,
+  Bot,
   CalendarDays,
   CheckCircle2,
+  CircleCheck,
   Clock3,
   Clock4,
+  Copy,
   Lightbulb,
+  MessageCircle,
+  MessageSquareText,
+  MessagesSquare,
+  Paperclip,
+  RefreshCcw,
+  Send,
+  SendHorizonal,
+  Sparkles,
   TriangleAlert,
+  User,
+  UserRound,
   WandSparkles,
+  XCircle,
 } from "lucide-react";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
@@ -18,19 +32,31 @@ import { useNavigate, useParams } from "react-router";
 import { AuthContext } from "../../app/providers/AuthProvider";
 import { formatRelativeDate } from "../../src/lib/formatRelativeDate";
 import Swal from "sweetalert2";
+import GradientCard from "../../components/ui/Card/GradientCard";
 
-const CustomerTicketDetails = () => {
+const AgentTicketDetails = () => {
   const { user } = useContext(AuthContext);
   const { ticketId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("details");
+  const [message, setMessage] = useState("");
 
   // console.log(ticketId);
 
-  const {
-    data: resData,
-    isLoading: dataLoading,
-  } = useQuery({
+  const customerInfo = {};
+  const conversations = [];
+
+  // ====================
+  const handleInput = (e) => {
+    const textarea = e.target;
+
+    textarea.style.height = "auto";
+
+    const maxHeight = 120; // approx 3 lines
+    textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
+  };
+
+  const { data: resData, isLoading: dataLoading } = useQuery({
     queryKey: ["ticketDetails", ticketId],
 
     enabled: !!user?.accessToken && !!ticketId,
@@ -52,52 +78,6 @@ const CustomerTicketDetails = () => {
   const aiResult = resData?.data?.aiResult || [];
 
   // =====================================
-
-  const handleDeleteTicket = async () => {
-    const result = await Swal.fire({
-      title: "Delete this ticket?",
-      text: "This action will permanently remove this support ticket and all related information. You won't be able to recover it later.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#64748b",
-      confirmButtonText: "Delete Ticket",
-      cancelButtonText: "Keep Ticket",
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      const res = await fetch(`http://localhost:3021/tickets/${ticketId}`, {
-        method: "DELETE",
-        headers: {
-          authorization: `Bearer ${user.accessToken}`,
-        },
-      });
-      const resultData = await res.json();
-      if (!res.ok) {
-        throw new Error(resultData.message || "Failed to delete ticket");
-      }
-
-      // Success alert
-      await Swal.fire({
-        title: "Deleted!",
-        text: "Your support ticket has been successfully deleted.",
-        icon: "success",
-        confirmButtonColor: "#3085d6",
-      });
-
-      navigate("/customer/tickets");
-    } catch (error) {
-      Swal.fire({
-        title: "Delete Failed",
-        text: error.message,
-        icon: "error",
-        confirmButtonColor: "#ef4444",
-      });
-    }
-  };
-
   return (
     <div className="p-5 space-y-5">
       {/* title card */}
@@ -532,7 +512,7 @@ const CustomerTicketDetails = () => {
                 <div className="mt-5 flex gap-3 justify-end">
                   <GradientButton
                     buttonClassName="from-error/70 to-error"
-                    onClick={handleDeleteTicket}
+                    // onClick={handleDeleteTicket}
                   >
                     Delete Ticket
                   </GradientButton>
@@ -545,7 +525,7 @@ const CustomerTicketDetails = () => {
         {/* Conversation */}
         <CardWithBlurBlob
           interactive={false}
-          className={`${
+          className={`p-0 ${
             dataLoading
               ? "hidden"
               : resData?.data?.supportMode === "human"
@@ -555,11 +535,276 @@ const CustomerTicketDetails = () => {
                 : "hidden"
           }`}
         >
-          v
+          {/* ======================================== chat box ============================================== */}
+
+          {/* Conversation Header */}
+          <div className="border-b border-base-content/10 px-5 py-4">
+            <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
+              <SoftIconCard
+                icon={MessagesSquare}
+                variant="primary"
+                className="shrink-0"
+              />
+
+              <div className="flex flex-col min-w-0 flex-1">
+                <h3 className="font-semibold truncate">Support Conversation</h3>
+
+                <p className="text-base-content/60 text-xs truncate">
+                  Real-time support with AI insights.
+                </p>
+              </div>
+
+              <GradientButton
+                size="md"
+                buttonClassName="from-green-500/80 to-green-600/85 text-white/80"
+              >
+                <CircleCheck size={16} strokeWidth={3} />
+                Resolve
+              </GradientButton>
+            </div>
+          </div>
+
+          {/* Messages Area */}
+
+          <div
+            className={`
+    flex-1
+    overflow-y-auto
+    p-5
+    space-y-6
+      
+         ${
+           conversations.length !== 0
+             ? "flex flex-col items-center justify-center"
+             : ""
+         }
+   
+            `}
+            // ========= if message===0 ? justify-center : justify-end updatex
+          >
+            {/* Customer Info */}
+            <div className="flex flex-col justify-center items-center mb-10">
+              <div className="avatar-group -space-x-5">
+                <div className="avatar">
+                  <div className="w-12">
+                    <img
+                      className="object-center object-cover  bg-base-content/10"
+                      src={customerInfo?.photoURL}
+                    />
+                  </div>
+                </div>
+                <div className="avatar">
+                  <div className="w-12">
+                    <img
+                      className="object-center object-cover bg-base-content/10"
+                      src={user?.photoURL}
+                    />
+                  </div>
+                </div>
+              </div>
+              <h3 className="mt-2 text-lg font-bold text-base-content/90">
+                {customerInfo?.displayName || "Customer Name"}
+              </h3>
+
+              <p className="text-xs text-base-content/60">
+                {customerInfo?.email || "customer@email.com"}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                <TextBadge variant="blue" size="xs">
+                  {customerInfo?.role || "customer"}
+                </TextBadge>
+
+                <TextBadge variant="green" size="xs">
+                  {customerInfo?.status || "active"}
+                </TextBadge>
+
+                <TextBadge variant="purple" size="xs">
+                  {customerInfo?.companyName || "Company"}
+                </TextBadge>
+              </div>
+
+              {/* Conversation Intro */}
+              <div className="mt-4 text-center">
+                <h4 className="text-sm font-semibold text-base-content/90">
+                  Ready to help?
+                </h4>
+
+                <p className="mt-1.5 text-xs leading-relaxed text-base-content/60">
+                  Start a conversation with{" "}
+                  <span className="font-medium text-base-content/80">
+                    {customerInfo?.displayName || "the customer"}
+                  </span>{" "}
+                  and provide personalized support.
+                </p>
+
+                <p className="mt-2 text-xs text-base-content/50">
+                  You’re responding as{" "}
+                  <span className="font-medium text-base-content/70">
+                    {user?.displayName || "Support Agent"}
+                  </span>
+                  .
+                </p>
+
+                {conversations.length === 0 && (
+                  <p className="mt-3 text-[11px] text-base-content/40">
+                    No messages yet — send a message to get started.
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* message body */}
+            <div className="w-full h-fit">
+              {/* =========== customer chat ========== flex-row-reverse */}
+
+              <div className="flex min-w-0 items-start gap-3 mt-4">
+                {/* Avatar */}
+                <div className="shrink-0 w-8 h-8 rounded-full overflow-hidden">
+                  <img
+                    className="object-center object-cover w-full h-full bg-base-content/5"
+                    src={customerInfo?.photoURL}
+                  />
+                </div>
+
+                {/* Message Content */}
+                <div className="min-w-0 w-0 flex-1 max-w-[70%]">
+                  <GradientCard
+                    className="
+        w-fit
+        max-w-full
+        px-4
+        sm:px-5
+        py-3
+        text-sm
+        leading-relaxed
+        from-primary/10
+        to-secondary/5
+        text-base-content
+        shadow-none
+        rounded-b-2xl
+        rounded-r-2xl
+        rounded-l-lg
+      "
+                  >
+                    <p className="text-sm whitespace-pre-wrap wrap-break-word ">
+                      I reset my password but can't login. This is blocking my
+                      whole team.
+                    </p>
+                  </GradientCard>
+
+                  <p className="mt-1 text-[11px] text-base-content/40">
+                    Sarah Chen · 08:12
+                  </p>
+                </div>
+              </div>
+
+              {/* =========== Agent Chat ============ */}
+              <div className="flex flex-row-reverse items-start gap-3 mt-4 min-w-0">
+                {/* Agent Avatar */}
+                <div className="shrink-0 w-8 h-8 rounded-full overflow-hidden">
+                  <img
+                    className="object-center object-cover w-full h-full bg-base-content/5"
+                    src={user?.photoURL}
+                  />
+                </div>
+
+                {/* Message Content */}
+                <div className="min-w-0 flex-1 max-w-[85%] sm:max-w-[70%]">
+                  <GradientCard
+                    className="
+        w-fit
+        max-w-full
+        ml-auto
+        px-4
+        sm:px-5
+        py-3
+        text-sm
+        leading-relaxed
+        from-primary/90
+        to-secondary/90
+        text-base-content
+        shadow-none
+        rounded-b-2xl
+        rounded-l-2xl
+        rounded-r-lg
+      "
+                  >
+                    <p className="text-sm leading-6 text-white/90 whitespace-pre-wrap wrap-break-word">
+                      I reset my password but can't login. This is blocking my
+                      whole team.
+                    </p>
+                  </GradientCard>
+
+                  <p className="mt-1 text-[11px] text-base-content/40 wrap-break-word text-end">
+                    {user?.displayName || "Support Agent"} · 08:12
+                  </p>
+                </div>
+              </div>
+              {/* ============ */}
+            </div>
+          </div>
+
+          {/* Reply Composer */}
+          <div className="p-4 border-t border-base-content/10 bg-base-100/70">
+            <div className=" rounded-2xl border border-base-content/10 bg-primary/2 pr-3 pl-4 py-3 flex gap-3 justify-center items-center">
+              <textarea
+                rows={3}
+                onInput={handleInput}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    // handleSend();
+                  }
+                }}
+                placeholder="Write a reply to the customer..."
+                className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
+              />
+            </div>
+            {/* =========== */}
+            <div className="flex flex-wrap justify-between mt-3">
+              <p className="text-xs text-base-content/50 mb-3">
+                Reply to {customerInfo?.displayName || "Customer"}
+              </p>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <GradientButton
+                  // onClick={handleSend}
+                  // disabled={isAiTyping || !message.trim()}
+                  size="sm"
+                  buttonClassName={`${
+                    !message.trim()
+                      ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed"
+                      : "from-primary to-secondary text-white"
+                  }`}
+                >
+                  <Sparkles size={16} />
+                  Suggest reply
+                </GradientButton>
+
+                <GradientButton
+                  // onClick={handleSend}
+                  // disabled={isAiTyping || !message.trim()}
+                  size="sm"
+                  buttonClassName={`${
+                    !message.trim()
+                      ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed"
+                      : "from-primary to-secondary text-white"
+                  }`}
+                >
+                  <SendHorizonal size={16} />
+                  Send
+                </GradientButton>
+              </div>
+            </div>
+          </div>
+
+          {/* ================================================================================================ */}
         </CardWithBlurBlob>
       </div>
     </div>
   );
 };
 
-export default CustomerTicketDetails;
+export default AgentTicketDetails;
