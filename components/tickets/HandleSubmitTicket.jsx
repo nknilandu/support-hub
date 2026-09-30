@@ -17,15 +17,11 @@ const HandleSubmitTicket = ({
     setUploadLoading(true);
 
     const payload = {
-      uid: user.uid,
-      email: user.email,
       supportMode: resolutionType === "human" ? "human" : "ai",
       resolutionSource: resolutionType === "ai" ? "ai" : null,
       aiResolved: resolutionType === "ai",
       escalatedToHuman: resolutionType === "human",
       status: resolutionType === "ai" ? "resolved" : "open",
-      createdAt: new Date(),
-      updatedAt: new Date(),
       aiResult,
       ticketData
     };

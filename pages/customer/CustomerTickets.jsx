@@ -54,7 +54,7 @@ const CustomerTickets = () => {
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
 
-  // console.log(tickets)
+  console.log(tickets)
 
   //  ++++++++++++++++++
 
@@ -214,6 +214,7 @@ const CustomerTickets = () => {
                 <th className="p-5 font-semibold">Category</th>
                 <th className="p-5 font-semibold">Priority</th>
                 <th className="p-5 font-semibold">Status</th>
+                <th className="p-5 font-semibold">Assigned</th>
                 <th className="p-5 font-semibold">Updated</th>
                 <th className="p-5 font-semibold"></th>
               </tr>
@@ -243,6 +244,10 @@ const CustomerTickets = () => {
                     <td>
                       <div className="skeleton h-5 w-7/12"></div>
                     </td>
+                    {/* Assigned */}
+                    <td>
+                      <div className="skeleton h-5 w-7/12"></div>
+                    </td>
                     {/* Updated */}
                     <td>
                       <div className="skeleton h-5 w-7/12"></div>
@@ -266,19 +271,19 @@ const CustomerTickets = () => {
               <tbody>
                 {tickets.map((ticket) => (
                   <tr key={ticket._id}>
-                    {/* Ticket */}
+                     {/* Ticket */}
                     <td className="max-w-md px-5 py-2">
                       <div>
                         <p className="text-xs text-base-content/50">
                           {ticket.ticketNumber}
                         </p>
 
-                        <h3 className="font-medium">
-                          {ticket.aiResult.ticketTitle}
+                        <h3 className="font-medium line-clamp-1">
+                          {ticket.aiResult?.ticketTitle || "Untitled Ticket"}
                         </h3>
 
                         <p className="max-w-11/12 text-sm text-base-content/60 line-clamp-1">
-                          {ticket.aiResult.summary}
+                          {ticket.aiResult?.summary || "No summary available"}
                         </p>
                       </div>
                     </td>
@@ -324,6 +329,25 @@ const CustomerTickets = () => {
                       >
                         {(ticket.status || "open").replace("_", " ")}
                       </TextBadge>
+                    </td>
+
+                      {/* Assigned */}
+                    <td>
+                      {ticket?.agentInfo ? (
+                        <div>
+                          <p className="text-sm font-medium text-base-content/80">
+                            {ticket?.agentInfo?.displayName || "N/A"}
+                          </p>
+
+                          <p className="text-xs text-base-content/50">
+                            {ticket?.agentInfo?.email || "email not found"}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs italic text-base-content/40">
+                          Unassigned
+                        </p>
+                      )}
                     </td>
 
                     {/* Updated */}

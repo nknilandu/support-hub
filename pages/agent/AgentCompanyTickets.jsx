@@ -68,7 +68,7 @@ const AgentCompanyTickets = () => {
       !!user?.accessToken && currentAgentData?.verifyIdAgent === "approved",
     queryFn: async () => {
       const res = await fetch(
-        `http://localhost:3021/agent/company-tickets?search=${search}&status=${status}&priority=${priority}&category=${category}&page=${page}&limit=10`,
+        `http://localhost:3021/agent/company-tickets?search=${search}&status=${status}&priority=${priority}&category=${category}&page=${page}`,
         {
           headers: {
             authorization: `Bearer ${user.accessToken}`,
@@ -104,7 +104,6 @@ const AgentCompanyTickets = () => {
       );
 
       const data = await res.json();
-      // console.log(data);
 
       if (data.success) {
         toast(`Ticket Assigned`);
@@ -119,7 +118,6 @@ const AgentCompanyTickets = () => {
   };
 
   //  ++++++++++++++++++
-
   if (agentLoading) {
     return <LoadingPage></LoadingPage>;
   }
@@ -323,7 +321,7 @@ const AgentCompanyTickets = () => {
                     <td>
                       <div className="skeleton h-5 w-7/12"></div>
                     </td>
-                    {/* Status */}
+                    {/* Assigned */}
                     <td>
                       <div className="skeleton h-5 w-7/12"></div>
                     </td>
@@ -361,15 +359,11 @@ const AgentCompanyTickets = () => {
                         </p>
 
                         <h3 className="font-medium line-clamp-1">
-                          {ticket.aiResult?.ticketTitle ||
-                            ticket.subject ||
-                            "Untitled Ticket"}
+                          {ticket.aiResult?.ticketTitle || "Untitled Ticket"}
                         </h3>
 
                         <p className="max-w-11/12 text-sm text-base-content/60 line-clamp-1">
-                          {ticket.aiResult?.summary ||
-                            ticket.description ||
-                            "No summary available"}
+                          {ticket.aiResult?.summary || "No summary available"}
                         </p>
                       </div>
                     </td>
@@ -378,10 +372,10 @@ const AgentCompanyTickets = () => {
                     <td className="p-5">
                       <div>
                         <p className="text-sm font-medium text-base-content/80">
-                          {ticket.email || ticket.customerEmail || "No email"}
+                          {ticket?.userInfo?.displayName || "N/A"}
                         </p>
                         <p className="text-xs text-base-content/50 mt-1">
-                          {ticket.uid || "null"}
+                          {ticket?.userInfo?.email || "N/A"}
                         </p>
                       </div>
                     </td>
@@ -433,14 +427,14 @@ const AgentCompanyTickets = () => {
 
                     {/* Assigned */}
                     <td>
-                      {ticket.assignedAgent ? (
+                      {ticket?.agentInfo ? (
                         <div>
                           <p className="text-sm font-medium text-base-content/80">
-                            {ticket.assignedAgent.displayName || "Agent"}
+                            {ticket?.agentInfo?.displayName || "N/A"}
                           </p>
 
                           <p className="text-xs text-base-content/50">
-                            {ticket.assignedAgent.email || "email not found"}
+                            {ticket?.agentInfo?.email || "email not found"}
                           </p>
                         </div>
                       ) : (
@@ -481,7 +475,7 @@ const AgentCompanyTickets = () => {
                         {!ticket.assignedAgent && ticket.status === "open" && (
                           <GradientButton
                             size="sm"
-                            onClick={() => handleAssign(ticket._id)}
+                            onClick={() => handleAssign(ticket?._id)}
                             disabled={assignLoading === ticket._id}
                             buttonClassName="
         from-primary/10

@@ -83,6 +83,7 @@ const AgentAssignTicket = () => {
     },
   });
 
+
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
   const currentAgent = data?.currentAgent;
@@ -396,10 +397,10 @@ const AgentAssignTicket = () => {
                     <td className="p-5">
                       <div>
                         <p className="text-sm font-medium text-base-content/80">
-                          {ticket.email || ticket.customerEmail || "No email"}
+                          {ticket?.userInfo?.displayName || "N/A"}
                         </p>
                         <p className="text-xs text-base-content/50 mt-1">
-                          {ticket.uid || "null"}
+                          {ticket?.userInfo?.email || "N/A"}
                         </p>
                       </div>
                     </td>

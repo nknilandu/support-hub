@@ -49,7 +49,8 @@ const CustomerTicketDetails = () => {
       return res.json();
     },
   });
-  const aiResult = resData?.data?.aiResult || [];
+
+  const aiResult = resData?.data?.aiResult || {};
 
   // =====================================
 
@@ -141,7 +142,6 @@ const CustomerTicketDetails = () => {
             </p>
 
             {/* Badges */}
-
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <TextBadge variant="cyan">{aiResult?.category}</TextBadge>
               {aiResult?.states?.map((item, i) => (
@@ -162,7 +162,7 @@ const CustomerTicketDetails = () => {
               </div>
 
               <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                {formatRelativeDate(resData?.data?.updatedAt)}
+                {formatRelativeDate(resData?.data?.createdAt)}
               </p>
             </div>
 
@@ -174,7 +174,7 @@ const CustomerTicketDetails = () => {
               </div>
 
               <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                {formatRelativeDate(resData?.data?.createdAt)}
+                {formatRelativeDate(resData?.data?.updatedAt)}
               </p>
             </div>
           </div>

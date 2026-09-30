@@ -40,6 +40,7 @@ const AgentTicketDetails = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("details");
   const [message, setMessage] = useState("");
+  const [isGeneratingReply, setIsGeneratingReply] = useState(false)
 
   // console.log(ticketId);
 
@@ -77,6 +78,43 @@ const AgentTicketDetails = () => {
   });
   const aiResult = resData?.data?.aiResult || [];
 
+  // =============== handle suggest reply ======================
+const handleSuggestReply = async () => {
+  try {
+    setIsGeneratingReply(true);
+
+    const res = await fetch(
+      "http://localhost:3021/ai/suggest-reply",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${user.accessToken}`,
+        },
+        body: JSON.stringify({
+          ticketId,
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+
+      throw new Error(
+        errorData?.message || "Failed to generate reply",
+      );
+    }
+
+    const data = await res.json();
+
+    setMessage(data.data.reply);
+    console.log(data)
+  } catch (error) {
+    console.error("Suggest reply error:", error);
+  } finally {
+    setIsGeneratingReply(false);
+  }
+};
   // =====================================
   return (
     <div className="p-5 space-y-5">
@@ -770,17 +808,17 @@ const AgentTicketDetails = () => {
 
               <div className="flex flex-wrap justify-end gap-2">
                 <GradientButton
-                  // onClick={handleSend}
-                  // disabled={isAiTyping || !message.trim()}
+                   onClick={handleSuggestReply}
+  disabled={isGeneratingReply}
                   size="sm"
                   buttonClassName={`${
-                    !message.trim()
+                    isGeneratingReply
                       ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed"
                       : "from-primary to-secondary text-white"
                   }`}
                 >
                   <Sparkles size={16} />
-                  Suggest reply
+                  {isGeneratingReply ? "Generating..." : "Suggest reply"}
                 </GradientButton>
 
                 <GradientButton
