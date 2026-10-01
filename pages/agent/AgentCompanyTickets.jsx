@@ -85,11 +85,8 @@ const AgentCompanyTickets = () => {
 
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
-  const currentAgent = data?.currentAgent;
 
-  // console.log(tickets);
-
-  //===================== handle click ====================
+  //===================== handle assign click ====================
   const handleAssign = async (ticketId) => {
     try {
       setAssignLoading(ticketId);
@@ -456,42 +453,47 @@ const AgentCompanyTickets = () => {
                     {/* Action */}
                     <td className="p-5">
                       <div className="flex items-center gap-2">
-                        {(!ticket.assignedAgent ||
-                          ticket.assignedAgent.email === currentAgent) && (
+                        {/* View */}
+                        {(!ticket.agentAction ||
+                          ticket.agentAction === "released" ||
+                          ticket.agentInfo?.uid === user?.uid) && (
                           <Link to={`/agent/tickets/${ticket._id}`}>
                             <GradientButton
                               size="sm"
                               buttonClassName="
-          from-primary/20
-          to-secondary/10
-          text-base-content
-        "
+            from-primary/20
+            to-secondary/10
+            text-base-content
+          "
                             >
                               View
                             </GradientButton>
                           </Link>
                         )}
 
-                        {!ticket.assignedAgent && ticket.status === "open" && (
-                          <GradientButton
-                            size="sm"
-                            onClick={() => handleAssign(ticket?._id)}
-                            disabled={assignLoading === ticket._id}
-                            buttonClassName="
-        from-primary/10
-        to-secondary/20
-        text-base-content
-      "
-                          >
-                            {assignLoading === ticket._id ? (
-                              <div className="px-3">
-                                <span className="loading loading-spinner loading-xs"></span>
-                              </div>
-                            ) : (
-                              "Assign"
-                            )}
-                          </GradientButton>
-                        )}
+                        {/* Assign */}
+                        {(!ticket.agentAction ||
+                          ticket.agentAction === "released") &&
+                          ticket.status === "open" && (
+                            <GradientButton
+                              size="sm"
+                              onClick={() => handleAssign(ticket?._id)}
+                              disabled={assignLoading === ticket._id}
+                              buttonClassName="
+            from-primary/10
+            to-secondary/20
+            text-base-content
+          "
+                            >
+                              {assignLoading === ticket._id ? (
+                                <div className="px-3">
+                                  <span className="loading loading-spinner loading-xs"></span>
+                                </div>
+                              ) : (
+                                "Assign"
+                              )}
+                            </GradientButton>
+                          )}
                       </div>
                     </td>
                   </tr>

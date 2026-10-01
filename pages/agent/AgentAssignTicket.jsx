@@ -83,12 +83,11 @@ const AgentAssignTicket = () => {
     },
   });
 
-
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
   const currentAgent = data?.currentAgent;
 
-  // console.log(tickets);
+  console.log(tickets)
 
   //===================== handle click ====================
   const handleRelease = async (ticketId) => {
@@ -473,29 +472,31 @@ const AgentAssignTicket = () => {
           text-base-content
         "
                             >
-                              View
+                              View 
                             </GradientButton>
                           </Link>
                         )}
 
-                        <GradientButton
-                          size="sm"
-                          onClick={() => handleRelease(ticket._id)}
-                          disabled={assignLoading === ticket._id}
-                          buttonClassName="
+                        {ticket?.status?.toLowerCase() !== "resolved" && (
+                          <GradientButton
+                            size="sm"
+                            onClick={() => handleRelease(ticket._id)}
+                            disabled={assignLoading === ticket._id}
+                            buttonClassName="
         from-primary/10
         to-secondary/20
         text-base-content
       "
-                        >
-                          {assignLoading === ticket._id ? (
-                            <div className="px-4">
-                              <span className="loading loading-spinner loading-xs"></span>
-                            </div>
-                          ) : (
-                            "Release"
-                          )}
-                        </GradientButton>
+                          >
+                            {assignLoading === ticket._id ? (
+                              <div className="px-4">
+                                <span className="loading loading-spinner loading-xs"></span>
+                              </div>
+                            ) : (
+                              "Release"
+                            )}
+                          </GradientButton>
+                        )}
                       </div>
                     </td>
                   </tr>
