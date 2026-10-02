@@ -27,6 +27,9 @@ import Swal from "sweetalert2";
 import GradientCard from "../../components/ui/Card/GradientCard";
 import { toast } from "react-toastify";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 const AgentTicketDetails = () => {
   const { user } = useContext(AuthContext);
   const { ticketId } = useParams();
@@ -72,12 +75,13 @@ const AgentTicketDetails = () => {
       return res.json();
     },
   });
+
   const status = resData?.data?.status || null;
   const aiResult = resData?.data?.aiResult || [];
   const customerInfo = resData?.customerInfo || {};
   const isResolved = resData?.data?.status === "resolved";
   const permission = resData?.permission || false;
-  console.log(resData);
+  // console.log(resData);
 
   // ================ GET SUPPORT CONVERSATION ==================
   const {
@@ -291,19 +295,22 @@ const AgentTicketDetails = () => {
     }
   };
 
-  // =============== handle suggest reply ======================
+  // =============== HANDLE SUGGEST REPLY ======================
   const handleSuggestReply = async () => {
     try {
       setIsGeneratingReply(true);
 
       const res = await fetch("http://localhost:3021/ai/suggest-reply", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
           authorization: `Bearer ${user.accessToken}`,
         },
+
         body: JSON.stringify({
           ticketId,
+          agentDraft: message?.trim() || "",
         }),
       });
 
@@ -315,8 +322,13 @@ const AgentTicketDetails = () => {
 
       const data = await res.json();
 
+      if (!data?.data?.reply) {
+        throw new Error("AI did not generate a reply");
+      }
+
       setMessage(data.data.reply);
-      console.log(data);
+
+      console.log("Suggest reply:", data);
     } catch (error) {
       console.error("Suggest reply error:", error);
     } finally {
@@ -1014,9 +1026,66 @@ const AgentTicketDetails = () => {
         }
               `}
                       >
-                        <p className="text-sm whitespace-pre-wrap wrap-break-word ">
-                          {item?.message}
-                        </p>
+                        {/* ==================== forating ======================== */}
+                        <div className="text-sm leading-relaxed wrap-break-word">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => (
+                                <p className="mb-2 last:mb-0">{children}</p>
+                              ),
+
+                              strong: ({ children }) => (
+                                <strong className="font-semibold">
+                                  {children}
+                                </strong>
+                              ),
+
+                              em: ({ children }) => <em>{children}</em>,
+
+                              ul: ({ children }) => (
+                                <ul className="my-2 list-disc space-y-1 pl-5">
+                                  {children}
+                                </ul>
+                              ),
+
+                              ol: ({ children }) => (
+                                <ol className="my-2 list-decimal space-y-1 pl-5">
+                                  {children}
+                                </ol>
+                              ),
+
+                              li: ({ children }) => (
+                                <li className="pl-1">{children}</li>
+                              ),
+
+                              a: ({ href, children }) => (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline underline-offset-2"
+                                >
+                                  {children}
+                                </a>
+                              ),
+
+                              blockquote: ({ children }) => (
+                                <blockquote className="my-2 border-l-2 border-current/30 pl-3 italic opacity-80">
+                                  {children}
+                                </blockquote>
+                              ),
+
+                              code: ({ children }) => (
+                                <code className="rounded bg-black/10 px-1 py-0.5 text-xs">
+                                  {children}
+                                </code>
+                              ),
+                            }}
+                          >
+                            {item?.message || ""}
+                          </ReactMarkdown>
+                        </div>
                       </GradientCard>
 
                       <p
@@ -1041,7 +1110,7 @@ const AgentTicketDetails = () => {
                   onInput={handleInput}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Write a reply to the customer..."
+                  placeholder="Write a reply or add a draft for AI to improve..."
                   className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
                 />
               </div>

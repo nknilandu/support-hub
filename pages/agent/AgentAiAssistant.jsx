@@ -20,6 +20,9 @@ import { formatRelativeDate } from "../../src/lib/formatRelativeDate";
 import GradientIconCard from "../../components/ui/Card/GradientIconCard";
 import GradientCard from "../../components/ui/Card/GradientCard";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 const AgentAiAssistant = () => {
   const { user } = useContext(AuthContext);
 
@@ -459,10 +462,95 @@ const AgentAiAssistant = () => {
                         />
 
                         <div className="max-w-[80%]">
-                          <div className="rounded-2xl text-sm leading-relaxed  whitespace-pre-wrap wrap-break-word">
-                            {item.message}
-                          </div>
+                          {/* ======================== formattiing =========================== */}
+                          <div className="rounded-2xl text-sm leading-relaxed wrap-break-word">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                p: ({ children }) => (
+                                  <p className="mb-3 last:mb-0">{children}</p>
+                                ),
 
+                                strong: ({ children }) => (
+                                  <strong className="font-semibold">
+                                    {children}
+                                  </strong>
+                                ),
+
+                                em: ({ children }) => <em>{children}</em>,
+
+                                ul: ({ children }) => (
+                                  <ul className="my-3 list-disc space-y-1.5 pl-5">
+                                    {children}
+                                  </ul>
+                                ),
+
+                                ol: ({ children }) => (
+                                  <ol className="my-3 list-decimal space-y-1.5 pl-5">
+                                    {children}
+                                  </ol>
+                                ),
+
+                                li: ({ children }) => (
+                                  <li className="pl-1">{children}</li>
+                                ),
+
+                                h1: ({ children }) => (
+                                  <h1 className="text-lg font-semibold mb-2">
+                                    {children}
+                                  </h1>
+                                ),
+
+                                h2: ({ children }) => (
+                                  <h2 className="text-base font-semibold mb-2">
+                                    {children}
+                                  </h2>
+                                ),
+
+                                h3: ({ children }) => (
+                                  <h3 className="text-sm font-semibold mb-2">
+                                    {children}
+                                  </h3>
+                                ),
+
+                                blockquote: ({ children }) => (
+                                  <blockquote className="my-3 border-l-2 border-primary/40 pl-3 italic text-base-content/70">
+                                    {children}
+                                  </blockquote>
+                                ),
+
+                                code: ({ children }) => (
+                                  <code className="rounded-md bg-base-content/10 px-1.5 py-0.5 text-xs">
+                                    {children}
+                                  </code>
+                                ),
+
+                                pre: ({ children }) => (
+                                  <pre className="my-3 overflow-x-auto rounded-xl bg-base-content/5 p-3 text-xs">
+                                    {children}
+                                  </pre>
+                                ),
+
+                                a: ({ href, children }) => (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary underline underline-offset-2"
+                                  >
+                                    {children}
+                                  </a>
+                                ),
+
+                                hr: () => (
+                                  <hr className="my-4 border-base-content/10" />
+                                ),
+                              }}
+                            >
+                              {item.message || ""}
+                            </ReactMarkdown>
+                          </div>
+                          {/* =============================== */}
                           {item.message && (
                             <div className="flex gap-4 mt-3 text-xs text-base-content/50">
                               <button
