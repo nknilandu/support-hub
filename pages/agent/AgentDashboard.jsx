@@ -104,6 +104,8 @@ const AgentDashboard = () => {
     },
   });
 
+  // console.log(data)
+
   const { data: notificationData = [], isLoading: notifyLoading } = useQuery({
     queryKey: ["agentDashboardNotification"],
     enabled: !!user?.accessToken && currentAgent?.verifyIdAgent === "approved",

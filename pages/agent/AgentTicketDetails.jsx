@@ -76,14 +76,16 @@ const AgentTicketDetails = () => {
     },
   });
 
-  const status = resData?.data?.status || null;
-  const aiResult = resData?.data?.aiResult || [];
-  const customerInfo = resData?.customerInfo || {};
-  const isResolved = resData?.data?.status === "resolved";
-  const permission = resData?.permission || false;
-  // console.log(resData);
+  console.log(resData);
 
-  // ================ GET SUPPORT CONVERSATION ==================
+  const permission = resData?.data?.permission || {};
+  const status = resData?.data?.status || null;
+  const aiResult = resData?.data?.aiResult || {};
+  const customerInfo = resData?.data?.customerInfo || {};
+  const isResolved = resData?.data?.status === "resolved";
+  // const isClosed = ["resolved", "closed"].includes(resData?.data?.status);
+
+  // ============== GET SUPPORT CONVERSATION ================
   const {
     data: conversationsData,
     isLoading: conversationsLoading,
@@ -91,7 +93,7 @@ const AgentTicketDetails = () => {
   } = useQuery({
     queryKey: ["ticketMessages", ticketId],
 
-    enabled: !!user?.accessToken && !!ticketId,
+    enabled: !!user?.accessToken && !!ticketId && !!permission?.canReadMessages,
 
     queryFn: async () => {
       const res = await fetch(
@@ -112,6 +114,8 @@ const AgentTicketDetails = () => {
   });
 
   const conversations = conversationsData?.data || [];
+
+  console.log(conversations);
 
   //===================== handle assign  ====================
   const handleAssign = async () => {
@@ -197,7 +201,7 @@ const AgentTicketDetails = () => {
     }
   };
 
-  // ================= HANDLE RESOLVE =================
+  //===================== HANDLE RESOLVE ====================
   const handleResolve = async () => {
     const result = await Swal.fire({
       title: "Resolve this ticket?",
@@ -295,7 +299,7 @@ const AgentTicketDetails = () => {
     }
   };
 
-  // =============== HANDLE SUGGEST REPLY ======================
+  // ============= HANDLE AI SUGGEST REPLY =====================
   const handleSuggestReply = async () => {
     try {
       setIsGeneratingReply(true);
@@ -336,7 +340,7 @@ const AgentTicketDetails = () => {
     }
   };
 
-  // =====================================
+  // ========================================================
   return (
     <div className="p-5 space-y-5">
       {/* title card */}
@@ -421,7 +425,7 @@ const AgentTicketDetails = () => {
             </div>
 
             {/* Resolve Action */}
-            {status === "open" && (
+            {status === "open" && permission?.canAssign && (
               <GradientButton
                 size="md"
                 onClick={handleAssign}
@@ -446,45 +450,46 @@ const AgentTicketDetails = () => {
       </CardWithBlurBlob>
 
       {/* Mobile Tab Buttons */}
-      {resData?.data?.supportMode === "human" && permission?.isCurrentAgent && (
-        <div className="flex justify-center lg:hidden">
-          {/* lg:hidden */}
-          <div className="grid w-fit grid-cols-2">
-            <GradientButton
-              size="sm"
-              onClick={() => setActiveTab("details")}
-              className="min-w-[120px] transition"
-              buttonClassName={` ${
-                activeTab === "details"
-                  ? "from-primary to-secondary text-base-100"
-                  : "from-primary/10 to-secondary/10 text-base-content"
-              }`}
-              rounded="rounded-none rounded-l-xl"
-            >
-              Details
-            </GradientButton>
+      {resData?.data?.supportMode === "human" &&
+        permission?.canReadMessages && (
+          <div className="flex justify-center lg:hidden">
+            {/* lg:hidden */}
+            <div className="grid w-fit grid-cols-2">
+              <GradientButton
+                size="sm"
+                onClick={() => setActiveTab("details")}
+                className="min-w-[120px] transition"
+                buttonClassName={` ${
+                  activeTab === "details"
+                    ? "from-primary to-secondary text-base-100"
+                    : "from-primary/10 to-secondary/10 text-base-content"
+                }`}
+                rounded="rounded-none rounded-l-xl"
+              >
+                Details
+              </GradientButton>
 
-            <GradientButton
-              size="sm"
-              onClick={() => setActiveTab("messages")}
-              className="min-w-[120px] transition"
-              buttonClassName={` ${
-                activeTab === "messages"
-                  ? "from-primary to-secondary text-base-100"
-                  : "from-primary/10 to-secondary/10 text-base-content"
-              }`}
-              rounded="rounded-none rounded-r-xl"
-            >
-              Messages
-            </GradientButton>
+              <GradientButton
+                size="sm"
+                onClick={() => setActiveTab("messages")}
+                className="min-w-[120px] transition"
+                buttonClassName={` ${
+                  activeTab === "messages"
+                    ? "from-primary to-secondary text-base-100"
+                    : "from-primary/10 to-secondary/10 text-base-content"
+                }`}
+                rounded="rounded-none rounded-r-xl"
+              >
+                Messages
+              </GradientButton>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Main Content */}
       <div
         className={`grid gap-3 h-[89svh] min-h-0 ${
-          resData?.data?.supportMode === "human" && permission?.isCurrentAgent
+          resData?.data?.supportMode === "human" && permission?.canReadMessages
             ? "lg:grid-cols-2"
             : "grid-cols-1"
         }`}
@@ -810,7 +815,7 @@ const AgentTicketDetails = () => {
         <CardWithBlurBlob
           interactive={false}
           className={`p-0 ${
-            dataLoading || !permission?.isCurrentAgent
+            dataLoading || !permission?.canReadMessages
               ? "hidden"
               : resData?.data?.supportMode === "human"
                 ? activeTab === "messages"
@@ -850,49 +855,53 @@ const AgentTicketDetails = () => {
                     <CircleCheck size={16} strokeWidth={2} />
                     <p>Ticket Resolved</p>
                   </GradientButton>
-                ) : (
+                ) : permission?.canRelease || permission?.canResolve ? (
                   <>
-                    <GradientButton
-                      size="sm"
-                      onClick={handleRelease}
-                      disabled={
-                        releaseLoading || resolveLoading || isGeneratingReply
-                      }
-                      buttonClassName="from-red-500/80 to-red-600/85 text-white/80"
-                    >
-                      {releaseLoading ? (
-                        <div className="w-17">
-                          <span className="loading loading-spinner loading-xs"></span>
-                        </div>
-                      ) : (
-                        <>
-                          <CircleX size={16} strokeWidth={2} />
-                          <p>Release</p>
-                        </>
-                      )}
-                    </GradientButton>
+                    {permission?.canRelease && (
+                      <GradientButton
+                        size="sm"
+                        onClick={handleRelease}
+                        disabled={
+                          releaseLoading || resolveLoading || isGeneratingReply
+                        }
+                        buttonClassName="from-red-500/80 to-red-600/85 text-white/80"
+                      >
+                        {releaseLoading ? (
+                          <div className="w-17">
+                            <span className="loading loading-spinner loading-xs"></span>
+                          </div>
+                        ) : (
+                          <>
+                            <CircleX size={16} strokeWidth={2} />
+                            <p>Release</p>
+                          </>
+                        )}
+                      </GradientButton>
+                    )}
 
-                    <GradientButton
-                      size="sm"
-                      onClick={handleResolve}
-                      disabled={
-                        releaseLoading || resolveLoading || isGeneratingReply
-                      }
-                      buttonClassName="from-green-500/80 to-green-600/85 text-white/80"
-                    >
-                      {resolveLoading ? (
-                        <div className="w-17">
-                          <span className="loading loading-spinner loading-xs"></span>
-                        </div>
-                      ) : (
-                        <>
-                          <CircleCheck size={16} strokeWidth={2} />
-                          <p>Resolve</p>
-                        </>
-                      )}
-                    </GradientButton>
+                    {permission?.canResolve && (
+                      <GradientButton
+                        size="sm"
+                        onClick={handleResolve}
+                        disabled={
+                          releaseLoading || resolveLoading || isGeneratingReply
+                        }
+                        buttonClassName="from-green-500/80 to-green-600/85 text-white/80"
+                      >
+                        {resolveLoading ? (
+                          <div className="w-17">
+                            <span className="loading loading-spinner loading-xs"></span>
+                          </div>
+                        ) : (
+                          <>
+                            <CircleCheck size={16} strokeWidth={2} />
+                            <p>Resolve</p>
+                          </>
+                        )}
+                      </GradientButton>
+                    )}
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -906,7 +915,7 @@ const AgentTicketDetails = () => {
     space-y-6
       
          ${
-           conversations.length === 0
+           conversations.length === 0 && !conversationsLoading
              ? "flex flex-col items-center justify-center"
              : ""
          }
@@ -994,6 +1003,7 @@ const AgentTicketDetails = () => {
               ) : (
                 conversations.map((item) => (
                   <div
+                    key={item._id}
                     className={`flex ${item?.sender?.role === "agent" ? "flex-row-reverse" : ""} min-w-0 items-start gap-3 mt-4`}
                   >
                     {/* Avatar */}
@@ -1102,66 +1112,69 @@ const AgentTicketDetails = () => {
           </div>
 
           {/* Reply Composer */}
-          {!isResolved && (
-            <div className="p-4 border-t border-base-content/10 bg-base-100/70">
-              <div className="rounded-2xl border border-base-content/10 bg-primary/2 pr-3 pl-4 py-3 flex gap-3 justify-center items-center">
-                <textarea
-                  rows={3}
-                  onInput={handleInput}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Write a reply or add a draft for AI to improve..."
-                  className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
-                />
-              </div>
+          {!["resolved", "closed"].includes(status) &&
+            permission?.canSendMessage && (
+              <div className="p-4 border-t border-base-content/10 bg-base-100/70">
+                <div className="rounded-2xl border border-base-content/10 bg-primary/2 pr-3 pl-4 py-3 flex gap-3 justify-center items-center">
+                  <textarea
+                    rows={3}
+                    onInput={handleInput}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Write a reply or add a draft for AI to improve..."
+                    className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
+                  />
+                </div>
 
-              <div className="flex flex-wrap justify-between mt-3">
-                <p className="text-xs text-base-content/50 mb-3">
-                  Reply to {customerInfo?.displayName || "Customer"}
-                </p>
+                <div className="flex flex-wrap justify-between mt-3">
+                  <p className="text-xs text-base-content/50 mb-3">
+                    Reply to {customerInfo?.displayName || "Customer"}
+                  </p>
 
-                <div className="flex flex-wrap justify-end gap-2">
-                  <GradientButton
-                    onClick={handleSuggestReply}
-                    disabled={isGeneratingReply || !permission?.canSuggestReply}
-                    size="sm"
-                    buttonClassName={`${
-                      isGeneratingReply ||
-                      conversationsLoading ||
-                      !permission?.canSuggestReply
-                        ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed text-base-content/50"
-                        : "from-primary to-secondary text-white"
-                    }`}
-                  >
-                    <Sparkles size={16} />
-                    {isGeneratingReply ? "Generating..." : "Suggest reply"}
-                  </GradientButton>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <GradientButton
+                      onClick={handleSuggestReply}
+                      disabled={
+                        isGeneratingReply || !permission?.canSuggestReply
+                      }
+                      size="sm"
+                      buttonClassName={`${
+                        isGeneratingReply ||
+                        conversationsLoading ||
+                        !permission?.canSuggestReply
+                          ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed text-base-content/50"
+                          : "from-primary to-secondary text-white"
+                      }`}
+                    >
+                      <Sparkles size={16} />
+                      {isGeneratingReply ? "Generating..." : "Suggest reply"}
+                    </GradientButton>
 
-                  <GradientButton
-                    onClick={handleSendMessage}
-                    disabled={
-                      !message.trim() ||
-                      isGeneratingReply ||
-                      conversationsLoading ||
-                      !permission?.canSendMessage
-                    }
-                    size="sm"
-                    buttonClassName={`${
-                      !message.trim() ||
-                      conversationsLoading ||
-                      isGeneratingReply ||
-                      !permission?.canSendMessage
-                        ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed text-base-content/50"
-                        : "from-primary to-secondary text-white"
-                    }`}
-                  >
-                    <SendHorizonal size={16} />
-                    Send
-                  </GradientButton>
+                    <GradientButton
+                      onClick={handleSendMessage}
+                      disabled={
+                        !message.trim() ||
+                        isGeneratingReply ||
+                        conversationsLoading ||
+                        !permission?.canSendMessage
+                      }
+                      size="sm"
+                      buttonClassName={`${
+                        !message.trim() ||
+                        conversationsLoading ||
+                        isGeneratingReply ||
+                        !permission?.canSendMessage
+                          ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed text-base-content/50"
+                          : "from-primary to-secondary text-white"
+                      }`}
+                    >
+                      <SendHorizonal size={16} />
+                      Send
+                    </GradientButton>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* ================================================================================================ */}
         </CardWithBlurBlob>

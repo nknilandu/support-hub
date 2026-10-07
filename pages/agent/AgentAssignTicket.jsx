@@ -85,9 +85,8 @@ const AgentAssignTicket = () => {
 
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
-  const currentAgent = data?.currentAgent;
 
-  console.log(tickets)
+  console.log(tickets);
 
   //===================== handle click ====================
   const handleRelease = async (ticketId) => {
@@ -461,21 +460,18 @@ const AgentAssignTicket = () => {
                     {/* Action */}
                     <td className="p-5">
                       <div className="flex items-center gap-2">
-                        {(!ticket.assignedAgent ||
-                          ticket.assignedAgent.email === currentAgent) && (
-                          <Link to={`/agent/tickets/${ticket._id}`}>
-                            <GradientButton
-                              size="sm"
-                              buttonClassName="
+                        <Link to={`/agent/tickets/${ticket._id}`}>
+                          <GradientButton
+                            size="sm"
+                            buttonClassName="
           from-primary/20
           to-secondary/10
           text-base-content
         "
-                            >
-                              View 
-                            </GradientButton>
-                          </Link>
-                        )}
+                          >
+                            View
+                          </GradientButton>
+                        </Link>
 
                         {ticket?.status?.toLowerCase() !== "resolved" && (
                           <GradientButton

@@ -21,7 +21,6 @@ const HandleSubmitTicket = ({
       resolutionSource: resolutionType === "ai" ? "ai" : null,
       aiResolved: resolutionType === "ai",
       escalatedToHuman: resolutionType === "human",
-      status: resolutionType === "ai" ? "resolved" : "open",
       aiResult,
       ticketData
     };

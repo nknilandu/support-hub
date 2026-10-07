@@ -454,17 +454,16 @@ const AgentCompanyTickets = () => {
                     <td className="p-5">
                       <div className="flex items-center gap-2">
                         {/* View */}
-                        {(!ticket.agentAction ||
-                          ticket.agentAction === "released" ||
-                          ticket.agentInfo?.uid === user?.uid) && (
+                        {(!ticket.currentAgent?.uid ||
+                          ticket.currentAgent.uid === user?.uid) && (
                           <Link to={`/agent/tickets/${ticket._id}`}>
                             <GradientButton
                               size="sm"
                               buttonClassName="
-            from-primary/20
-            to-secondary/10
-            text-base-content
-          "
+        from-primary/20
+        to-secondary/10
+        text-base-content
+      "
                             >
                               View
                             </GradientButton>
@@ -472,18 +471,17 @@ const AgentCompanyTickets = () => {
                         )}
 
                         {/* Assign */}
-                        {(!ticket.agentAction ||
-                          ticket.agentAction === "released") &&
-                          ticket.status === "open" && (
+                        {ticket.status === "open" &&
+                          !ticket.currentAgent?.uid && (
                             <GradientButton
                               size="sm"
                               onClick={() => handleAssign(ticket?._id)}
                               disabled={assignLoading === ticket._id}
                               buttonClassName="
-            from-primary/10
-            to-secondary/20
-            text-base-content
-          "
+        from-primary/10
+        to-secondary/20
+        text-base-content
+      "
                             >
                               {assignLoading === ticket._id ? (
                                 <div className="px-3">
