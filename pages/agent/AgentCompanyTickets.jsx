@@ -85,6 +85,7 @@ const AgentCompanyTickets = () => {
 
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
+  console.log(tickets);
 
   //===================== handle assign click ====================
   const handleAssign = async (ticketId) => {
@@ -104,7 +105,7 @@ const AgentCompanyTickets = () => {
 
       if (data.success) {
         toast(`Ticket Assigned`);
-        refetch();
+        await refetch();
       }
     } catch (error) {
       console.log(error);
@@ -415,7 +416,7 @@ const AgentCompanyTickets = () => {
                                 ? "yellow"
                                 : ticket.status === "resolved"
                                   ? "green"
-                                  : "gray"
+                                  : "slate"
                         }
                       >
                         {(ticket.status || "open").replaceAll("_", " ")}
@@ -424,7 +425,11 @@ const AgentCompanyTickets = () => {
 
                     {/* Assigned */}
                     <td>
-                      {ticket?.agentInfo ? (
+                      {ticket?.aiResolved ? (
+                        <p className="text-xs font-semibold text-base-content/40">
+                          Resolved by AI
+                        </p>
+                      ) : ticket?.agentInfo ? (
                         <div>
                           <p className="text-sm font-medium text-base-content/80">
                             {ticket?.agentInfo?.displayName || "N/A"}

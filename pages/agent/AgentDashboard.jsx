@@ -29,7 +29,6 @@ import { useQuery } from "@tanstack/react-query";
 
 import { AuthContext } from "../../app/providers/AuthProvider";
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
-import GradientButton from "../../components/ui/Button/GradientButton";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import LoadingPage from "../loading/LoadingPage/LoadingPage";
@@ -38,16 +37,16 @@ import AgentApprovalStatus from "./AgentApprovalStatus";
 // =============================
 const statusColors = {
   open: "#3b82f6",
-  assigned: "#6366f1",
+  assigned: "#A855F7",
   in_progress: "#f59e0b",
   resolved: "#22c55e",
   closed: "#64748b",
 };
 
 const priorityColors = {
-  low: "#94a3b8",
-  medium: "#3b82f6",
-  high: "#f97316",
+  low: "#22C55E",
+  medium: "#EAB308",
+  high: "#F97316",
   critical: "#ef4444",
 };
 
@@ -585,7 +584,7 @@ const AgentDashboard = () => {
                                       ? "yellow"
                                       : ticket.status === "resolved"
                                         ? "green"
-                                        : "gray"
+                                        : "slate"
                               }
                             >
                               {(ticket.status || "open").replace("_", " ")}
@@ -610,17 +609,12 @@ const AgentDashboard = () => {
                 <div className="py-14 px-5 text-center flex flex-col justify-center items-center">
                   <SoftIconCard icon={Ticket} variant="slate"></SoftIconCard>
                   <p className="mt-3 text-xl text-base-content/60 mb-3">
-                    No tickets found
+                    No company tickets found
                   </p>
                   <p className="text-sm text-base-content/60 mt-1 max-w-md">
-                    You don’t have any support tickets yet. Create your first
-                    ticket to get help from our support system or AI assistant.
+                    No customer tickets are available in your company queue
+                    right now, or your current filters did not match any ticket.
                   </p>
-                  <Link to="/customer/tickets/new">
-                    <GradientButton className="mt-5" buttonClassName="px-8">
-                      Create Ticket
-                    </GradientButton>
-                  </Link>
                 </div>
               )}
             </CardWithBlurBlob>
@@ -675,7 +669,7 @@ const AgentDashboard = () => {
                       {data?.urgentTickets.map((ticket) => (
                         <Link
                           key={ticket._id}
-                          to={`agent/tickets/${ticket._id}`}
+                          to={`/agent/tickets/${ticket._id}`}
                           className="block rounded-xl border-dashed border-2 border-base-content/10 px-5 py-4 transition hover:border-primary/30 hover:bg-primary/5"
                         >
                           <div className="mb-2 flex items-start justify-between gap-3">

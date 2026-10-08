@@ -14,6 +14,8 @@ import {
   SendHorizonal,
   Sparkles,
   Ticket,
+  TicketCheck,
+  TicketX,
   TriangleAlert,
   WandSparkles,
 } from "lucide-react";
@@ -76,14 +78,12 @@ const AgentTicketDetails = () => {
     },
   });
 
-  console.log(resData);
+  // console.log(resData);
 
   const permission = resData?.data?.permission || {};
   const status = resData?.data?.status || null;
   const aiResult = resData?.data?.aiResult || {};
   const customerInfo = resData?.data?.customerInfo || {};
-  const isResolved = resData?.data?.status === "resolved";
-  // const isClosed = ["resolved", "closed"].includes(resData?.data?.status);
 
   // ============== GET SUPPORT CONVERSATION ================
   const {
@@ -115,7 +115,7 @@ const AgentTicketDetails = () => {
 
   const conversations = conversationsData?.data || [];
 
-  console.log(conversations);
+  // console.log(conversations);
 
   //===================== handle assign  ====================
   const handleAssign = async () => {
@@ -181,9 +181,6 @@ const AgentTicketDetails = () => {
         throw new Error(data.message || "Failed to return ticket to queue");
       }
       toast.success("Ticket returned to the company queue");
-      await refetchTicket();
-      await refetch();
-
       navigate("/agent/my-tickets");
 
       Swal.fire({
@@ -365,7 +362,7 @@ const AgentTicketDetails = () => {
                         ? "yellow"
                         : resData?.data?.status === "resolved"
                           ? "green"
-                          : "gray"
+                          : "slate"
                 }
               >
                 <span className="h-1.5 w-1.5 mr-1 rounded-full bg-current"></span>
@@ -395,56 +392,79 @@ const AgentTicketDetails = () => {
             </div>
           </div>
 
-          {/* Right date & action area */}
-          <div className="flex flex-col items-stretch gap-3 lg:items-end">
-            {/* Date Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              {/* Created */}
-              <div className="min-w-[120px] rounded-2xl border border-base-content/10 bg-base-100/60 px-3 py-3 backdrop-blur-sm sm:min-w-[135px] sm:px-4">
-                <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-base-content/50">
-                  <CalendarDays size={13} />
-                  Created
-                </div>
-
-                <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                  {formatRelativeDate(resData?.data?.createdAt)}
-                </p>
+          {/* Right date cards */}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:shrink-0">
+            {/* Created */}
+            <div className="rounded-2xl border border-base-content/10 bg-base-100/60 px-3 py-3 backdrop-blur-sm sm:min-w-30 sm:px-4">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-base-content/50">
+                <CalendarDays size={13} />
+                Created
               </div>
 
-              {/* Updated */}
-              <div className="min-w-[120px] rounded-2xl border border-base-content/10 bg-base-100/60 px-3 py-3 backdrop-blur-sm sm:min-w-[135px] sm:px-4">
-                <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-base-content/50">
-                  <Clock3 size={13} />
-                  Updated
-                </div>
-
-                <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                  {formatRelativeDate(resData?.data?.updatedAt)}
-                </p>
-              </div>
+              <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
+                {formatRelativeDate(resData?.data?.createdAt)}
+              </p>
             </div>
 
-            {/* Resolve Action */}
-            {status === "open" && permission?.canAssign && (
-              <GradientButton
-                size="md"
-                onClick={handleAssign}
-                disabled={assignLoading}
-                className="w-full sm:w-fit lg:self-end"
-                buttonClassName={`${assignLoading ? "from-primary/10 to-secondary/10 text-base-content/50" : "from-primary to-secondary text-white"}`}
-              >
-                {assignLoading ? (
-                  <div className="flex w-28 items-center justify-center">
-                    <span className="loading loading-spinner loading-sm"></span>
-                  </div>
-                ) : (
-                  <div className="space-x-2 flex justify-center items-center">
-                    <Ticket size={16} strokeWidth={2} />
-                    <p>Assign Ticket</p>
-                  </div>
-                )}
-              </GradientButton>
-            )}
+            {/* Updated */}
+            <div className="rounded-2xl border border-base-content/10 bg-base-100/60 px-3 py-3 backdrop-blur-sm sm:min-w-30 sm:px-4">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-base-content/50">
+                <Clock3 size={13} />
+                Updated
+              </div>
+
+              <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
+                {formatRelativeDate(resData?.data?.updatedAt)}
+              </p>
+            </div>
+
+            {/* action */}
+            <div className="sm:col-span-2 sm:min-w-30 flex justify-end">
+              {status === "open" && permission?.canAssign && (
+                <GradientButton
+                  size="md"
+                  onClick={handleAssign}
+                  disabled={assignLoading}
+                  className="w-full"
+                  buttonClassName={`${assignLoading ? "from-primary/10 to-secondary/10 text-base-content/50" : "from-primary to-secondary text-white"}`}
+                >
+                  {assignLoading ? (
+                    <div className="flex w-28 items-center justify-center">
+                      <span className="loading loading-spinner loading-sm"></span>
+                    </div>
+                  ) : (
+                    <div className="space-x-2 flex justify-center items-center">
+                      <Ticket size={16} strokeWidth={2} />
+                      <p>Assign Ticket</p>
+                    </div>
+                  )}
+                </GradientButton>
+              )}
+
+              {status === "resolved" && (
+                <GradientButton
+                  size="md"
+                  disabled
+                  className="w-full"
+                  buttonClassName="from-success/5 to-success/10 text-success opacity-100 cursor-default"
+                >
+                  <TicketCheck size={16} strokeWidth={2} />
+                  <p>Ticket Resolved</p>
+                </GradientButton>
+              )}
+
+              {status === "closed" && (
+                <GradientButton
+                  size="md"
+                  disabled
+                  className="w-full"
+                  buttonClassName="from-base-content/5 to-base-content/10 text-base-content/60 opacity-100 cursor-default"
+                >
+                  <TicketX size={16} />
+                  <p>Ticket Closed</p>
+                </GradientButton>
+              )}
+            </div>
           </div>
         </div>
       </CardWithBlurBlob>
@@ -846,16 +866,7 @@ const AgentTicketDetails = () => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {isResolved ? (
-                  <GradientButton
-                    size="sm"
-                    disabled
-                    buttonClassName="from-success/5 to-success/10 text-success opacity-100 cursor-default"
-                  >
-                    <CircleCheck size={16} strokeWidth={2} />
-                    <p>Ticket Resolved</p>
-                  </GradientButton>
-                ) : permission?.canRelease || permission?.canResolve ? (
+                {permission?.canRelease || permission?.canResolve ? (
                   <>
                     {permission?.canRelease && (
                       <GradientButton

@@ -54,7 +54,7 @@ const CustomerTickets = () => {
   const tickets = data?.data || [];
   const pagination = data?.pagination || {};
 
-  console.log(tickets)
+  // console.log(tickets);
 
   //  ++++++++++++++++++
 
@@ -271,7 +271,7 @@ const CustomerTickets = () => {
               <tbody>
                 {tickets.map((ticket) => (
                   <tr key={ticket._id}>
-                     {/* Ticket */}
+                    {/* Ticket */}
                     <td className="max-w-md px-5 py-2">
                       <div>
                         <p className="text-xs text-base-content/50">
@@ -324,23 +324,28 @@ const CustomerTickets = () => {
                                 ? "yellow"
                                 : ticket.status === "resolved"
                                   ? "green"
-                                  : "gray"
+                                  : "slate"
                         }
                       >
                         {(ticket.status || "open").replace("_", " ")}
                       </TextBadge>
                     </td>
 
-                      {/* Assigned */}
+                    {/* Assigned */}
                     <td>
-                      {ticket?.agentInfo ? (
+                      {ticket?.aiResolved ? (
+                        <p className="text-xs font-semibold text-base-content/40">
+                          Resolved by AI
+                        </p>
+                      ) : ticket?.currentAgentInfo ? (
                         <div>
                           <p className="text-sm font-medium text-base-content/80">
-                            {ticket?.agentInfo?.displayName || "N/A"}
+                            {ticket?.currentAgentInfo?.displayName || "N/A"}
                           </p>
 
                           <p className="text-xs text-base-content/50">
-                            {ticket?.agentInfo?.email || "email not found"}
+                            {ticket?.currentAgentInfo?.email ||
+                              "email not found"}
                           </p>
                         </div>
                       ) : (

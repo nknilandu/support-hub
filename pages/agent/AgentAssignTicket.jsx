@@ -441,7 +441,7 @@ const AgentAssignTicket = () => {
                                 ? "yellow"
                                 : ticket.status === "resolved"
                                   ? "green"
-                                  : "gray"
+                                  : "slate"
                         }
                       >
                         {(ticket.status || "open").replaceAll("_", " ")}

@@ -13,40 +13,38 @@ const HandleSubmitTicket = ({
   const [uploadLoading, setUploadLoading] = useState(false);
   const { loading, user } = useContext(AuthContext);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setUploadLoading(true);
 
-    const payload = {
-      supportMode: resolutionType === "human" ? "human" : "ai",
-      resolutionSource: resolutionType === "ai" ? "ai" : null,
-      aiResolved: resolutionType === "ai",
-      escalatedToHuman: resolutionType === "human",
-      aiResult,
-      ticketData
-    };
+    try {
+      const payload = {
+        ticketData,
+        aiResult,
+        resolutionType,
+      };
 
-    fetch("http://localhost:3021/tickets", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        authorization: `Bearer ${user.accessToken}`,
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.success) {
-          throw new Error(data.message || "Ticket creation failed");
-        }
-        onSuccess?.(data);
-      })
-      .catch((err) => {
-        toast.error(err.message || "Something went wrong");
-        console.error(err);
-      })
-      .finally(() => {
-        setUploadLoading(false);
+      const res = await fetch("http://localhost:3021/tickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${user.accessToken}`,
+        },
+        body: JSON.stringify(payload),
       });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Ticket creation failed");
+      }
+
+      onSuccess?.(data);
+    } catch (error) {
+      toast.error(error.message || "Something went wrong");
+      console.error(error);
+    } finally {
+      setUploadLoading(false);
+    }
   };
 
   return (

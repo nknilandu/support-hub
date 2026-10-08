@@ -487,12 +487,14 @@ const CustomerDashboard = () => {
                             <TextBadge
                               variant={
                                 ticket.status === "open"
-                                  ? "cyan"
-                                  : ticket.status === "in_progress"
-                                    ? "yellow"
-                                    : ticket.status === "resolved"
-                                      ? "green"
-                                      : "gray"
+                                  ? "blue"
+                                  : ticket.status === "assigned"
+                                    ? "purple"
+                                    : ticket.status === "in_progress"
+                                      ? "yellow"
+                                      : ticket.status === "resolved"
+                                        ? "green"
+                                        : "slate"
                               }
                             >
                               {ticket.status.replace("_", " ")}
