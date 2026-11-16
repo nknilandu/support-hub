@@ -1,8 +1,10 @@
-import { useContext, useState } from "react";
-import GradientButton from "../../components/ui/Button/GradientButton";
-import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
+import { useContext, useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router";
+
 import {
   AlertTriangle,
+  ArrowLeft,
   CalendarDays,
   CheckCircle2,
   CircleCheck,
@@ -19,425 +21,715 @@ import {
   TriangleAlert,
   WandSparkles,
 } from "lucide-react";
-import TextBadge from "../../components/ui/Badge/TextBadge";
-import SoftIconCard from "../../components/ui/Card/SoftIconCard";
-import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router";
-import { AuthContext } from "../../app/providers/AuthProvider";
-import { formatRelativeDate } from "../../src/lib/formatRelativeDate";
-import Swal from "sweetalert2";
-import GradientCard from "../../components/ui/Card/GradientCard";
-import { toast } from "react-toastify";
 
+import Swal from "sweetalert2";
+import { toast } from "react-toastify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const AgentTicketDetails = () => {
+import { AuthContext } from "../../app/providers/AuthProvider";
+import { formatRelativeDate } from "../../src/lib/formatRelativeDate";
+
+import GradientButton from "../../components/ui/Button/GradientButton";
+import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
+import TextBadge from "../../components/ui/Badge/TextBadge";
+import SoftIconCard from "../../components/ui/Card/SoftIconCard";
+import GradientCard from "../../components/ui/Card/GradientCard";
+
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:3021"
+).replace(/\/+$/, "");
+
+const progressColorMap = {
+  green: "text-success",
+  success: "text-success",
+  emerald: "text-emerald-500",
+  yellow: "text-warning",
+  warning: "text-warning",
+  amber: "text-amber-500",
+  red: "text-error",
+  error: "text-error",
+  blue: "text-info",
+  cyan: "text-cyan-500",
+  purple: "text-purple-500",
+  pink: "text-pink-500",
+  slate: "text-base-content/60",
+};
+
+const statusVariants = {
+  open: "blue",
+  assigned: "purple",
+  in_progress: "yellow",
+  resolved: "green",
+  closed: "slate",
+};
+
+// Same-file request helper.
+async function requestApi(user, path, options = {}) {
+  if (!user) {
+    throw new Error("Please sign in to continue");
+  }
+
+  const token = await user.getIdToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+      authorization: `Bearer ${token}`,
+    },
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok || result?.success === false) {
+    const error = new Error(
+      result?.message || `Request failed (${response.status})`,
+    );
+
+    error.status = response.status;
+    throw error;
+  }
+
+  if (!result) {
+    throw new Error("The server returned an invalid response");
+  }
+
+  return result;
+}
+
+function Avatar({ src, name, className = "h-9 w-9" }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  return (
+    <div
+      className={`${className} flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary`}
+    >
+      {src && !failed ? (
+        <img
+          src={src}
+          alt={name || "User"}
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span>{(name || "U").trim().charAt(0).toUpperCase()}</span>
+      )}
+    </div>
+  );
+}
+
+const markdownComponents = {
+  p: ({ children }) => (
+    <p className="mb-2 whitespace-pre-wrap last:mb-0">{children}</p>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>
+  ),
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline underline-offset-2"
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="my-2 border-l-2 border-current/30 pl-3 italic">
+      {children}
+    </blockquote>
+  ),
+  pre: ({ children }) => (
+    <pre className="my-2 overflow-x-auto rounded-lg bg-black/10 p-3">
+      {children}
+    </pre>
+  ),
+  code: ({ children }) => (
+    <code className="rounded bg-black/10 px-1 py-0.5 text-xs">{children}</code>
+  ),
+  table: ({ children }) => (
+    <div className="my-2 overflow-x-auto">
+      <table className="table table-sm">{children}</table>
+    </div>
+  ),
+};
+
+// Remount when the ticket or signed-in user changes.
+// Drafts and action states never carry over to another ticket.
+export default function AgentTicketDetails() {
   const { user } = useContext(AuthContext);
   const { ticketId } = useParams();
+
+  return (
+    <AgentTicketDetailsContent
+      key={`${user?.uid || "guest"}:${ticketId}`}
+      user={user}
+      ticketId={ticketId}
+    />
+  );
+}
+
+function AgentTicketDetailsContent({ user, ticketId }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [activeTab, setActiveTab] = useState("details");
   const [message, setMessage] = useState("");
-  const [isGeneratingReply, setIsGeneratingReply] = useState(false);
-  const [releaseLoading, setReleaseLoading] = useState(false);
-  const [resolveLoading, setResolveLoading] = useState(false);
-  const [assignLoading, setAssignLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
-  // ====================
-  const handleInput = (e) => {
-    const textarea = e.target;
+  const textareaRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const actionLock = useRef(false);
+  const mountedRef = useRef(true);
+  const permissionRef = useRef({});
+
+  const busy = pendingAction !== null;
+  const validTicketId = /^[a-f\d]{24}$/i.test(ticketId || "");
+
+  const detailsKey = ["agentTicketDetails", user?.uid, ticketId];
+  const messagesKey = ["ticketMessages", user?.uid, ticketId];
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
     textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+  }, [message, activeTab]);
 
-    const maxHeight = 120; // approx 3 lines
-    textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
-  };
+  // =====================================================
+  // TICKET DETAILS
+  // =====================================================
 
-  // =========================== ticket data + customer data ===================
-  const {
-    data: resData,
-    isLoading: dataLoading,
-    refetch: refetchTicket,
-  } = useQuery({
-    queryKey: ["ticketDetails", ticketId],
+  const ticketQuery = useQuery({
+    queryKey: detailsKey,
+    enabled: Boolean(user && validTicketId),
+    retry: false,
 
-    enabled: !!user?.accessToken && !!ticketId,
+    queryFn: ({ signal }) =>
+      requestApi(user, `/agent/tickets/${ticketId}`, { signal }),
 
-    queryFn: async () => {
-      const res = await fetch(`http://localhost:3021/tickets/${ticketId}`, {
-        headers: {
-          authorization: `Bearer ${user.accessToken}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch ticket details");
-      }
-
-      return res.json();
-    },
+    refetchInterval: (query) =>
+      !busy && query.state.status !== "error" ? 10000 : false,
   });
 
-  // console.log(resData);
+  const ticketData = ticketQuery.data?.data;
+  const permission = ticketQuery.isError ? {} : ticketData?.permission || {};
 
-  const permission = resData?.data?.permission || {};
-  const status = resData?.data?.status || null;
-  const aiResult = resData?.data?.aiResult || {};
-  const customerInfo = resData?.data?.customerInfo || {};
+  permissionRef.current = permission;
 
-  // ============== GET SUPPORT CONVERSATION ================
-  const {
-    data: conversationsData,
-    isLoading: conversationsLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["ticketMessages", ticketId],
+  const status = ticketData?.status || "";
+  const aiResult = ticketData?.aiResult || {};
 
-    enabled: !!user?.accessToken && !!ticketId && !!permission?.canReadMessages,
+  // Current agent details API returns userInfo.
+  const customerInfo = ticketData?.userInfo || ticketData?.customerInfo || {};
 
-    queryFn: async () => {
-      const res = await fetch(
-        `http://localhost:3021/tickets/${ticketId}/conversations`,
-        {
-          headers: {
-            authorization: `Bearer ${user.accessToken}`,
-          },
-        },
-      );
+  const agentInfo = ticketData?.agentInfo || {};
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch ticket messages");
-      }
+  const states = Array.isArray(aiResult.states) ? aiResult.states : [];
+  const metrics = Array.isArray(aiResult.metrics) ? aiResult.metrics : [];
+  const recommendations = Array.isArray(aiResult.recommendations)
+    ? aiResult.recommendations
+    : [];
+  const steps = Array.isArray(aiResult.steps) ? aiResult.steps : [];
 
-      return res.json();
-    },
+  const originalDescription =
+    typeof ticketData?.ticketData === "string"
+      ? ticketData.ticketData
+      : ticketData?.ticketData?.description || ticketData?.description || "";
+
+  const title =
+    aiResult.ticketTitle ||
+    ticketData?.ticketData?.subject ||
+    ticketData?.subject ||
+    "Untitled Ticket";
+
+  const canReadTicket = permission.canRead === true;
+
+  // The backend permission is authoritative.
+  // Do not additionally require supportMode === "human".
+  const canReadMessages = canReadTicket && permission.canReadMessages === true;
+
+  const canSendMessage = canReadMessages && permission.canSendMessage === true;
+
+  // =====================================================
+  // CONVERSATIONS
+  // =====================================================
+
+  const messagesQuery = useQuery({
+    queryKey: messagesKey,
+
+    enabled: Boolean(user && validTicketId && canReadMessages),
+
+    retry: false,
+
+    queryFn: ({ signal }) =>
+      requestApi(user, `/tickets/${ticketId}/conversations`, {
+        signal,
+      }),
+
+    refetchInterval: (query) =>
+      canReadMessages && !busy && query.state.status !== "error" ? 5000 : false,
   });
 
-  const conversations = conversationsData?.data || [];
+  const conversations =
+    canReadMessages && Array.isArray(messagesQuery.data?.data)
+      ? messagesQuery.data.data
+      : [];
 
-  // console.log(conversations);
+  const lastMessageId = conversations[conversations.length - 1]?._id;
 
-  //===================== handle assign  ====================
-  const handleAssign = async () => {
-    try {
-      setAssignLoading(true);
-      const res = await fetch(
-        `http://localhost:3021/agent/tickets/${ticketId}/assign`,
-        {
-          method: "PATCH",
-          headers: {
-            authorization: `Bearer ${user.accessToken}`,
-          },
-        },
-      );
+  useEffect(() => {
+    // Do not clear drafts during loading or temporary API errors.
+    if (!ticketQuery.isSuccess) return;
 
-      const data = await res.json();
-
-      if (data.success) {
-        toast(`Ticket Assigned`);
-        refetch();
-        refetchTicket();
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error("Something went wrong");
-    } finally {
-      setAssignLoading(false);
-    }
-  };
-
-  //===================== handle release ====================
-  const handleRelease = async () => {
-    const result = await Swal.fire({
-      title: "Return ticket to queue?",
-      text: "This ticket will be removed from your assigned list and returned to the company queue.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, return to queue",
-      cancelButtonText: "Cancel",
-    });
-
-    if (!result.isConfirmed) {
-      return;
+    if (!canReadMessages) {
+      setActiveTab("details");
     }
 
-    try {
-      setReleaseLoading(true);
-
-      const res = await fetch(
-        `http://localhost:3021/agent/tickets/${ticketId}/release`,
-        {
-          method: "PATCH",
-          headers: {
-            authorization: `Bearer ${user.accessToken}`,
-          },
-        },
-      );
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to return ticket to queue");
-      }
-      toast.success("Ticket returned to the company queue");
-      navigate("/agent/my-tickets");
-
-      Swal.fire({
-        title: "Returned!",
-        text: "The ticket has been returned to the company queue.",
-        icon: "success",
-        timer: 1800,
-        showConfirmButton: false,
-      });
-    } catch (error) {
-      console.error("Release ticket error:", error);
-      toast.error(error.message || "Something went wrong");
-    } finally {
-      setReleaseLoading(false);
-    }
-  };
-
-  //===================== HANDLE RESOLVE ====================
-  const handleResolve = async () => {
-    const result = await Swal.fire({
-      title: "Resolve this ticket?",
-      text: "This ticket will be marked as resolved and removed from your active assigned tickets.",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, resolve",
-      cancelButtonText: "Cancel",
-    });
-
-    if (!result.isConfirmed) {
-      return;
-    }
-
-    try {
-      setResolveLoading(true);
-
-      const res = await fetch(
-        `http://localhost:3021/agent/tickets/${ticketId}/resolve`,
-        {
-          method: "PATCH",
-          headers: {
-            authorization: `Bearer ${user.accessToken}`,
-          },
-        },
-      );
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to resolve ticket");
-      }
-
-      toast.success("Ticket resolved successfully");
-
-      await refetchTicket();
-      await refetch();
-
-      await Swal.fire({
-        title: "Resolved!",
-        text: "The ticket has been successfully resolved.",
-        icon: "success",
-        timer: 1800,
-        showConfirmButton: false,
-      });
-    } catch (error) {
-      console.error("Resolve ticket error:", error);
-
-      toast.error(error.message || "Failed to resolve ticket");
-    } finally {
-      setResolveLoading(false);
-    }
-  };
-
-  // ================= SEND SUPPORT MESSAGE =================
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
-
-    try {
-      const res = await fetch(
-        `http://localhost:3021/tickets/${ticketId}/conversations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${user.accessToken}`,
-          },
-          body: JSON.stringify({
-            message: message.trim(),
-          }),
-        },
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to send message");
-      }
-
-      // Clear composer
+    if (!canSendMessage) {
       setMessage("");
+    }
+  }, [ticketQuery.isSuccess, canReadMessages, canSendMessage]);
 
-      await refetch();
-      await refetchTicket();
-    } catch (error) {
-      console.error("Send message error:", error);
+  useEffect(() => {
+    if (!canReadMessages) return;
 
-      Swal.fire({
-        icon: "error",
-        title: "Failed to send message",
-        text: error.message || "Something went wrong",
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [lastMessageId, activeTab, canReadMessages]);
+
+  // =====================================================
+  // REFRESH RELATED DATA
+  // =====================================================
+
+  const refreshTicketData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: detailsKey,
+        exact: true,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: messagesKey,
+        exact: true,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["companyTickets"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["myAssignedTickets"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["agentDashboard"],
+      }),
+    ]);
+  };
+
+  // =====================================================
+  // ASSIGN / RELEASE / RESOLVE
+  // =====================================================
+
+  const handleTicketAction = async (action) => {
+    const permissionName = {
+      assign: "canAssign",
+      release: "canRelease",
+      resolve: "canResolve",
+    }[action];
+
+    if (
+      !permissionName ||
+      !permissionRef.current[permissionName] ||
+      actionLock.current
+    ) {
+      return;
+    }
+
+    actionLock.current = true;
+    setPendingAction(action);
+
+    try {
+      if (action !== "assign") {
+        const result = await Swal.fire({
+          title:
+            action === "release"
+              ? "Return ticket to queue?"
+              : "Resolve this ticket?",
+
+          text:
+            action === "release"
+              ? "This ticket will return to the company queue."
+              : "This ticket will be marked as resolved. Further replies will be disabled.",
+
+          icon: action === "release" ? "warning" : "question",
+          showCancelButton: true,
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
+
+          confirmButtonText:
+            action === "release" ? "Yes, return to queue" : "Yes, resolve",
+
+          cancelButtonText: "Cancel",
+        });
+
+        if (!result.isConfirmed || !mountedRef.current) return;
+      }
+
+      // Permission may have changed while the dialog was open.
+      if (!permissionRef.current[permissionName]) return;
+
+      await requestApi(user, `/agent/tickets/${ticketId}/${action}`, {
+        method: "PATCH",
       });
+
+      if (!mountedRef.current) return;
+
+      toast.success(
+        {
+          assign: "Ticket assigned to you",
+          release: "Ticket returned to the queue",
+          resolve: "Ticket resolved successfully",
+        }[action],
+      );
+
+      if (action === "release") {
+        setMessage("");
+        setActiveTab("details");
+
+        await queryClient.cancelQueries({
+          queryKey: messagesKey,
+          exact: true,
+        });
+
+        queryClient.removeQueries({
+          queryKey: messagesKey,
+          exact: true,
+        });
+      }
+
+      await refreshTicketData();
+
+      if (action === "release" && mountedRef.current) {
+        navigate("/agent/my-tickets");
+      }
+    } catch (error) {
+      if (!mountedRef.current) return;
+
+      toast.error(error.message || "Unable to update this ticket");
+
+      if ([403, 404, 409].includes(error.status)) {
+        await refreshTicketData();
+      }
+    } finally {
+      actionLock.current = false;
+
+      if (mountedRef.current) {
+        setPendingAction(null);
+      }
     }
   };
 
-  // ============= HANDLE AI SUGGEST REPLY =====================
-  const handleSuggestReply = async () => {
+  // =====================================================
+  // SEND MESSAGE
+  // =====================================================
+
+  const handleSendMessage = async () => {
+    const draft = message.trim();
+
+    if (actionLock.current || !permissionRef.current.canSendMessage || !draft) {
+      return;
+    }
+
+    if (draft.length > 10000) {
+      toast.error("Message must be at most 10000 characters");
+      return;
+    }
+
+    actionLock.current = true;
+    setPendingAction("send");
+
     try {
-      setIsGeneratingReply(true);
-
-      const res = await fetch("http://localhost:3021/ai/suggest-reply", {
+      await requestApi(user, `/tickets/${ticketId}/conversations`, {
         method: "POST",
+        body: JSON.stringify({ message: draft }),
+      });
 
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${user.accessToken}`,
-        },
+      if (!mountedRef.current) return;
 
+      setMessage("");
+      await refreshTicketData();
+    } catch (error) {
+      if (!mountedRef.current) return;
+
+      toast.error(error.message || "Failed to send message");
+
+      if ([403, 404, 409].includes(error.status)) {
+        await refreshTicketData();
+      }
+    } finally {
+      actionLock.current = false;
+
+      if (mountedRef.current) {
+        setPendingAction(null);
+      }
+    }
+  };
+
+  // =====================================================
+  // AI SUGGESTED REPLY
+  // =====================================================
+
+  const handleSuggestReply = async () => {
+    if (
+      actionLock.current ||
+      !permissionRef.current.canSuggestReply ||
+      !permissionRef.current.canSendMessage
+    ) {
+      return;
+    }
+
+    actionLock.current = true;
+    setPendingAction("suggest");
+
+    try {
+      // This URL is defined in the supplied agent.routes.js.
+      const result = await requestApi(user, "/ai/suggest-reply", {
+        method: "POST",
         body: JSON.stringify({
           ticketId,
-          agentDraft: message?.trim() || "",
+          agentDraft: message.trim(),
         }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
+      const reply = result.data?.reply;
 
-        throw new Error(errorData?.message || "Failed to generate reply");
-      }
-
-      const data = await res.json();
-
-      if (!data?.data?.reply) {
+      if (typeof reply !== "string" || !reply.trim()) {
         throw new Error("AI did not generate a reply");
       }
 
-      setMessage(data.data.reply);
+      if (reply.trim().length > 10000) {
+        throw new Error(
+          "The generated reply is too long. Try a shorter draft.",
+        );
+      }
 
-      console.log("Suggest reply:", data);
+      if (!mountedRef.current || !permissionRef.current.canSendMessage) {
+        return;
+      }
+
+      setMessage(reply.trim());
+      toast.success("Suggestion ready. Review it before sending.");
     } catch (error) {
-      console.error("Suggest reply error:", error);
+      if (!mountedRef.current) return;
+
+      toast.error(error.message || "Failed to generate a suggestion");
+
+      if ([403, 404, 409].includes(error.status)) {
+        await refreshTicketData();
+      }
     } finally {
-      setIsGeneratingReply(false);
+      actionLock.current = false;
+
+      if (mountedRef.current) {
+        setPendingAction(null);
+      }
     }
   };
 
-  // ========================================================
-  return (
-    <div className="p-5 space-y-5">
-      {/* title card */}
-      <CardWithBlurBlob
-        interactive={false}
-        className={`${dataLoading || !resData?.data ? "hidden" : "block"}`}
-      >
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          {/* Left content */}
-          <div className="min-w-0">
-            {/* Ticket number */}
-            <div className=" flex flex-wrap items-center gap-2 text-xs text-base-content/50">
-              <span># {resData?.data?.ticketNumber}</span>
+  // =====================================================
+  // LOADING / ERROR / ACCESS STATES
+  // =====================================================
 
-              <TextBadge
-                variant={
-                  resData?.data?.status === "open"
-                    ? "blue"
-                    : resData?.data?.status === "assigned"
-                      ? "purple"
-                      : resData?.data?.status === "in_progress"
-                        ? "yellow"
-                        : resData?.data?.status === "resolved"
-                          ? "green"
-                          : "slate"
-                }
+  if (user && validTicketId && ticketQuery.isLoading) {
+    return (
+      <div className="space-y-5 p-4 lg:p-5">
+        <CardWithBlurBlob interactive={false}>
+          <div className="space-y-4">
+            <div className="skeleton h-4 w-32" />
+            <div className="skeleton h-7 w-3/4" />
+            <div className="skeleton h-4 w-full" />
+          </div>
+        </CardWithBlurBlob>
+
+        <CardWithBlurBlob interactive={false}>
+          <div className="min-h-[60vh] space-y-4">
+            {[1, 2, 3, 4, 5].map((item) => (
+              <div key={item} className="skeleton h-5 w-full" />
+            ))}
+          </div>
+        </CardWithBlurBlob>
+      </div>
+    );
+  }
+
+  if (
+    !user ||
+    !validTicketId ||
+    ticketQuery.isError ||
+    !ticketData ||
+    !canReadTicket
+  ) {
+    const errorStatus = ticketQuery.error?.status;
+
+    const heading = !user
+      ? "Sign in required"
+      : !validTicketId
+        ? "Invalid ticket"
+        : errorStatus === 404
+          ? "Ticket not found"
+          : errorStatus === 403 || (ticketData && !canReadTicket)
+            ? "Ticket access unavailable"
+            : "Unable to load ticket";
+
+    const description = !user
+      ? "Please sign in with your support agent account."
+      : !validTicketId
+        ? "The ticket link is invalid."
+        : ticketQuery.error?.message ||
+          "You do not currently have permission to view this ticket.";
+
+    return (
+      <div className="p-4 lg:p-5">
+        <CardWithBlurBlob
+          interactive={false}
+          className="flex min-h-[70vh] flex-col items-center justify-center px-5 py-12 text-center"
+        >
+          <SoftIconCard icon={TriangleAlert} className="mb-3" variant="slate" />
+
+          <h3 className="text-lg font-semibold">{heading}</h3>
+
+          <p className="mt-2 max-w-md text-sm text-base-content/60">
+            {description}
+          </p>
+
+          <div className="mt-5 flex gap-3">
+            <GradientButton size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft size={15} />
+              Go Back
+            </GradientButton>
+
+            {user && validTicketId && (
+              <GradientButton
+                size="sm"
+                disabled={ticketQuery.isFetching}
+                onClick={() => ticketQuery.refetch()}
               >
-                <span className="h-1.5 w-1.5 mr-1 rounded-full bg-current"></span>
-                {resData?.data?.status}
+                {ticketQuery.isFetching ? "Retrying..." : "Try again"}
+              </GradientButton>
+            )}
+          </div>
+        </CardWithBlurBlob>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 p-4 lg:p-5">
+      {/* Ticket header */}
+      <CardWithBlurBlob interactive={false}>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+              <span className="font-mono">
+                # {ticketData.ticketNumber || "—"}
+              </span>
+
+              <TextBadge variant={statusVariants[status] || "slate"}>
+                <span className="mr-1 h-1.5 w-1.5 rounded-full bg-current" />
+                {status.replaceAll("_", " ") || "Unknown"}
               </TextBadge>
+
+              {ticketData.aiResolved === true && (
+                <TextBadge variant="purple">AI resolved</TextBadge>
+              )}
             </div>
 
-            {/* Title */}
-            <h1 className="mt-3 text-xl font-bold leading-tight text-base-content sm:text-2xl">
-              {aiResult?.ticketTitle}
+            <h1 className="mt-3 text-xl font-bold leading-tight sm:text-2xl">
+              {title}
             </h1>
 
-            {/* Description */}
-            <p className="max-w-4xl text-sm leading-6 text-base-content/60">
-              {aiResult?.summary}
+            <p className="mt-1 max-w-4xl whitespace-pre-wrap text-sm leading-6 text-base-content/60">
+              {aiResult.summary || originalDescription}
             </p>
 
-            {/* Badges */}
-
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <TextBadge variant="cyan">{aiResult?.category}</TextBadge>
-              {aiResult?.states?.map((item, i) => (
-                <TextBadge key={i} variant={item.variant}>
+              {(aiResult.category || ticketData.category) && (
+                <TextBadge variant="cyan">
+                  {aiResult.category || ticketData.category}
+                </TextBadge>
+              )}
+
+              {states.map((item, index) => (
+                <TextBadge key={index} variant={item.variant || "slate"}>
                   {item.value} {item.title}
                 </TextBadge>
               ))}
             </div>
           </div>
 
-          {/* Right date cards */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:shrink-0">
-            {/* Created */}
-            <div className="rounded-2xl border border-base-content/10 bg-base-100/60 px-3 py-3 backdrop-blur-sm sm:min-w-30 sm:px-4">
-              <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-base-content/50">
-                <CalendarDays size={13} />
-                Created
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:shrink-0">
+            {[
+              {
+                label: "Created",
+                value: ticketData.createdAt,
+                Icon: CalendarDays,
+              },
+              {
+                label: "Updated",
+                value: ticketData.updatedAt,
+                Icon: Clock3,
+              },
+            ].map(({ label, value, Icon }) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-base-content/10 bg-base-100/60 px-4 py-3"
+              >
+                <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-base-content/50">
+                  <Icon size={13} />
+                  {label}
+                </div>
+
+                <p className="mt-1 text-xs font-medium sm:text-sm">
+                  {value ? formatRelativeDate(value) : "—"}
+                </p>
               </div>
+            ))}
 
-              <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                {formatRelativeDate(resData?.data?.createdAt)}
-              </p>
-            </div>
-
-            {/* Updated */}
-            <div className="rounded-2xl border border-base-content/10 bg-base-100/60 px-3 py-3 backdrop-blur-sm sm:min-w-30 sm:px-4">
-              <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-base-content/50">
-                <Clock3 size={13} />
-                Updated
-              </div>
-
-              <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                {formatRelativeDate(resData?.data?.updatedAt)}
-              </p>
-            </div>
-
-            {/* action */}
-            <div className="sm:col-span-2 sm:min-w-30 flex justify-end">
-              {status === "open" && permission?.canAssign && (
+            <div className="flex justify-end sm:col-span-2">
+              {permission.canAssign && (
                 <GradientButton
                   size="md"
-                  onClick={handleAssign}
-                  disabled={assignLoading}
                   className="w-full"
-                  buttonClassName={`${assignLoading ? "from-primary/10 to-secondary/10 text-base-content/50" : "from-primary to-secondary text-white"}`}
+                  disabled={busy}
+                  onClick={() => handleTicketAction("assign")}
+                  buttonClassName="from-primary to-secondary text-white"
                 >
-                  {assignLoading ? (
-                    <div className="flex w-28 items-center justify-center">
-                      <span className="loading loading-spinner loading-sm"></span>
-                    </div>
-                  ) : (
-                    <div className="space-x-2 flex justify-center items-center">
-                      <Ticket size={16} strokeWidth={2} />
-                      <p>Assign Ticket</p>
-                    </div>
-                  )}
+                  <Ticket size={16} />
+                  {pendingAction === "assign"
+                    ? "Assigning..."
+                    : "Assign Ticket"}
                 </GradientButton>
               )}
 
@@ -446,10 +738,10 @@ const AgentTicketDetails = () => {
                   size="md"
                   disabled
                   className="w-full"
-                  buttonClassName="from-success/5 to-success/10 text-success opacity-100 cursor-default"
+                  buttonClassName="from-success/5 to-success/10 text-success opacity-100"
                 >
-                  <TicketCheck size={16} strokeWidth={2} />
-                  <p>Ticket Resolved</p>
+                  <TicketCheck size={16} />
+                  Ticket Resolved
                 </GradientButton>
               )}
 
@@ -458,10 +750,10 @@ const AgentTicketDetails = () => {
                   size="md"
                   disabled
                   className="w-full"
-                  buttonClassName="from-base-content/5 to-base-content/10 text-base-content/60 opacity-100 cursor-default"
+                  buttonClassName="from-base-content/5 to-base-content/10 text-base-content/60 opacity-100"
                 >
                   <TicketX size={16} />
-                  <p>Ticket Closed</p>
+                  Ticket Closed
                 </GradientButton>
               )}
             </div>
@@ -469,729 +761,592 @@ const AgentTicketDetails = () => {
         </div>
       </CardWithBlurBlob>
 
-      {/* Mobile Tab Buttons */}
-      {resData?.data?.supportMode === "human" &&
-        permission?.canReadMessages && (
-          <div className="flex justify-center lg:hidden">
-            {/* lg:hidden */}
-            <div className="grid w-fit grid-cols-2">
+      {/* Mobile tabs */}
+      {canReadMessages && (
+        <div className="flex justify-center lg:hidden">
+          <div className="grid w-fit grid-cols-2">
+            {["details", "messages"].map((tab, index) => (
               <GradientButton
+                key={tab}
                 size="sm"
-                onClick={() => setActiveTab("details")}
-                className="min-w-[120px] transition"
-                buttonClassName={` ${
-                  activeTab === "details"
-                    ? "from-primary to-secondary text-base-100"
+                onClick={() => setActiveTab(tab)}
+                className="min-w-[120px]"
+                rounded={
+                  index === 0
+                    ? "rounded-none rounded-l-xl"
+                    : "rounded-none rounded-r-xl"
+                }
+                buttonClassName={
+                  activeTab === tab
+                    ? "from-primary to-secondary text-white"
                     : "from-primary/10 to-secondary/10 text-base-content"
-                }`}
-                rounded="rounded-none rounded-l-xl"
+                }
               >
-                Details
+                {tab === "details" ? "Details" : "Messages"}
               </GradientButton>
-
-              <GradientButton
-                size="sm"
-                onClick={() => setActiveTab("messages")}
-                className="min-w-[120px] transition"
-                buttonClassName={` ${
-                  activeTab === "messages"
-                    ? "from-primary to-secondary text-base-100"
-                    : "from-primary/10 to-secondary/10 text-base-content"
-                }`}
-                rounded="rounded-none rounded-r-xl"
-              >
-                Messages
-              </GradientButton>
-            </div>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-      {/* Main Content */}
       <div
-        className={`grid gap-3 h-[89svh] min-h-0 ${
-          resData?.data?.supportMode === "human" && permission?.canReadMessages
-            ? "lg:grid-cols-2"
-            : "grid-cols-1"
+        className={`grid h-[89svh] min-h-0 gap-3 ${
+          canReadMessages ? "lg:grid-cols-2" : "grid-cols-1"
         }`}
       >
-        {/* Ticket Info */}
+        {/* Details panel */}
         <CardWithBlurBlob
           interactive={false}
-          className={`min-h-0 overflow-hidden  ${
-            activeTab === "details" ? "block" : "hidden"
+          className={`h-full min-h-0 overflow-hidden ${
+            activeTab === "details" || !canReadMessages ? "block" : "hidden"
           } lg:block`}
         >
-          {dataLoading ? (
-            <div className="my-6 flex flex-col gap-3 justify-start items-start">
-              <div className="skeleton h-5 w-full rounded-full"></div>
-              <div className="skeleton h-5 w-full rounded-full"></div>
-              <div className="skeleton h-5 w-3/4 rounded-full"></div>
-              <div className="skeleton h-5 w-1/3 rounded-full mt-4"></div>
-              <div className="skeleton h-5 w-2/5 rounded-full"></div>
-              <div className="skeleton h-5 w-2/5 rounded-full"></div>
-              <div className="skeleton h-5 w-1/12 rounded-full"></div>
-            </div>
-          ) : !resData?.data ? (
-            <div className="flex h-full flex-col items-center justify-center px-5 py-8 text-center">
-              <SoftIconCard
-                icon={TriangleAlert}
-                className="mb-3"
-                variant="slate"
-              />
+          <div className="h-full overflow-y-auto pr-2">
+            {originalDescription && (
+              <div className="mb-5 rounded-2xl border border-base-content/10 p-4">
+                <h2 className="text-sm font-semibold">
+                  Customer&apos;s Description
+                </h2>
 
-              <h3 className="text-base font-semibold text-base-content/70">
-                Ticket Not Found
-              </h3>
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-base-content/70">
+                  {originalDescription}
+                </p>
+              </div>
+            )}
 
-              <p className="mt-2 max-w-sm text-xs leading-5 text-base-content/50">
-                We couldn't find this support ticket. It may have been deleted,
-                moved, or you may not have permission to view it.
-              </p>
+            {metrics.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-3">
+                {metrics.map((item, index) => (
+                  <div key={index} className="mr-6 flex items-center gap-1">
+                    <div className="h-2 w-2 rounded-full bg-success" />
+                    <p className="text-xs text-base-content/60">
+                      {item.label}:
+                    </p>
+                    <p className="text-xs font-semibold">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
-              <GradientButton
-                size="sm"
-                className="mt-5"
-                onClick={() => window.history.back()}
+            {states.length > 0 && (
+              <div
+                className={`mt-5 grid gap-4 ${
+                  states.length >= 3
+                    ? "md:grid-cols-2 lg:grid-cols-3"
+                    : states.length === 2
+                      ? "sm:grid-cols-2"
+                      : "grid-cols-1"
+                }`}
               >
-                Go Back
-              </GradientButton>
-            </div>
-          ) : (
-            <div className="h-full overflow-y-auto pr-2">
-              {/* ============================== */}
-              {aiResult?.metrics && (
-                <div className="flex flex-wrap gap-3 mt-3">
-                  {aiResult?.metrics.map((item, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-start items-center w-fit mr-6"
-                    >
-                      <div className="w-2 h-2 bg-success rounded-full"></div>
-                      <p className="ml-1 text-base-content/60 text-xs">
-                        {item.label}
-                        {":"}
-                      </p>
-                      <p className="ml-1 font-semibold text-base-content/80 text-xs">
-                        {item.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* +++++++++++++++++++++ */}
+                {states.map((state, index) => {
+                  const value = Math.min(
+                    100,
+                    Math.max(0, parseFloat(state.value) || 0),
+                  );
 
-              {aiResult?.states && (
-                <div
-                  className={`grid gap-4 ${aiResult?.states?.length >= 3 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : aiResult?.states?.length === 2 ? "sm:grid-cols-2" : "grid-cols-1"} mt-5`}
-                >
-                  {aiResult?.states.map((state, index) => (
+                  return (
                     <CardWithBlurBlob
                       key={index}
                       interactive={false}
                       className="p-4"
                     >
-                      <div className="flex flex-wrap justify-between items-center gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium text-base-content/50">
                             {state.title}
                           </p>
-                          <p className="lg:max-w-80 text-[11px] text-base-content/60">
+                          <p className="text-[11px] text-base-content/60">
                             {state.description}
                           </p>
                         </div>
 
                         {String(state.value).includes("%") ? (
                           <div
-                            className={`shrink-0 radial-progress text-${state.variant}-500 text-[10px] font-semibold`}
+                            className={`radial-progress shrink-0 text-[10px] font-semibold ${
+                              progressColorMap[state.variant] || "text-primary"
+                            }`}
                             style={{
-                              "--value": parseInt(state.value, 10),
+                              "--value": value,
                               "--size": "2.7rem",
                             }}
-                            aria-valuenow={parseInt(state.value, 10)}
                             role="progressbar"
+                            aria-label={state.title}
+                            aria-valuenow={value}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
                           >
                             {state.value}
                           </div>
                         ) : (
-                          <TextBadge variant={state.variant} size="xl">
+                          <TextBadge
+                            variant={state.variant || "slate"}
+                            size="xl"
+                          >
                             {state.value}
                           </TextBadge>
                         )}
                       </div>
                     </CardWithBlurBlob>
-                  ))}
+                  );
+                })}
+              </div>
+            )}
+
+            {aiResult.rootCause && (
+              <div className="mt-6 border-b border-base-content/10 pb-5">
+                <div className="flex items-center gap-2">
+                  <SoftIconCard
+                    icon={TriangleAlert}
+                    className="h-6 w-6 rounded-lg"
+                    size={14}
+                    variant="warning"
+                  />
+                  <h2 className="text-xl font-semibold">Likely Root Cause</h2>
                 </div>
-              )}
 
-              {/* +++++++++++++++++++++ */}
+                <p className="mt-2 text-sm leading-6 text-base-content/80">
+                  {aiResult.rootCause}
+                </p>
+              </div>
+            )}
 
-              {aiResult?.rootCause && (
-                <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
-                    <SoftIconCard
-                      icon={TriangleAlert}
-                      className="h-6 w-6 rounded-lg"
-                      size={14}
-                      variant="warning"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
-                      Likely Root Cause
-                    </h2>
-                  </div>
-                  <p className="mt-2 text-base-content/80">
-                    {aiResult?.rootCause}
-                  </p>
-
-                  <div className="mt-5 w-full h-1 border-t border-base-content/10" />
+            {recommendations.length > 0 && (
+              <div className="mt-6 border-b border-base-content/10 pb-5">
+                <div className="flex items-center gap-2">
+                  <SoftIconCard
+                    icon={Lightbulb}
+                    className="h-6 w-6 rounded-lg"
+                    size={14}
+                    variant="cyan"
+                  />
+                  <h2 className="text-xl font-semibold">Recommended Actions</h2>
                 </div>
-              )}
 
-              {/* ++++++++++ recommendations +++++++++++ */}
-
-              {aiResult?.recommendations?.length > 0 && (
-                <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
-                    <SoftIconCard
-                      icon={Lightbulb}
-                      className="h-6 w-6 rounded-lg"
-                      size={14}
-                      variant="cyan"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
-                      Recommended Actions
-                    </h2>
-                  </div>
-                  {/* ======== */}
-
-                  <div
-                    className={`mt-5 grid ${aiResult?.recommendations?.length >= 2 ? "sm:grid-cols-2 " : "grid-cols-1"} gap-2`}
-                  >
-                    {aiResult?.recommendations?.map((item, i) => (
-                      <div
-                        key={i}
-                        className="group flex items-center justify-between gap-4 rounded-2xl border-2 p-3 transition-all border-base-content/10 border-dashed hover:border-primary/20"
-                      >
-                        <div className=" flex items-center gap-4">
-                          {/* Icon */}
-                          <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
-                            <CheckCircle2 size={16} className="text-success" />
-                          </div>
-
-                          {/* Content */}
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-semibold">{item.title}</h3>
-
-                              <TextBadge variant={item.variant}>
-                                {item.impact}
-                              </TextBadge>
-                            </div>
-
-                            <p className=" text-sm text-base-content/60">
-                              {item.description}
-                            </p>
-                          </div>
-                        </div>
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  {recommendations.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex gap-4 rounded-2xl border-2 border-dashed border-base-content/10 p-3"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success/10">
+                        <CheckCircle2 size={16} className="text-success" />
                       </div>
-                    ))}
-                  </div>
 
-                  <div className="mt-5 w-full h-1 border-t border-base-content/10" />
-                </div>
-              )}
-
-              {/* ++++++++ steps +++++++++++++ */}
-
-              {aiResult?.steps?.length > 0 && (
-                <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
-                    <SoftIconCard
-                      icon={Clock4}
-                      className="h-6 w-6 rounded-lg"
-                      size={14}
-                      variant="pink"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
-                      Suggested Resolution Steps
-                    </h2>
-                  </div>
-                  {/* ======================== */}
-
-                  <div className="space-y-6 mt-8">
-                    {aiResult?.steps?.map((step, index) => (
-                      <div key={index} className="relative flex gap-5">
-                        {/* Timeline */}
-                        <div className="relative flex flex-col justify-start items-center">
-                          <div className="z-10 flex h-8 w-8 items-center justify-center rounded-full bg-base-300 text-sm font-semibold">
-                            {step.id}
-                          </div>
-
-                          {index !== aiResult?.steps.length - 1 && (
-                            <div className="absolute top-10 -bottom-4 w-px bg-base-content/20" />
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold">{item.title}</h3>
+                          {item.impact && (
+                            <TextBadge variant={item.variant || "slate"}>
+                              {item.impact}
+                            </TextBadge>
                           )}
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 pb-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold">{step.title}</h3>
-
-                            <span className="badge bg-base-content/10 badge-sm">
-                              {step.estimatedTime}
-                            </span>
-                          </div>
-
-                          <p className="mt-1 text-sm text-base-content/60">
-                            {step.description}
-                          </p>
-                        </div>
+                        <p className="mt-1 text-sm text-base-content/60">
+                          {item.description}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                  <div className="mt-5 w-full h-1 border-t border-base-content/10" />
-                </div>
-              )}
-
-              {/* ++++++++++ reason +++++++++++ */}
-              {aiResult?.escalation?.reason && (
-                <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
-                    <SoftIconCard
-                      icon={WandSparkles}
-                      className="h-6 w-6 rounded-lg"
-                      size={14}
-                      variant="purple"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
-                      Why AI Recommends This
-                    </h2>
-                  </div>
-                  <p className="mt-2 text-base-content/80">
-                    {aiResult?.escalation?.reason}
-                  </p>
-                </div>
-              )}
-
-              {/* ++++++++++ escalation info +++++++++++ */}
-
-              {aiResult?.escalation && (
-                <div
-                  className={`mt-6 p-4 border rounded-2xl shrink-0 ${
-                    aiResult?.escalation.recommended
-                      ? "border-warning/20 bg-warning/5"
-                      : "border-success/20 bg-success/5"
-                  }`}
-                >
-                  <div className="flex gap-3">
-                    <div
-                      className={`
-      h-9 w-9 shrink-0
-      flex items-center justify-center
-      rounded-xl text-base-100
-      ${aiResult?.escalation.recommended ? "bg-warning" : "bg-success"}
-    `}
-                    >
-                      {aiResult?.escalation.recommended ? (
-                        <AlertTriangle size={18} />
-                      ) : (
-                        <CheckCircle2 size={18} />
-                      )}
                     </div>
-
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold">
-                        {aiResult?.escalation.recommended
-                          ? "Human Review Recommended"
-                          : "Self-Service Recommended"}
-                      </h3>
-
-                      <p className="mt-1 text-sm text-base-content/60">
-                        {aiResult?.escalation.recommended
-                          ? "This issue may require agent assistance due to complexity, risk, or account-specific factors."
-                          : "AI believes this issue can likely be resolved without agent involvement by following the suggested steps."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* +++++++++++++++++++++ */}
-
-              {resData?.permission?.canDelete && (
-                <div className="mt-5 flex gap-3 justify-end">
-                  <GradientButton
-                    buttonClassName="from-error/70 to-error"
-                    // onClick={handleDeleteTicket}
-                  >
-                    Delete Ticket
-                  </GradientButton>
-                </div>
-              )}
-            </div>
-          )}
-        </CardWithBlurBlob>
-
-        {/* Conversation */}
-        <CardWithBlurBlob
-          interactive={false}
-          className={`p-0 ${
-            dataLoading || !permission?.canReadMessages
-              ? "hidden"
-              : resData?.data?.supportMode === "human"
-                ? activeTab === "messages"
-                  ? "block"
-                  : "hidden lg:block"
-                : "hidden"
-          }`}
-        >
-          {/* ======================================== chat box ============================================== */}
-
-          {/* Conversation Header */}
-          <div className="border-b border-base-content/10 px-5 py-4">
-            <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
-              <SoftIconCard
-                icon={MessagesSquare}
-                variant="primary"
-                className="shrink-0"
-              />
-
-              <div className="flex flex-col min-w-0 flex-1">
-                <h3 className="font-semibold truncate">Support Conversation</h3>
-
-                <p className="text-base-content/60 text-xs truncate">
-                  {customerInfo?.displayName && customerInfo?.email
-                    ? `${customerInfo.displayName} · ${customerInfo.email}`
-                    : "Real-time support with AI insights."}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {permission?.canRelease || permission?.canResolve ? (
-                  <>
-                    {permission?.canRelease && (
-                      <GradientButton
-                        size="sm"
-                        onClick={handleRelease}
-                        disabled={
-                          releaseLoading || resolveLoading || isGeneratingReply
-                        }
-                        buttonClassName="from-red-500/80 to-red-600/85 text-white/80"
-                      >
-                        {releaseLoading ? (
-                          <div className="w-17">
-                            <span className="loading loading-spinner loading-xs"></span>
-                          </div>
-                        ) : (
-                          <>
-                            <CircleX size={16} strokeWidth={2} />
-                            <p>Release</p>
-                          </>
-                        )}
-                      </GradientButton>
-                    )}
-
-                    {permission?.canResolve && (
-                      <GradientButton
-                        size="sm"
-                        onClick={handleResolve}
-                        disabled={
-                          releaseLoading || resolveLoading || isGeneratingReply
-                        }
-                        buttonClassName="from-green-500/80 to-green-600/85 text-white/80"
-                      >
-                        {resolveLoading ? (
-                          <div className="w-17">
-                            <span className="loading loading-spinner loading-xs"></span>
-                          </div>
-                        ) : (
-                          <>
-                            <CircleCheck size={16} strokeWidth={2} />
-                            <p>Resolve</p>
-                          </>
-                        )}
-                      </GradientButton>
-                    )}
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          {/*=========== Messages Area ==============*/}
-          <div
-            className={`
-    flex-1
-    overflow-y-auto
-    p-5
-    space-y-6
-      
-         ${
-           conversations.length === 0 && !conversationsLoading
-             ? "flex flex-col items-center justify-center"
-             : ""
-         }
-   
-            `}
-          >
-            {/* Customer Info */}
-            <div className="flex flex-col justify-center items-center mb-10">
-              <div className="avatar-group -space-x-5">
-                <div className="avatar">
-                  <div className="w-12 h-12">
-                    <img
-                      className="w-full h-full object-center object-cover  bg-base-content/10"
-                      src={customerInfo?.photoURL}
-                    />
-                  </div>
-                </div>
-                <div className="avatar">
-                  <div className="w-12 h-12">
-                    <img
-                      className="w-full h-full object-center object-cover bg-base-200"
-                      src={user?.photoURL}
-                    />
-                  </div>
-                </div>
-              </div>
-              <h3 className="mt-2 text-lg font-bold text-base-content/90">
-                {customerInfo?.displayName || "Customer Name"}
-              </h3>
-
-              <p className="text-xs text-base-content/60">
-                {customerInfo?.email || "customer@email.com"}
-              </p>
-
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                <TextBadge variant="blue" size="xs">
-                  {customerInfo?.role || "customer"}
-                </TextBadge>
-
-                <TextBadge variant="green" size="xs">
-                  {customerInfo?.status || "active"}
-                </TextBadge>
-
-                <TextBadge variant="purple" size="xs">
-                  {customerInfo?.companyName || "Company"}
-                </TextBadge>
-              </div>
-
-              {/* Conversation Intro */}
-              <div className="mt-4 text-center">
-                <h4 className="text-sm font-semibold text-base-content/90">
-                  Ready to help?
-                </h4>
-
-                <p className="mt-1.5 text-xs leading-relaxed text-base-content/60">
-                  Start a conversation with{" "}
-                  <span className="font-medium text-base-content/80">
-                    {customerInfo?.displayName || "the customer"}
-                  </span>{" "}
-                  and provide personalized support.
-                </p>
-
-                <p className="mt-2 text-xs text-base-content/50">
-                  You’re responding as{" "}
-                  <span className="font-medium text-base-content/70">
-                    {user?.displayName || "Support Agent"}
-                  </span>
-                  .
-                </p>
-
-                {conversations.length === 0 && (
-                  <p className="mt-3 text-[11px] text-base-content/40">
-                    No messages yet — send a message to get started.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* message body */}
-            <div className="w-full h-fit">
-              {conversationsLoading ? (
-                <div className="flex justify-center items-center text-primary">
-                  <span className="loading loading-spinner loading-md "></span>
-                </div>
-              ) : (
-                conversations.map((item) => (
-                  <div
-                    key={item._id}
-                    className={`flex ${item?.sender?.role === "agent" ? "flex-row-reverse" : ""} min-w-0 items-start gap-3 mt-4`}
-                  >
-                    {/* Avatar */}
-                    <div className="shrink-0 w-8 h-8 rounded-full overflow-hidden">
-                      <img
-                        className="object-center object-cover w-full h-full bg-base-content/5"
-                        src={item?.sender?.photoURL}
-                      />
-                    </div>
-
-                    {/* Message Content */}
-                    <div className="min-w-0 w-0 flex-1 max-w-[90%] sm:max-w-[70%]">
-                      <GradientCard
-                        className={`
-        w-fit
-        max-w-full
-        px-4
-        sm:px-5
-        py-3
-        text-sm
-        leading-relaxed
-        from-primary/10
-        to-secondary/5
-        text-base-content
-        shadow-none
-        ${
-          item?.sender?.role === "agent"
-            ? "ml-auto from-primary/95 to-secondary/95 text-white rounded-b-2xl rounded-l-2xl rounded-r-lg"
-            : "from-primary/10 to-secondary/5 text-base-content rounded-b-2xl rounded-r-2xl rounded-l-lg"
-        }
-              `}
-                      >
-                        {/* ==================== forating ======================== */}
-                        <div className="text-sm leading-relaxed wrap-break-word">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              p: ({ children }) => (
-                                <p className="mb-2 last:mb-0">{children}</p>
-                              ),
-
-                              strong: ({ children }) => (
-                                <strong className="font-semibold">
-                                  {children}
-                                </strong>
-                              ),
-
-                              em: ({ children }) => <em>{children}</em>,
-
-                              ul: ({ children }) => (
-                                <ul className="my-2 list-disc space-y-1 pl-5">
-                                  {children}
-                                </ul>
-                              ),
-
-                              ol: ({ children }) => (
-                                <ol className="my-2 list-decimal space-y-1 pl-5">
-                                  {children}
-                                </ol>
-                              ),
-
-                              li: ({ children }) => (
-                                <li className="pl-1">{children}</li>
-                              ),
-
-                              a: ({ href, children }) => (
-                                <a
-                                  href={href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="underline underline-offset-2"
-                                >
-                                  {children}
-                                </a>
-                              ),
-
-                              blockquote: ({ children }) => (
-                                <blockquote className="my-2 border-l-2 border-current/30 pl-3 italic opacity-80">
-                                  {children}
-                                </blockquote>
-                              ),
-
-                              code: ({ children }) => (
-                                <code className="rounded bg-black/10 px-1 py-0.5 text-xs">
-                                  {children}
-                                </code>
-                              ),
-                            }}
-                          >
-                            {item?.message || ""}
-                          </ReactMarkdown>
-                        </div>
-                      </GradientCard>
-
-                      <p
-                        className={`mt-1 text-[11px] text-base-content/40 ${item?.sender?.role === "agent" ? "text-end" : ""}`}
-                      >
-                        {item?.sender?.displayName} {" · "}{" "}
-                        {formatRelativeDate(item?.createdAt)}{" "}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Reply Composer */}
-          {!["resolved", "closed"].includes(status) &&
-            permission?.canSendMessage && (
-              <div className="p-4 border-t border-base-content/10 bg-base-100/70">
-                <div className="rounded-2xl border border-base-content/10 bg-primary/2 pr-3 pl-4 py-3 flex gap-3 justify-center items-center">
-                  <textarea
-                    rows={3}
-                    onInput={handleInput}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Write a reply or add a draft for AI to improve..."
-                    className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
-                  />
-                </div>
-
-                <div className="flex flex-wrap justify-between mt-3">
-                  <p className="text-xs text-base-content/50 mb-3">
-                    Reply to {customerInfo?.displayName || "Customer"}
-                  </p>
-
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <GradientButton
-                      onClick={handleSuggestReply}
-                      disabled={
-                        isGeneratingReply || !permission?.canSuggestReply
-                      }
-                      size="sm"
-                      buttonClassName={`${
-                        isGeneratingReply ||
-                        conversationsLoading ||
-                        !permission?.canSuggestReply
-                          ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed text-base-content/50"
-                          : "from-primary to-secondary text-white"
-                      }`}
-                    >
-                      <Sparkles size={16} />
-                      {isGeneratingReply ? "Generating..." : "Suggest reply"}
-                    </GradientButton>
-
-                    <GradientButton
-                      onClick={handleSendMessage}
-                      disabled={
-                        !message.trim() ||
-                        isGeneratingReply ||
-                        conversationsLoading ||
-                        !permission?.canSendMessage
-                      }
-                      size="sm"
-                      buttonClassName={`${
-                        !message.trim() ||
-                        conversationsLoading ||
-                        isGeneratingReply ||
-                        !permission?.canSendMessage
-                          ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed text-base-content/50"
-                          : "from-primary to-secondary text-white"
-                      }`}
-                    >
-                      <SendHorizonal size={16} />
-                      Send
-                    </GradientButton>
-                  </div>
+                  ))}
                 </div>
               </div>
             )}
 
-          {/* ================================================================================================ */}
+            {steps.length > 0 && (
+              <div className="mt-6 border-b border-base-content/10 pb-5">
+                <div className="flex items-center gap-2">
+                  <SoftIconCard
+                    icon={Clock4}
+                    className="h-6 w-6 rounded-lg"
+                    size={14}
+                    variant="pink"
+                  />
+                  <h2 className="text-xl font-semibold">
+                    Suggested Resolution Steps
+                  </h2>
+                </div>
+
+                <div className="mt-8 space-y-6">
+                  {steps.map((step, index) => (
+                    <div key={index} className="relative flex gap-5">
+                      <div className="relative flex flex-col items-center">
+                        <div className="z-10 flex h-8 w-8 items-center justify-center rounded-full bg-base-300 text-sm font-semibold">
+                          {step.id || index + 1}
+                        </div>
+
+                        {index !== steps.length - 1 && (
+                          <div className="absolute -bottom-4 top-10 w-px bg-base-content/20" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 pb-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold">{step.title}</h3>
+
+                          {step.estimatedTime && (
+                            <span className="badge badge-sm bg-base-content/10">
+                              {step.estimatedTime}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 text-sm text-base-content/60">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiResult.escalation?.reason && (
+              <div className="mt-6">
+                <div className="flex items-center gap-2">
+                  <SoftIconCard
+                    icon={WandSparkles}
+                    className="h-6 w-6 rounded-lg"
+                    size={14}
+                    variant="purple"
+                  />
+                  <h2 className="text-xl font-semibold">
+                    Why AI Recommends This
+                  </h2>
+                </div>
+
+                <p className="mt-2 text-sm leading-6 text-base-content/80">
+                  {aiResult.escalation.reason}
+                </p>
+              </div>
+            )}
+
+            {aiResult.escalation && (
+              <div
+                className={`mt-6 rounded-2xl border p-4 ${
+                  aiResult.escalation.recommended
+                    ? "border-warning/20 bg-warning/5"
+                    : "border-success/20 bg-success/5"
+                }`}
+              >
+                <div className="flex gap-3">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white ${
+                      aiResult.escalation.recommended
+                        ? "bg-warning"
+                        : "bg-success"
+                    }`}
+                  >
+                    {aiResult.escalation.recommended ? (
+                      <AlertTriangle size={18} />
+                    ) : (
+                      <CheckCircle2 size={18} />
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold">
+                      {aiResult.escalation.recommended
+                        ? "Human Review Recommended"
+                        : "Self-Service Recommended"}
+                    </h3>
+
+                    <p className="mt-1 text-sm text-base-content/60">
+                      {aiResult.escalation.recommended
+                        ? "This issue may need agent assistance due to complexity, risk, or account-specific factors."
+                        : "The suggested steps may help the customer resolve this issue."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </CardWithBlurBlob>
+
+        {/* Conversation panel */}
+        {canReadMessages && (
+          <CardWithBlurBlob
+            interactive={false}
+            className={`h-full min-h-0 flex-col overflow-hidden p-0 ${
+              activeTab === "messages" ? "flex" : "hidden lg:flex"
+            }`}
+          >
+            <div className="shrink-0 border-b border-base-content/10 px-5 py-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <SoftIconCard
+                  icon={MessagesSquare}
+                  variant="primary"
+                  className="shrink-0"
+                />
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate font-semibold">
+                    Support Conversation
+                  </h3>
+                  <p className="truncate text-xs text-base-content/60">
+                    {[customerInfo.displayName, customerInfo.email]
+                      .filter(Boolean)
+                      .join(" · ") || "Customer conversation"}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {permission.canRelease && (
+                    <GradientButton
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => handleTicketAction("release")}
+                      buttonClassName="from-red-500/80 to-red-600/85 text-white"
+                    >
+                      <CircleX size={16} />
+                      {pendingAction === "release" ? "Releasing..." : "Release"}
+                    </GradientButton>
+                  )}
+
+                  {permission.canResolve && (
+                    <GradientButton
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => handleTicketAction("resolve")}
+                      buttonClassName="from-green-500/80 to-green-600/85 text-white"
+                    >
+                      <CircleCheck size={16} />
+                      {pendingAction === "resolve" ? "Resolving..." : "Resolve"}
+                    </GradientButton>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-5">
+              <div className="mb-8 flex flex-col items-center text-center">
+                <div className="flex -space-x-3">
+                  <Avatar
+                    src={customerInfo.photoURL}
+                    name={customerInfo.displayName || "Customer"}
+                    className="h-12 w-12 ring-2 ring-base-100"
+                  />
+                  <Avatar
+                    src={agentInfo.photoURL || user.photoURL}
+                    name={agentInfo.displayName || user.displayName || "Agent"}
+                    className="h-12 w-12 ring-2 ring-base-100"
+                  />
+                </div>
+
+                <h3 className="mt-2 text-lg font-semibold">
+                  {customerInfo.displayName || "Customer"}
+                </h3>
+
+                {customerInfo.email && (
+                  <p className="text-xs text-base-content/60">
+                    {customerInfo.email}
+                  </p>
+                )}
+
+                <div className="mt-2 flex flex-wrap justify-center gap-2">
+                  <TextBadge variant="blue" size="xs">
+                    {customerInfo.role || "customer"}
+                  </TextBadge>
+
+                  {customerInfo.status && (
+                    <TextBadge
+                      variant={
+                        customerInfo.status === "active" ? "green" : "slate"
+                      }
+                      size="xs"
+                    >
+                      {customerInfo.status}
+                    </TextBadge>
+                  )}
+                </div>
+
+                <p className="mt-4 text-xs text-base-content/50">
+                  {canSendMessage
+                    ? `You are responding as ${
+                        agentInfo.displayName ||
+                        user.displayName ||
+                        "Support Agent"
+                      }.`
+                    : "This conversation is read-only."}
+                </p>
+              </div>
+
+              {messagesQuery.isLoading ? (
+                <div className="flex justify-center py-8">
+                  <span className="loading loading-spinner loading-md text-primary" />
+                </div>
+              ) : messagesQuery.isError ? (
+                <div className="rounded-xl border border-error/20 bg-error/5 p-4 text-center">
+                  <p className="text-sm text-error">
+                    {messagesQuery.error.message}
+                  </p>
+
+                  <button
+                    type="button"
+                    className="mt-2 text-sm underline"
+                    disabled={messagesQuery.isFetching}
+                    onClick={async () => {
+                      await ticketQuery.refetch();
+
+                      if (permissionRef.current.canReadMessages) {
+                        await messagesQuery.refetch();
+                      }
+                    }}
+                  >
+                    {messagesQuery.isFetching ? "Retrying..." : "Try again"}
+                  </button>
+                </div>
+              ) : conversations.length === 0 ? (
+                <p className="py-6 text-center text-sm text-base-content/50">
+                  {canSendMessage
+                    ? "No messages yet. Send a reply to get started."
+                    : "No messages in this conversation."}
+                </p>
+              ) : (
+                conversations.map((item) => {
+                  const isMine = item.sender?.uid === user.uid;
+
+                  return (
+                    <div
+                      key={item._id}
+                      className={`flex min-w-0 items-start gap-3 ${
+                        isMine ? "flex-row-reverse" : ""
+                      }`}
+                    >
+                      <Avatar
+                        src={item.sender?.photoURL}
+                        name={item.sender?.displayName}
+                        className="h-8 w-8"
+                      />
+
+                      <div className="min-w-0 max-w-[85%] sm:max-w-[75%]">
+                        <GradientCard
+                          className={`max-w-full px-4 py-3 text-sm leading-relaxed shadow-none ${
+                            isMine
+                              ? "ml-auto rounded-b-2xl rounded-l-2xl rounded-r-lg from-primary/95 to-secondary/95 text-white"
+                              : "rounded-b-2xl rounded-l-lg rounded-r-2xl from-primary/10 to-secondary/5 text-base-content"
+                          }`}
+                        >
+                          <div className="min-w-0 break-words [overflow-wrap:anywhere]">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={markdownComponents}
+                            >
+                              {item.message || ""}
+                            </ReactMarkdown>
+                          </div>
+                        </GradientCard>
+
+                        <p
+                          className={`mt-1 text-[11px] text-base-content/40 ${
+                            isMine ? "text-end" : ""
+                          }`}
+                        >
+                          {item.sender?.displayName || "User"}
+                          {" · "}
+                          {item.createdAt
+                            ? formatRelativeDate(item.createdAt)
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Reply composer */}
+            {canSendMessage ? (
+              <div className="shrink-0 border-t border-base-content/10 bg-base-100/70 p-4">
+                <div className="rounded-2xl border border-base-content/10 bg-primary/2 px-4 py-3">
+                  <textarea
+                    ref={textareaRef}
+                    rows={2}
+                    value={message}
+                    maxLength={10000}
+                    aria-label="Reply to customer"
+                    disabled={busy}
+                    onChange={(event) => setMessage(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        !event.shiftKey &&
+                        !event.nativeEvent.isComposing
+                      ) {
+                        event.preventDefault();
+
+                        if (
+                          !messagesQuery.isLoading &&
+                          !messagesQuery.isError
+                        ) {
+                          handleSendMessage();
+                        }
+                      }
+                    }}
+                    placeholder="Write a reply or add a draft for AI to improve..."
+                    className="max-h-[120px] w-full resize-none overflow-y-auto bg-transparent text-sm outline-none disabled:opacity-60"
+                  />
+                </div>
+
+                <div className="mt-2 flex justify-between gap-2 text-[11px] text-base-content/45">
+                  <span>Enter to send · Shift+Enter for a new line</span>
+                  <span>{message.length}/10000</span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-base-content/50">
+                    Reply to {customerInfo.displayName || "Customer"}
+                  </p>
+
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {permission.canSuggestReply && (
+                      <GradientButton
+                        size="sm"
+                        onClick={handleSuggestReply}
+                        disabled={
+                          busy ||
+                          messagesQuery.isLoading ||
+                          messagesQuery.isError
+                        }
+                        buttonClassName="from-primary to-secondary text-white disabled:opacity-50"
+                      >
+                        <Sparkles size={16} />
+                        {pendingAction === "suggest"
+                          ? "Generating..."
+                          : "Suggest reply"}
+                      </GradientButton>
+                    )}
+
+                    <GradientButton
+                      size="sm"
+                      onClick={handleSendMessage}
+                      disabled={
+                        busy ||
+                        !message.trim() ||
+                        messagesQuery.isLoading ||
+                        messagesQuery.isError
+                      }
+                      buttonClassName="from-primary to-secondary text-white disabled:opacity-50"
+                    >
+                      <SendHorizonal size={16} />
+                      {pendingAction === "send" ? "Sending..." : "Send"}
+                    </GradientButton>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="shrink-0 border-t border-base-content/10 p-4 text-center text-sm text-base-content/60">
+                {status === "closed"
+                  ? "This ticket is closed. Messages are read-only."
+                  : status === "resolved"
+                    ? "This ticket is resolved. Messages are read-only."
+                    : "You cannot send messages to this ticket."}
+              </div>
+            )}
+          </CardWithBlurBlob>
+        )}
       </div>
     </div>
   );
-};
-
-export default AgentTicketDetails;
+}

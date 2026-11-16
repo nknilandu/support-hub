@@ -60,8 +60,8 @@ const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // check user role
-  const fetchUserRole = async (firebaseUser = user) => {
+// check user role
+  const fetchUserRole = useCallback(async (firebaseUser) => {
     try {
       if (!firebaseUser) {
         return null;
@@ -84,7 +84,7 @@ const AuthProvider = ({ children }) => {
       console.log("fetchUserRole error:", error);
       return null;
     }
-  };
+  }, []);
 
   const authData = {
     googleSignIn,

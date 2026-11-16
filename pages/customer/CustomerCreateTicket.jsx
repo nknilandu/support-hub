@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { Check, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Check,
+  CheckCircle2,
+  Clock3,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
@@ -15,8 +21,20 @@ const CustomerCreateTicket = () => {
   const [ticket, setTicket] = useState(null);
   const [ticketData, setTicketData] = useState(null);
   const [aiResult, setAiResult] = useState(null);
+  const topRef = useRef(null);
 
-  // console.log(ticketData)
+  // Scroll smoothly to top when step changes
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
+
+  // Reset entire wizard if user wants to create another ticket
+  const handleResetFlow = () => {
+    setTicket(null);
+    setTicketData(null);
+    setAiResult(null);
+    setStep(1);
+  };
 
   const steps = [
     {
@@ -38,7 +56,7 @@ const CustomerCreateTicket = () => {
   ];
 
   return (
-    <section className="p-4 lg:p-5">
+    <section ref={topRef} className="p-4 lg:p-5">
       {/* header */}
       <div>
         <div className="flex flex-wrap items-center gap-2">
@@ -60,8 +78,7 @@ const CustomerCreateTicket = () => {
       {/* ================================= */}
       {/* STEPPER */}
       {/* ================================= */}
-
-      <div className="mt-4 mb-6 flex flex-wrap items-center gap-2">
+      <div className="mb-6 mt-4 flex flex-wrap items-center gap-2">
         {steps.map((item, index) => {
           const active = step === item.id;
           const completed = step > item.id;
@@ -110,9 +127,8 @@ const CustomerCreateTicket = () => {
         })}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row">
         <div className="w-full lg:w-2/3">
-          {/* +++++++++++++++ */}
           <div>
             {step === 1 && (
               <StepDescribe
@@ -151,12 +167,14 @@ const CustomerCreateTicket = () => {
                 ticket={ticket}
                 setTicket={setTicket}
                 setStep={setStep}
+                onCreateAnother={handleResetFlow}
               />
             )}
           </div>
-          {/* +++++++++++++++ */}
         </div>
 
+        {/* =============================== */}
+        {/* RIGHT SIDEBAR */}
         {/* =============================== */}
         <div className="w-full lg:w-1/3">
           <div className="space-y-3">
@@ -164,14 +182,12 @@ const CustomerCreateTicket = () => {
             <CardWithBlurBlob className="p-5" interactive={false}>
               <div className="flex items-center gap-3">
                 <SoftIconCard icon={Sparkles} variant="primary" size={15} />
-
                 <h3 className="text-sm font-semibold">How it works</h3>
               </div>
 
               <div className="mt-5 space-y-5">
                 <div>
                   <p className="text-xs font-medium">1. Describe your issue</p>
-
                   <p className="mt-1 text-[11px] leading-5 text-base-content/60">
                     Explain the problem and attach screenshots if needed.
                   </p>
@@ -179,7 +195,6 @@ const CustomerCreateTicket = () => {
 
                 <div>
                   <p className="text-xs font-medium">2. AI analyzes it</p>
-
                   <p className="mt-1 text-[11px] leading-5 text-base-content/60">
                     SupportAI automatically identifies category, priority and
                     likely causes.
@@ -188,7 +203,6 @@ const CustomerCreateTicket = () => {
 
                 <div>
                   <p className="text-xs font-medium">3. Get instant help</p>
-
                   <p className="mt-1 text-[11px] leading-5 text-base-content/60">
                     Many issues can be solved immediately without opening a
                     ticket.
@@ -197,7 +211,6 @@ const CustomerCreateTicket = () => {
 
                 <div>
                   <p className="text-xs font-medium">4. Escalate if needed</p>
-
                   <p className="mt-1 text-[11px] leading-5 text-base-content/60">
                     Human agents receive the AI analysis automatically.
                   </p>
@@ -205,56 +218,81 @@ const CustomerCreateTicket = () => {
               </div>
             </CardWithBlurBlob>
 
-            {/* TIPS */}
-            <CardWithBlurBlob className="p-5" interactive={false}>
-              <div className="flex items-center gap-3">
-                <SoftIconCard icon={CheckCircle2} variant="success" size={15} />
-
-                <h3 className="text-sm font-semibold">
-                  Better tickets get faster replies
-                </h3>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                <div className="flex gap-3">
-                  <span className="text-success">✓</span>
-
-                  <p className="text-xs text-base-content/70">
-                    Include exact error messages.
-                  </p>
+            {/* DYNAMIC TIPS vs WHAT HAPPENS NEXT */}
+            {step < 4 ? (
+              <CardWithBlurBlob className="p-5" interactive={false}>
+                <div className="flex items-center gap-3">
+                  <SoftIconCard
+                    icon={CheckCircle2}
+                    variant="success"
+                    size={15}
+                  />
+                  <h3 className="text-sm font-semibold">
+                    Better tickets get faster replies
+                  </h3>
                 </div>
 
-                <div className="flex gap-3">
-                  <span className="text-success">✓</span>
+                <div className="mt-5 space-y-3">
+                  <div className="flex gap-3">
+                    <span className="text-success">✓</span>
+                    <p className="text-xs text-base-content/70">
+                      Include exact error messages.
+                    </p>
+                  </div>
 
-                  <p className="text-xs text-base-content/70">
-                    Attach screenshots whenever possible.
-                  </p>
+                  <div className="flex gap-3">
+                    <span className="text-success">✓</span>
+                    <p className="text-xs text-base-content/70">
+                      Attach screenshots whenever possible.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="text-success">✓</span>
+                    <p className="text-xs text-base-content/70">
+                      Explain what you expected to happen.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="text-success">✓</span>
+                    <p className="text-xs text-base-content/70">
+                      Describe the steps required to reproduce the issue.
+                    </p>
+                  </div>
+                </div>
+              </CardWithBlurBlob>
+            ) : (
+              <CardWithBlurBlob className="p-5" interactive={false}>
+                <div className="flex items-center gap-3">
+                  <SoftIconCard icon={Clock3} variant="info" size={15} />
+                  <h3 className="text-sm font-semibold">What happens next?</h3>
                 </div>
 
-                <div className="flex gap-3">
-                  <span className="text-success">✓</span>
-
-                  <p className="text-xs text-base-content/70">
-                    Explain what you expected to happen.
+                <div className="mt-4 space-y-3 text-xs text-base-content/70">
+                  <p>
+                    • Your ticket is logged in{" "}
+                    <span className="font-medium text-base-content">
+                      My Tickets
+                    </span>{" "}
+                    with a unique tracking number.
+                  </p>
+                  <p>
+                    • If escalated, an available support agent will review your
+                    AI summary and reply shortly.
+                  </p>
+                  <p>
+                    • You will receive real-time notifications whenever an agent
+                    responds or updates the status.
                   </p>
                 </div>
-
-                <div className="flex gap-3">
-                  <span className="text-success">✓</span>
-
-                  <p className="text-xs text-base-content/70">
-                    Describe the steps required to reproduce the issue.
-                  </p>
-                </div>
-              </div>
-            </CardWithBlurBlob>
+              </CardWithBlurBlob>
+            )}
 
             {/* AI BENEFIT */}
             <CardWithBlurBlob className="p-5" interactive={false}>
               <div className="flex items-center gap-3">
                 <SoftIconCard icon={ShieldCheck} variant="primary" size={15} />
-
                 <h3 className="text-sm font-semibold">
                   AI can resolve issues instantly
                 </h3>
@@ -267,7 +305,6 @@ const CustomerCreateTicket = () => {
 
               <div className="mt-4 flex gap-2">
                 <TextBadge variant="green">87% accuracy</TextBadge>
-
                 <TextBadge variant="blue">Fast response</TextBadge>
               </div>
             </CardWithBlurBlob>

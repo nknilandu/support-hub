@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import GradientButton from "../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import {
@@ -28,100 +28,130 @@ import GradientCard from "../../components/ui/Card/GradientCard";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+const variantColorMap = {
+  green: "text-emerald-500",
+  emerald: "text-emerald-500",
+  blue: "text-blue-500",
+  cyan: "text-cyan-500",
+  yellow: "text-amber-500",
+  amber: "text-amber-500",
+  orange: "text-orange-500",
+  red: "text-rose-500",
+  rose: "text-rose-500",
+  purple: "text-purple-500",
+  slate: "text-slate-500",
+};
+
 const CustomerTicketDetails = () => {
   const { user } = useContext(AuthContext);
   const { ticketId } = useParams();
   const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState("details");
   const [message, setMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  // console.log(ticketId);
+  const textareaRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
-  // ====================
+  // ==================== Auto resize textarea ====================
   const handleInput = (e) => {
     const textarea = e.target;
-
     textarea.style.height = "auto";
-
-    const maxHeight = 120; // approx 3 lines
+    const maxHeight = 120;
     textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
   };
 
-  // ================================
+  // ==================== GET TICKET DETAILS ====================
   const {
     data: resData,
     isLoading: dataLoading,
+    isError: ticketError,
+    error: ticketErrorInfo,
     refetch: refetchTicket,
   } = useQuery({
-    queryKey: ["ticketDetails", ticketId],
-
-    enabled: !!user?.accessToken && !!ticketId,
-
+    queryKey: ["ticketDetails", user?.uid, ticketId],
+    enabled: !!user && !!ticketId,
+    refetchInterval: 10000,
     queryFn: async () => {
+      const token = await user.getIdToken();
       const res = await fetch(`http://localhost:3021/tickets/${ticketId}`, {
         headers: {
-          authorization: `Bearer ${user.accessToken}`,
+          authorization: `Bearer ${token}`,
         },
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch ticket details");
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to fetch ticket details");
       }
 
-      return res.json();
+      return result;
     },
   });
 
-  const aiResult = resData?.data?.aiResult || {};
-  const status = resData?.data?.status || null;
-  const permission = resData?.data?.permission || {};
-  const agentInfo = resData?.data?.agentInfo || null;
-  const customerInfo = resData?.data?.customerInfo || null;
-  // console.log(resData);
+  const ticket = resData?.data || null;
+  const aiResult = ticket?.aiResult || {};
+  const status = ticket?.status || null;
+  const permission = ticket?.permission || {};
+  const agentInfo = ticket?.currentAgentInfo || null;
+  const customerInfo = {
+    displayName: user?.displayName || "Customer",
+    email: user?.email || null,
+    photoURL: user?.photoURL || null,
+  };
 
   // ============== GET SUPPORT CONVERSATION ================
   const {
     data: conversationsData,
     isLoading: conversationsLoading,
+    isError: conversationsError,
     refetch,
   } = useQuery({
-    queryKey: ["ticketMessages", ticketId],
-
-    enabled: !!user?.accessToken && !!ticketId && !!permission?.canReadMessages,
-
+    queryKey: ["ticketMessages", user?.uid, ticketId],
+    enabled: !!user && !!ticketId && !!permission?.canReadMessages,
+    refetchInterval: 10000,
     queryFn: async () => {
+      const token = await user.getIdToken();
       const res = await fetch(
         `http://localhost:3021/tickets/${ticketId}/conversations`,
         {
           headers: {
-            authorization: `Bearer ${user.accessToken}`,
+            authorization: `Bearer ${token}`,
           },
         },
       );
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch ticket messages");
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to fetch ticket messages");
       }
 
-      return res.json();
+      return result;
     },
   });
 
   const conversations = conversationsData?.data || [];
-  // console.log(conversations);
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [conversations.length, activeTab]);
 
   // ================= SEND SUPPORT MESSAGE =================
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || isSending) return;
 
     try {
+      setIsSending(true);
+      const token = await user.getIdToken();
       const res = await fetch(
         `http://localhost:3021/tickets/${ticketId}/conversations`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            authorization: `Bearer ${user.accessToken}`,
+            authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             message: message.trim(),
@@ -131,12 +161,14 @@ const CustomerTicketDetails = () => {
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.success) {
         throw new Error(data?.message || "Failed to send message");
       }
 
-      // Clear composer
       setMessage("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
 
       await refetch();
       await refetchTicket();
@@ -148,6 +180,15 @@ const CustomerTicketDetails = () => {
         title: "Failed to send message",
         text: error.message || "Something went wrong",
       });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
@@ -167,18 +208,18 @@ const CustomerTicketDetails = () => {
     if (!result.isConfirmed) return;
 
     try {
+      const token = await user.getIdToken();
       const res = await fetch(`http://localhost:3021/tickets/${ticketId}`, {
         method: "DELETE",
         headers: {
-          authorization: `Bearer ${user.accessToken}`,
+          authorization: `Bearer ${token}`,
         },
       });
       const resultData = await res.json();
-      if (!res.ok) {
+      if (!res.ok || !resultData.success) {
         throw new Error(resultData.message || "Failed to delete ticket");
       }
 
-      // Success alert
       await Swal.fire({
         title: "Deleted!",
         text: "Your support ticket has been successfully deleted.",
@@ -213,12 +254,13 @@ const CustomerTicketDetails = () => {
     if (!result.isConfirmed) return;
 
     try {
+      const token = await user.getIdToken();
       const res = await fetch(
         `http://localhost:3021/tickets/${ticketId}/close`,
         {
           method: "PATCH",
           headers: {
-            authorization: `Bearer ${user.accessToken}`,
+            authorization: `Bearer ${token}`,
           },
         },
       );
@@ -265,12 +307,13 @@ const CustomerTicketDetails = () => {
     if (!result.isConfirmed) return;
 
     try {
+      const token = await user.getIdToken();
       const res = await fetch(
         `http://localhost:3021/tickets/${ticketId}/reopen`,
         {
           method: "PATCH",
           headers: {
-            authorization: `Bearer ${user.accessToken}`,
+            authorization: `Bearer ${token}`,
           },
         },
       );
@@ -302,61 +345,68 @@ const CustomerTicketDetails = () => {
     }
   };
 
+  const showConversationPanel =
+    !dataLoading &&
+    ticket?.supportMode === "human" &&
+    permission?.canReadMessages;
+
   // ================================
   return (
-    <div className="p-5 space-y-5">
+    <div className="space-y-5 p-4 lg:p-5">
       {/* title card */}
       <CardWithBlurBlob
         interactive={false}
-        className={`${dataLoading || !resData?.data ? "hidden" : "block"}`}
+        className={`${dataLoading || !ticket ? "hidden" : "block"}`}
       >
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           {/* Left content */}
           <div className="min-w-0">
             {/* Ticket number */}
-            <div className=" flex flex-wrap items-center gap-2 text-xs text-base-content/50">
-              <span># {resData?.data?.ticketNumber}</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+              <span className="font-mono"># {ticket?.ticketNumber}</span>
 
               <TextBadge
                 variant={
-                  resData?.data?.status === "open"
+                  status === "open"
                     ? "blue"
-                    : resData?.data?.status === "assigned"
+                    : status === "assigned"
                       ? "purple"
-                      : resData?.data?.status === "in_progress"
+                      : status === "in_progress"
                         ? "yellow"
-                        : resData?.data?.status === "resolved"
+                        : status === "resolved"
                           ? "green"
                           : "slate"
                 }
               >
-                <span className="h-1.5 w-1.5 mr-1 rounded-full bg-current"></span>
-                {resData?.data?.status}
+                <span className="mr-1 h-1.5 w-1.5 rounded-full bg-current"></span>
+                {(status || "open").replace("_", " ")}
               </TextBadge>
             </div>
 
             {/* Title */}
             <h1 className="mt-3 text-xl font-bold leading-tight text-base-content sm:text-2xl">
-              {aiResult?.ticketTitle}
+              {aiResult?.ticketTitle || "Untitled Ticket"}
             </h1>
 
             {/* Description */}
-            <p className="max-w-4xl text-sm leading-6 text-base-content/60">
+            <p className="mt-1 max-w-4xl text-sm leading-6 text-base-content/60">
               {aiResult?.summary}
             </p>
 
             {/* Badges */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <TextBadge variant="cyan">{aiResult?.category}</TextBadge>
+              {aiResult?.category && (
+                <TextBadge variant="cyan">{aiResult.category}</TextBadge>
+              )}
               {aiResult?.states?.map((item, i) => (
-                <TextBadge key={i} variant={item.variant}>
+                <TextBadge key={i} variant={item.variant || "slate"}>
                   {item.value} {item.title}
                 </TextBadge>
               ))}
             </div>
           </div>
 
-          {/* Right date cards */}
+          {/* Right date cards & actions */}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:shrink-0">
             {/* Created */}
             <div className="rounded-2xl border border-base-content/10 bg-base-100/60 px-3 py-3 backdrop-blur-sm sm:min-w-30 sm:px-4">
@@ -366,7 +416,7 @@ const CustomerTicketDetails = () => {
               </div>
 
               <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                {formatRelativeDate(resData?.data?.createdAt)}
+                {formatRelativeDate(ticket?.createdAt)}
               </p>
             </div>
 
@@ -378,17 +428,16 @@ const CustomerTicketDetails = () => {
               </div>
 
               <p className="mt-1 text-xs font-medium text-base-content sm:text-sm">
-                {formatRelativeDate(resData?.data?.updatedAt)}
+                {formatRelativeDate(ticket?.updatedAt)}
               </p>
             </div>
 
-            {/* action */}
-
+            {/* Action buttons */}
             {permission?.canReopen && (
               <GradientButton
                 onClick={handleReopenTicket}
                 className="w-full"
-                buttonClassName="from-info/80 to-info/95 text-white/80"
+                buttonClassName="from-info/80 to-info/95 text-white"
               >
                 <Ticket size={16} strokeWidth={2.2} />
                 <p>Reopen</p>
@@ -399,7 +448,7 @@ const CustomerTicketDetails = () => {
               <GradientButton
                 className="w-full"
                 onClick={handleCloseTicket}
-                buttonClassName="from-green-500/80 to-green-600/85 text-white/80"
+                buttonClassName="from-green-500/80 to-green-600/85 text-white"
               >
                 <TicketX size={18} strokeWidth={2.2} />
                 <p>Close</p>
@@ -409,86 +458,103 @@ const CustomerTicketDetails = () => {
         </div>
 
         {/* ======= alert toast ======== */}
-        <div className="mt-5">
-          {status === "resolved" && (
-            <div className="w-full flex px-5 py-2 justify-start items-center gap-3 bg-success/5 border border-green-500/30 rounded-xl text-success font-semibold">
-              <TicketCheck size={16} strokeWidth={3} />
-              <p>Ticket Resolved</p>
-            </div>
-          )}
+        {(status === "resolved" || status === "closed") && (
+          <div className="mt-5">
+            {status === "resolved" && (
+              <div className="flex w-full items-center justify-start gap-3 rounded-xl border border-green-500/30 bg-success/5 px-5 py-2 font-semibold text-success">
+                <TicketCheck size={16} strokeWidth={3} />
+                <p>Ticket Resolved</p>
+              </div>
+            )}
 
-          {status === "closed" && (
-            <div className="w-full flex px-5 py-2 justify-start items-center gap-3 bg-base-content/5 border border-base-content/10 rounded-xl text-base-content/60 font-semibold">
-              <TicketX size={16} strokeWidth={3} />
-              <p>Ticket Closed</p>
-            </div>
-          )}
-        </div>
+            {status === "closed" && (
+              <div className="flex w-full items-center justify-start gap-3 rounded-xl border border-base-content/10 bg-base-content/5 px-5 py-2 font-semibold text-base-content/60">
+                <TicketX size={16} strokeWidth={3} />
+                <p>Ticket Closed</p>
+              </div>
+            )}
+          </div>
+        )}
       </CardWithBlurBlob>
 
       {/* Mobile Tab Buttons */}
-      {resData?.data?.supportMode === "human" &&
-        permission?.canReadMessages && (
-          <div className="flex justify-center lg:hidden">
-            {/* lg:hidden */}
-            <div className="grid w-fit grid-cols-2">
-              <GradientButton
-                size="sm"
-                onClick={() => setActiveTab("details")}
-                className="min-w-[120px] transition"
-                buttonClassName={` ${
-                  activeTab === "details"
-                    ? "from-primary to-secondary text-base-100"
-                    : "from-primary/10 to-secondary/10 text-base-content"
-                }`}
-                rounded="rounded-none rounded-l-xl"
-              >
-                Details
-              </GradientButton>
+      {showConversationPanel && (
+        <div className="flex justify-center lg:hidden">
+          <div className="grid w-fit grid-cols-2">
+            <GradientButton
+              size="sm"
+              onClick={() => setActiveTab("details")}
+              className="min-w-[120px] transition"
+              buttonClassName={
+                activeTab === "details"
+                  ? "from-primary to-secondary text-base-100"
+                  : "from-primary/10 to-secondary/10 text-base-content"
+              }
+              rounded="rounded-none rounded-l-xl"
+            >
+              Details
+            </GradientButton>
 
-              <GradientButton
-                size="sm"
-                onClick={() => setActiveTab("messages")}
-                className="min-w-[120px] transition"
-                buttonClassName={` ${
-                  activeTab === "messages"
-                    ? "from-primary to-secondary text-base-100"
-                    : "from-primary/10 to-secondary/10 text-base-content"
-                }`}
-                rounded="rounded-none rounded-r-xl"
-              >
-                Messages
-              </GradientButton>
-            </div>
+            <GradientButton
+              size="sm"
+              onClick={() => setActiveTab("messages")}
+              className="min-w-[120px] transition"
+              buttonClassName={
+                activeTab === "messages"
+                  ? "from-primary to-secondary text-base-100"
+                  : "from-primary/10 to-secondary/10 text-base-content"
+              }
+              rounded="rounded-none rounded-r-xl"
+            >
+              Messages
+            </GradientButton>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Main Content */}
       <div
-        className={`grid gap-3 h-[89svh] min-h-0 ${
-          resData?.data?.supportMode === "human" && permission?.canReadMessages
-            ? "lg:grid-cols-2"
-            : "grid-cols-1"
+        className={`grid min-h-0 gap-3 ${
+          showConversationPanel
+            ? "h-[85svh] lg:grid-cols-2"
+            : "min-h-[60svh] grid-cols-1"
         }`}
       >
         {/* Ticket Info */}
         <CardWithBlurBlob
           interactive={false}
-          className={`min-h-0 overflow-hidden  ${
+          className={`min-h-0 overflow-hidden ${
             activeTab === "details" ? "block" : "hidden"
           } lg:block`}
         >
           {dataLoading ? (
-            <div className="my-6 flex flex-col gap-3 justify-start items-start">
+            <div className="my-6 flex flex-col items-start justify-start gap-3">
               <div className="skeleton h-5 w-full rounded-full"></div>
               <div className="skeleton h-5 w-full rounded-full"></div>
               <div className="skeleton h-5 w-3/4 rounded-full"></div>
-              <div className="skeleton h-5 w-1/3 rounded-full mt-4"></div>
+              <div className="skeleton mt-4 h-5 w-1/3 rounded-full"></div>
               <div className="skeleton h-5 w-2/5 rounded-full"></div>
               <div className="skeleton h-5 w-2/5 rounded-full"></div>
-              <div className="skeleton h-5 w-1/12 rounded-full"></div>
             </div>
-          ) : !resData?.data ? (
+          ) : ticketError ? (
+            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+              <h3 className="font-semibold text-error">
+                Failed to load ticket
+              </h3>
+
+              <p className="mt-2 text-sm text-base-content/60">
+                {ticketErrorInfo?.message || "Something went wrong."}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => refetchTicket()}
+                className="btn btn-primary btn-sm mt-4"
+              >
+                Retry
+              </button>
+            </div>
+          ) : !ticket ? (
             <div className="flex h-full flex-col items-center justify-center px-5 py-8 text-center">
               <SoftIconCard
                 icon={TriangleAlert}
@@ -501,150 +567,162 @@ const CustomerTicketDetails = () => {
               </h3>
 
               <p className="mt-2 max-w-sm text-xs leading-5 text-base-content/50">
-                We couldn't find this support ticket. It may have been deleted,
-                moved, or you may not have permission to view it.
+                We couldn&apos;t find this support ticket. It may have been
+                deleted, moved, or you may not have permission to view it.
               </p>
 
               <GradientButton
                 size="sm"
                 className="mt-5"
-                onClick={() => window.history.back()}
+                onClick={() => navigate("/customer/tickets")}
               >
-                Go Back
+                Back to My Tickets
               </GradientButton>
             </div>
           ) : (
             <div className="h-full overflow-y-auto pr-2">
-              {/* ============================== */}
-              {aiResult?.metrics && (
-                <div className="flex flex-wrap gap-3 mt-3">
-                  {aiResult?.metrics.map((item, i) => (
+              {/* Metrics */}
+              {aiResult?.metrics?.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {aiResult.metrics.map((item, i) => (
                     <div
                       key={i}
-                      className="flex justify-start items-center w-fit mr-6"
+                      className="mr-6 flex w-fit items-center justify-start"
                     >
-                      <div className="w-2 h-2 bg-success rounded-full"></div>
-                      <p className="ml-1 text-base-content/60 text-xs">
-                        {item.label}
-                        {":"}
+                      <div className="h-2 w-2 rounded-full bg-success"></div>
+                      <p className="ml-1 text-xs text-base-content/60">
+                        {item.label}:
                       </p>
-                      <p className="ml-1 font-semibold text-base-content/80 text-xs">
+                      <p className="ml-1 text-xs font-semibold text-base-content/80">
                         {item.value}
                       </p>
                     </div>
                   ))}
                 </div>
               )}
-              {/* +++++++++++++++++++++ */}
 
-              {aiResult?.states && (
+              {/* States */}
+              {aiResult?.states?.length > 0 && (
                 <div
-                  className={`grid gap-4 ${aiResult?.states?.length >= 3 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : aiResult?.states?.length === 2 ? "sm:grid-cols-2" : "grid-cols-1"} mt-5`}
+                  className={`mt-5 grid gap-4 ${
+                    aiResult.states.length >= 3
+                      ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                      : aiResult.states.length === 2
+                        ? "sm:grid-cols-2"
+                        : "grid-cols-1"
+                  }`}
                 >
-                  {aiResult?.states.map((state, index) => (
-                    <CardWithBlurBlob
-                      key={index}
-                      interactive={false}
-                      className="p-4"
-                    >
-                      <div className="flex flex-wrap justify-between items-center gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-base-content/50">
-                            {state.title}
-                          </p>
-                          <p className="lg:max-w-80 text-[11px] text-base-content/60">
-                            {state.description}
-                          </p>
-                        </div>
+                  {aiResult.states.map((state, index) => {
+                    const progressColor =
+                      variantColorMap[state.variant] || "text-primary";
 
-                        {String(state.value).includes("%") ? (
-                          <div
-                            className={`shrink-0 radial-progress text-${state.variant}-500 text-[10px] font-semibold`}
-                            style={{
-                              "--value": parseInt(state.value, 10),
-                              "--size": "2.7rem",
-                            }}
-                            aria-valuenow={parseInt(state.value, 10)}
-                            role="progressbar"
-                          >
-                            {state.value}
+                    return (
+                      <CardWithBlurBlob
+                        key={index}
+                        interactive={false}
+                        className="p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-base-content/50">
+                              {state.title}
+                            </p>
+                            <p className="text-[11px] text-base-content/60 lg:max-w-80">
+                              {state.description}
+                            </p>
                           </div>
-                        ) : (
-                          <TextBadge variant={state.variant} size="xl">
-                            {state.value}
-                          </TextBadge>
-                        )}
-                      </div>
-                    </CardWithBlurBlob>
-                  ))}
+
+                          {String(state.value).includes("%") ? (
+                            <div
+                              className={`radial-progress shrink-0 text-[10px] font-semibold ${progressColor}`}
+                              style={{
+                                "--value": parseInt(state.value, 10) || 0,
+                                "--size": "2.7rem",
+                              }}
+                              aria-valuenow={parseInt(state.value, 10) || 0}
+                              role="progressbar"
+                            >
+                              {state.value}
+                            </div>
+                          ) : (
+                            <TextBadge
+                              variant={state.variant || "slate"}
+                              size="xl"
+                            >
+                              {state.value}
+                            </TextBadge>
+                          )}
+                        </div>
+                      </CardWithBlurBlob>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* +++++++++++++++++++++ */}
-
+              {/* Root Cause */}
               {aiResult?.rootCause && (
                 <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
+                  <div className="mt-6 flex items-center justify-start gap-2">
                     <SoftIconCard
                       icon={TriangleAlert}
                       className="h-6 w-6 rounded-lg"
                       size={14}
                       variant="warning"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
+                    />
+                    <h2 className="text-xl font-semibold text-base-content/80">
                       Likely Root Cause
                     </h2>
                   </div>
                   <p className="mt-2 text-base-content/80">
-                    {aiResult?.rootCause}
+                    {aiResult.rootCause}
                   </p>
 
-                  <div className="mt-5 w-full h-1 border-t border-base-content/10" />
+                  <div className="mt-5 h-1 w-full border-t border-base-content/10" />
                 </div>
               )}
 
-              {/* ++++++++++ recommendations +++++++++++ */}
-
+              {/* Recommendations */}
               {aiResult?.recommendations?.length > 0 && (
                 <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
+                  <div className="mt-6 flex items-center justify-start gap-2">
                     <SoftIconCard
                       icon={Lightbulb}
                       className="h-6 w-6 rounded-lg"
                       size={14}
                       variant="cyan"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
+                    />
+                    <h2 className="text-xl font-semibold text-base-content/80">
                       Recommended Actions
                     </h2>
                   </div>
-                  {/* ======== */}
 
                   <div
-                    className={`mt-5 grid ${aiResult?.recommendations?.length >= 2 ? "sm:grid-cols-2 " : "grid-cols-1"} gap-2`}
+                    className={`mt-5 grid gap-2 ${
+                      aiResult.recommendations.length >= 2
+                        ? "sm:grid-cols-2"
+                        : "grid-cols-1"
+                    }`}
                   >
-                    {aiResult?.recommendations?.map((item, i) => (
+                    {aiResult.recommendations.map((item, i) => (
                       <div
                         key={i}
-                        className="group flex items-center justify-between gap-4 rounded-2xl border-2 p-3 transition-all border-base-content/10 border-dashed hover:border-primary/20"
+                        className="group flex items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-base-content/10 p-3 transition-all hover:border-primary/20"
                       >
-                        <div className=" flex items-center gap-4">
-                          {/* Icon */}
-                          <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success/10">
                             <CheckCircle2 size={16} className="text-success" />
                           </div>
 
-                          {/* Content */}
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="font-semibold">{item.title}</h3>
 
-                              <TextBadge variant={item.variant}>
+                              <TextBadge variant={item.variant || "cyan"}>
                                 {item.impact}
                               </TextBadge>
                             </div>
 
-                            <p className=" text-sm text-base-content/60">
+                            <p className="text-sm text-base-content/60">
                               {item.description}
                             </p>
                           </div>
@@ -653,38 +731,36 @@ const CustomerTicketDetails = () => {
                     ))}
                   </div>
 
-                  <div className="mt-5 w-full h-1 border-t border-base-content/10" />
+                  <div className="mt-5 h-1 w-full border-t border-base-content/10" />
                 </div>
               )}
 
-              {/* ++++++++ steps +++++++++++++ */}
-
+              {/* Steps */}
               {aiResult?.steps?.length > 0 && (
                 <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
+                  <div className="mt-6 flex items-center justify-start gap-2">
                     <SoftIconCard
                       icon={Clock4}
                       className="h-6 w-6 rounded-lg"
                       size={14}
                       variant="pink"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
+                    />
+                    <h2 className="text-xl font-semibold text-base-content/80">
                       Suggested Resolution Steps
                     </h2>
                   </div>
-                  {/* ======================== */}
 
-                  <div className="space-y-6 mt-8">
-                    {aiResult?.steps?.map((step, index) => (
+                  <div className="mt-8 space-y-6">
+                    {aiResult.steps.map((step, index) => (
                       <div key={index} className="relative flex gap-5">
                         {/* Timeline */}
-                        <div className="relative flex flex-col justify-start items-center">
+                        <div className="relative flex flex-col items-center justify-start">
                           <div className="z-10 flex h-8 w-8 items-center justify-center rounded-full bg-base-300 text-sm font-semibold">
                             {step.id}
                           </div>
 
-                          {index !== aiResult?.steps.length - 1 && (
-                            <div className="absolute top-10 -bottom-4 w-px bg-base-content/20" />
+                          {index !== aiResult.steps.length - 1 && (
+                            <div className="absolute -bottom-4 top-10 w-px bg-base-content/20" />
                           )}
                         </div>
 
@@ -693,7 +769,7 @@ const CustomerTicketDetails = () => {
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold">{step.title}</h3>
 
-                            <span className="badge bg-base-content/10 badge-sm">
+                            <span className="badge badge-sm bg-base-content/10">
                               {step.estimatedTime}
                             </span>
                           </div>
@@ -705,50 +781,48 @@ const CustomerTicketDetails = () => {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-5 w-full h-1 border-t border-base-content/10" />
+                  <div className="mt-5 h-1 w-full border-t border-base-content/10" />
                 </div>
               )}
 
-              {/* ++++++++++ reason +++++++++++ */}
+              {/* Reason */}
               {aiResult?.escalation?.reason && (
                 <div>
-                  <div className="flex justify-start items-center gap-2 mt-6">
+                  <div className="mt-6 flex items-center justify-start gap-2">
                     <SoftIconCard
                       icon={WandSparkles}
                       className="h-6 w-6 rounded-lg"
                       size={14}
                       variant="purple"
-                    ></SoftIconCard>
-                    <h2 className=" font-semibold text-xl text-base-content/80">
+                    />
+                    <h2 className="text-xl font-semibold text-base-content/80">
                       Why AI Recommends This
                     </h2>
                   </div>
                   <p className="mt-2 text-base-content/80">
-                    {aiResult?.escalation?.reason}
+                    {aiResult.escalation.reason}
                   </p>
                 </div>
               )}
 
-              {/* ++++++++++ escalation info +++++++++++ */}
-
+              {/* Escalation info */}
               {aiResult?.escalation && (
                 <div
-                  className={`mt-6 p-4 border rounded-2xl shrink-0 ${
-                    aiResult?.escalation.recommended
+                  className={`mt-6 shrink-0 rounded-2xl border p-4 ${
+                    aiResult.escalation.recommended
                       ? "border-warning/20 bg-warning/5"
                       : "border-success/20 bg-success/5"
                   }`}
                 >
                   <div className="flex gap-3">
                     <div
-                      className={`
-      h-9 w-9 shrink-0
-      flex items-center justify-center
-      rounded-xl text-base-100
-      ${aiResult?.escalation.recommended ? "bg-warning" : "bg-success"}
-    `}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base-100 ${
+                        aiResult.escalation.recommended
+                          ? "bg-warning"
+                          : "bg-success"
+                      }`}
                     >
-                      {aiResult?.escalation.recommended ? (
+                      {aiResult.escalation.recommended ? (
                         <AlertTriangle size={18} />
                       ) : (
                         <CheckCircle2 size={18} />
@@ -757,13 +831,13 @@ const CustomerTicketDetails = () => {
 
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold">
-                        {aiResult?.escalation.recommended
+                        {aiResult.escalation.recommended
                           ? "Human Review Recommended"
                           : "Self-Service Recommended"}
                       </h3>
 
                       <p className="mt-1 text-sm text-base-content/60">
-                        {aiResult?.escalation.recommended
+                        {aiResult.escalation.recommended
                           ? "This issue may require agent assistance due to complexity, risk, or account-specific factors."
                           : "AI believes this issue can likely be resolved without agent involvement by following the suggested steps."}
                       </p>
@@ -772,12 +846,11 @@ const CustomerTicketDetails = () => {
                 </div>
               )}
 
-              {/* +++++++++++++++++++++ */}
-
-              {resData?.permission?.canDelete && (
-                <div className="mt-5 flex gap-3 justify-end">
+              {/* Fixed permission?.canDelete check */}
+              {permission?.canDelete && (
+                <div className="mt-5 flex justify-end gap-3">
                   <GradientButton
-                    buttonClassName="from-error/70 to-error"
+                    buttonClassName="from-error/70 to-error text-white"
                     onClick={handleDeleteTicket}
                   >
                     Delete Ticket
@@ -788,40 +861,32 @@ const CustomerTicketDetails = () => {
           )}
         </CardWithBlurBlob>
 
-        {/* =================================
-        =================================
-        =================================
-        =================================
-        ================================= */}
-
-        {/* Conversation */}
+        {/* ================================= */}
+        {/* Conversation Panel */}
+        {/* ================================= */}
         <CardWithBlurBlob
           interactive={false}
-          className={`p-0 ${
-            dataLoading || !permission?.canReadMessages
+          className={`min-h-0 flex-col overflow-hidden p-0 ${
+            !showConversationPanel
               ? "hidden"
-              : resData?.data?.supportMode === "human"
-                ? activeTab === "messages"
-                  ? "block"
-                  : "hidden lg:block"
-                : "hidden"
+              : activeTab === "messages"
+                ? "flex"
+                : "hidden lg:flex"
           }`}
         >
-          {/* ======================================== chat box ============================================== */}
-
           {/* Conversation Header */}
-          <div className="border-b border-base-content/10 px-5 py-4">
-            <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
+          <div className="shrink-0 border-b border-base-content/10 px-5 py-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
               <SoftIconCard
                 icon={MessagesSquare}
                 variant="primary"
                 className="shrink-0"
               />
 
-              <div className="flex flex-col min-w-0 flex-1">
-                <h3 className="font-semibold truncate">Support Conversation</h3>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <h3 className="truncate font-semibold">Support Conversation</h3>
 
-                <p className="text-base-content/60 text-xs truncate">
+                <p className="truncate text-xs text-base-content/60">
                   {user?.displayName && user?.email
                     ? `${user.displayName} · ${user.email}`
                     : "Real-time support with AI insights."}
@@ -830,38 +895,39 @@ const CustomerTicketDetails = () => {
             </div>
           </div>
 
-          {/*=========== Messages Area ==============*/}
+          {/* Messages Area */}
           <div
-            className={`
-    flex-1
-    overflow-y-auto
-    p-5
-    space-y-6
-      
-         ${
-           conversations.length === 0 && !conversationsLoading
-             ? "flex flex-col items-center justify-center"
-             : ""
-         }
-   
-            `}
+            className={`min-h-0 flex-1 space-y-6 overflow-y-auto p-5 ${
+              conversations.length === 0 && !conversationsLoading
+                ? "flex flex-col items-center justify-center"
+                : ""
+            }`}
           >
-            {/* Customer Info */}
-            <div className="flex flex-col justify-center items-center mb-10">
+            {/* Agent & Customer Intro */}
+            <div className="mb-10 flex flex-col items-center justify-center">
               <div className="avatar-group -space-x-5">
                 <div className="avatar">
-                  <div className="w-12 h-12">
+                  <div className="h-12 w-12">
                     <img
-                      className="w-full h-full object-center object-cover  bg-base-content/10"
-                      src={agentInfo?.photoURL}
+                      alt={agentInfo?.displayName || "Agent"}
+                      className="h-full w-full bg-base-content/10 object-cover object-center"
+                      src={
+                        agentInfo?.photoURL ||
+                        "https://ui-avatars.com/api/?name=Support+Agent&background=random"
+                      }
                     />
                   </div>
                 </div>
                 <div className="avatar">
-                  <div className="w-12 h-12">
+                  <div className="h-12 w-12">
                     <img
-                      className="w-full h-full object-center object-cover bg-base-200"
-                      src={customerInfo?.photoURL}
+                      alt={customerInfo?.displayName || "Customer"}
+                      className="h-full w-full bg-base-200 object-cover object-center"
+                      src={
+                        customerInfo?.photoURL ||
+                        user?.photoURL ||
+                        "https://ui-avatars.com/api/?name=Customer&background=random"
+                      }
                     />
                   </div>
                 </div>
@@ -871,21 +937,29 @@ const CustomerTicketDetails = () => {
               </h3>
 
               <p className="text-xs text-base-content/60">
-                {agentInfo?.email || "agent@email.com"}
+                {agentInfo?.email || "Awaiting agent assignment"}
               </p>
 
               <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                <TextBadge variant="blue" size="xs">
-                  {agentInfo?.role || "agent"}
-                </TextBadge>
+                {agentInfo && (
+                  <>
+                    <TextBadge variant="blue" size="xs">
+                      {agentInfo.role || "agent"}
+                    </TextBadge>
 
-                <TextBadge variant="green" size="xs">
-                  {agentInfo?.status || "active"}
-                </TextBadge>
+                    {agentInfo.status && (
+                      <TextBadge variant="green" size="xs">
+                        {agentInfo.status}
+                      </TextBadge>
+                    )}
+                  </>
+                )}
 
-                <TextBadge variant="purple" size="xs">
-                  {agentInfo?.companyName || "Company"}
-                </TextBadge>
+                {agentInfo?.companyName && (
+                  <TextBadge variant="purple" size="xs">
+                    {agentInfo.companyName}
+                  </TextBadge>
+                )}
               </div>
 
               {/* Conversation Intro */}
@@ -910,7 +984,7 @@ const CustomerTicketDetails = () => {
                   .
                 </p>
 
-                {conversations.length === 0 && (
+                {conversations.length === 0 && !conversationsLoading && (
                   <p className="mt-3 text-[11px] text-base-content/40">
                     No messages yet — send a message to get started.
                   </p>
@@ -918,81 +992,91 @@ const CustomerTicketDetails = () => {
               </div>
             </div>
 
-            {/* message body */}
-            <div className="w-full h-fit">
+            {/* Message Body */}
+            <div className="h-fit w-full">
               {conversationsLoading ? (
-                <div className="flex justify-center items-center text-primary">
-                  <span className="loading loading-spinner loading-md "></span>
+                <div className="flex items-center justify-center text-primary">
+                  <span className="loading loading-spinner loading-md"></span>
+                </div>
+              ) : conversationsError ? (
+                <div className="p-5 text-center">
+                  <p className="text-sm text-error">Failed to load messages.</p>
+
+                  <button
+                    type="button"
+                    onClick={() => refetch()}
+                    className="btn btn-sm btn-outline mt-3"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : (
                 conversations.map((item) => (
                   <div
                     key={item._id}
-                    className={`flex ${item?.sender?.role === "customer" ? "flex-row-reverse" : ""} min-w-0 items-start gap-3 mt-4`}
+                    className={`mt-4 flex min-w-0 items-start gap-3 ${
+                      item?.sender?.role === "customer"
+                        ? "flex-row-reverse"
+                        : ""
+                    }`}
                   >
                     {/* Avatar */}
-                    <div className="shrink-0 w-8 h-8 rounded-full overflow-hidden">
+                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full">
                       <img
-                        className="object-center object-cover w-full h-full bg-base-content/5"
-                        src={item?.sender?.photoURL}
+                        alt={item?.sender?.displayName || "Sender"}
+                        className="h-full w-full bg-base-content/5 object-cover object-center"
+                        src={
+                          item?.sender?.photoURL ||
+                          "https://ui-avatars.com/api/?name=User&background=random"
+                        }
                       />
                     </div>
 
                     {/* Message Content */}
-                    <div className="min-w-0 w-0 flex-1 max-w-[90%] sm:max-w-[70%]">
+                    <div className="w-0 min-w-0 max-w-[90%] flex-1 sm:max-w-[70%]">
                       <GradientCard
                         className={`
-        w-fit
-        max-w-full
-        px-4
-        sm:px-5
-        py-3
-        text-sm
-        leading-relaxed
-        from-primary/10
-        to-secondary/5
-        text-base-content
-        shadow-none
-        ${
-          item?.sender?.role === "customer"
-            ? "ml-auto from-primary/95 to-secondary/95 text-white rounded-b-2xl rounded-l-2xl rounded-r-lg"
-            : "from-primary/10 to-secondary/5 text-base-content rounded-b-2xl rounded-r-2xl rounded-l-lg"
-        }
-              `}
+                          w-fit
+                          max-w-full
+                          px-4
+                          py-3
+                          text-sm
+                          leading-relaxed
+                          shadow-none
+                          sm:px-5
+                          ${
+                            item?.sender?.role === "customer"
+                              ? "ml-auto rounded-b-2xl rounded-l-2xl rounded-r-lg from-primary/95 to-secondary/95 text-white"
+                              : "rounded-b-2xl rounded-l-lg rounded-r-2xl from-primary/10 to-secondary/5 text-base-content"
+                          }
+                        `}
                       >
-                        {/* ==================== forating ======================== */}
-                        <div className="text-sm leading-relaxed wrap-break-word">
+                        <div className="wrap-break-word text-sm leading-relaxed">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                               p: ({ children }) => (
                                 <p className="mb-2 last:mb-0">{children}</p>
                               ),
-
                               strong: ({ children }) => (
                                 <strong className="font-semibold">
                                   {children}
                                 </strong>
                               ),
-
                               em: ({ children }) => <em>{children}</em>,
-
                               ul: ({ children }) => (
                                 <ul className="my-2 list-disc space-y-1 pl-5">
                                   {children}
                                 </ul>
                               ),
-
                               ol: ({ children }) => (
                                 <ol className="my-2 list-decimal space-y-1 pl-5">
                                   {children}
                                 </ol>
                               ),
-
                               li: ({ children }) => (
                                 <li className="pl-1">{children}</li>
                               ),
-
                               a: ({ href, children }) => (
                                 <a
                                   href={href}
@@ -1003,13 +1087,11 @@ const CustomerTicketDetails = () => {
                                   {children}
                                 </a>
                               ),
-
                               blockquote: ({ children }) => (
                                 <blockquote className="my-2 border-l-2 border-current/30 pl-3 italic opacity-80">
                                   {children}
                                 </blockquote>
                               ),
-
                               code: ({ children }) => (
                                 <code className="rounded bg-black/10 px-1 py-0.5 text-xs">
                                   {children}
@@ -1023,35 +1105,41 @@ const CustomerTicketDetails = () => {
                       </GradientCard>
 
                       <p
-                        className={`mt-1 text-[11px] text-base-content/40 ${item?.sender?.role === "customer" ? "text-end" : ""}`}
+                        className={`mt-1 text-[11px] text-base-content/40 ${
+                          item?.sender?.role === "customer" ? "text-end" : ""
+                        }`}
                       >
                         {item?.sender?.displayName} {" · "}{" "}
-                        {formatRelativeDate(item?.createdAt)}{" "}
+                        {formatRelativeDate(item?.createdAt)}
                       </p>
                     </div>
                   </div>
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
           </div>
 
           {/* Reply Composer */}
           {!["resolved", "closed"].includes(status) &&
             permission?.canSendMessage && (
-              <div className="p-4 border-t border-base-content/10 bg-base-100/70">
-                <div className="rounded-2xl border border-base-content/10 bg-primary/2 pr-3 pl-4 py-3 flex gap-3 justify-center items-center">
+              <div className="shrink-0 border-t border-base-content/10 bg-base-100/70 p-4">
+                <div className="flex items-center justify-center gap-3 rounded-2xl border border-base-content/10 bg-primary/2 py-3 pl-4 pr-3">
                   <textarea
-                    rows={3}
+                    ref={textareaRef}
+                    rows={2}
                     onInput={handleInput}
+                    onKeyDown={handleKeyDown}
                     value={message}
+                    disabled={isSending}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Write a reply or add a draft for AI to improve..."
-                    className="flex-1 resize-none outline-none max-h-24 overflow-y-auto text-sm"
+                    placeholder="Write a reply... (Press Enter to send, Shift+Enter for new line)"
+                    className="max-h-28 flex-1 resize-none bg-transparent text-sm outline-none overflow-y-auto"
                   />
                 </div>
 
-                <div className="flex flex-wrap justify-between mt-3">
-                  <p className="text-xs text-base-content/50 mb-3">
+                <div className="mt-3 flex flex-wrap items-center justify-between">
+                  <p className="mb-2 text-xs text-base-content/50 sm:mb-0">
                     Reply to {agentInfo?.displayName || "Support Agent"}
                   </p>
 
@@ -1060,27 +1148,27 @@ const CustomerTicketDetails = () => {
                       onClick={handleSendMessage}
                       disabled={
                         !message.trim() ||
+                        isSending ||
                         conversationsLoading ||
                         !permission?.canSendMessage
                       }
                       size="sm"
-                      buttonClassName={`${
+                      buttonClassName={
                         !message.trim() ||
+                        isSending ||
                         conversationsLoading ||
                         !permission?.canSendMessage
                           ? "from-primary/10 to-secondary/20 opacity-60 cursor-not-allowed text-base-content/50"
                           : "from-primary to-secondary text-white"
-                      }`}
+                      }
                     >
                       <SendHorizonal size={16} />
-                      Send
+                      {isSending ? "Sending..." : "Send"}
                     </GradientButton>
                   </div>
                 </div>
               </div>
             )}
-
-          {/* ================================================================================================ */}
         </CardWithBlurBlob>
       </div>
     </div>

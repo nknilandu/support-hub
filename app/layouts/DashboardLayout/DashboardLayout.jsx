@@ -16,7 +16,6 @@ import {
   History,
   Settings,
   Building2,
-  Activity,
   PanelLeftOpen,
   PanelLeftClose,
   X,
@@ -50,7 +49,6 @@ const DashboardLayout = () => {
   });
 
   // ============ fetching user role ==============
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!user) {
       setUserRole(null);
@@ -64,28 +62,49 @@ const DashboardLayout = () => {
     loadRole();
   }, [user, fetchUserRole]);
 
-  // ============ fatching notification =============
-  const { data: notifications } = useQuery({
-    queryKey: ["customerDashboardNotification"],
-    enabled: !!user?.accessToken,
+  // ============ fetching unread notifications count =============
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["layoutUnreadNotifications", user?.uid],
+    enabled: !!user,
     queryFn: async () => {
-      const res = await fetch("http://localhost:3021/notifications?limit=3", {
-        headers: {
-          authorization: `Bearer ${user.accessToken}`,
+      const token = await user.getIdToken();
+      const res = await fetch(
+        "http://localhost:3021/notifications?unreadOnly=true&limit=1",
+        {
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       const result = await res.json();
 
       if (!res.ok || !result.success) {
-        throw new Error(result.message || "Failed to fetch tickets");
+        throw new Error(result.message || "Failed to fetch notifications");
       }
-      return result.notifications;
+      return result.unreadCount ?? result.notifications?.length ?? 0;
     },
   });
-  const hasNotifications = notifications?.length > 0;
 
-  // ======== nav item =========
+  const hasUnreadNotifications = unreadCount > 0;
+
+  // ======== role badge variant helper =========
+  const getRoleBadgeVariant = (role) => {
+    switch (role?.toLowerCase()) {
+      case "customer":
+        return "green";
+      case "agent":
+        return "cyan";
+      case "manager":
+        return "pink";
+      case "owner":
+        return "orange";
+      default:
+        return "purple";
+    }
+  };
+
+  // ======== nav items (Notifications added above Profile/Settings) =========
   const dashboardNav = {
     customer: [
       {
@@ -109,9 +128,15 @@ const DashboardLayout = () => {
         path: "/customer/ai-assistant",
       },
       {
+        label: "Notifications",
+        icon: Bell,
+        path: "/notifications",
+        badge: unreadCount,
+      },
+      {
         label: "Profile",
         icon: User,
-        path: "/customer/profile",
+        path: "/profile",
       },
     ],
 
@@ -137,9 +162,15 @@ const DashboardLayout = () => {
         path: "/agent/ai-assistant",
       },
       {
+        label: "Notifications",
+        icon: Bell,
+        path: "/notifications",
+        badge: unreadCount,
+      },
+      {
         label: "Profile",
         icon: User,
-        path: "/agent/profile",
+        path: "/profile",
       },
     ],
 
@@ -178,6 +209,12 @@ const DashboardLayout = () => {
         label: "Activity Logs",
         icon: History,
         path: "/owner/activity-logs",
+      },
+      {
+        label: "Notifications",
+        icon: Bell,
+        path: "/notifications",
+        badge: unreadCount,
       },
       {
         label: "Settings",
@@ -228,6 +265,12 @@ const DashboardLayout = () => {
         path: "/platform/activity-logs",
       },
       {
+        label: "Notifications",
+        icon: Bell,
+        path: "/notifications",
+        badge: unreadCount,
+      },
+      {
         label: "Settings",
         icon: Settings,
         path: "/platform/settings",
@@ -255,6 +298,7 @@ const DashboardLayout = () => {
 
   // ++++++++ logOut ++++++++++++
   const handleLogout = () => {
+    setIsProfileOpen(false);
     Swal.fire({
       title: "Are you sure?",
       text: "You want to logout?",
@@ -289,7 +333,6 @@ const DashboardLayout = () => {
         {/* ============================= */}
         {/* MOBILE OVERLAY */}
         {/* ============================= */}
-
         {mobileOpen && (
           <div
             onClick={() => setMobileOpen(false)}
@@ -298,9 +341,8 @@ const DashboardLayout = () => {
         )}
 
         {/* ============================= */}
-        {/* SIDEBAR */}
+        {/* SIDEBAR / DRAWER */}
         {/* ============================= */}
-
         <aside
           style={{
             paddingBottom: "env(safe-area-inset-bottom)",
@@ -327,17 +369,16 @@ const DashboardLayout = () => {
           {/* ============================= */}
           {/* LOGO */}
           {/* ============================= */}
-
-          <div className="flex items-center border-b border-base-content/10 px-3 py-4 justify-center ">
+          <div className="flex items-center justify-center border-b border-base-content/10 px-3 py-4">
             <div
               className={`flex w-full items-center gap-3 ${collapsed ? "justify-center" : "justify-between"}`}
             >
               {collapsed || (
-                <Link to="/" className="flex justify-center items-center gap-2">
+                <Link to="/" className="flex items-center justify-center gap-2">
                   <img
                     src={logo}
                     alt="logo"
-                    className="h-7 w-7 object-center object-cover"
+                    className="h-7 w-7 object-cover object-center"
                   />
 
                   <div className="w-full">
@@ -355,7 +396,7 @@ const DashboardLayout = () => {
               {/* desktop collapse */}
               <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="hidden xl:flex btn btn-square btn-sm rounded-lg"
+                className="btn btn-square btn-sm hidden rounded-lg xl:flex"
               >
                 {collapsed ? (
                   <PanelLeftOpen size={17} />
@@ -368,7 +409,7 @@ const DashboardLayout = () => {
             {/* mobile close */}
             <button
               onClick={() => setMobileOpen(false)}
-              className="btn btn-square rounded-xl btn-sm xl:hidden"
+              className="btn btn-square btn-sm rounded-xl xl:hidden"
             >
               <X size={16} />
             </button>
@@ -377,16 +418,15 @@ const DashboardLayout = () => {
           {/* ============================= */}
           {/* NAVIGATION */}
           {/* ============================= */}
-
           <div className="flex-1 overflow-y-auto p-3">
             <div className="space-y-1">
               {loading || !userRole ? (
                 <>
-                  <div className="h-11 rounded-xl skeleton" />
-                  <div className="h-11 rounded-xl skeleton mt-2" />
-                  <div className="h-11 rounded-xl skeleton mt-2" />
-                  <div className="h-11 rounded-xl skeleton mt-2" />
-                  <div className="h-11 rounded-xl skeleton mt-2" />
+                  <div className="skeleton h-11 rounded-xl" />
+                  <div className="skeleton mt-2 h-11 rounded-xl" />
+                  <div className="skeleton mt-2 h-11 rounded-xl" />
+                  <div className="skeleton mt-2 h-11 rounded-xl" />
+                  <div className="skeleton mt-2 h-11 rounded-xl" />
                 </>
               ) : (
                 navItems?.map((item) => {
@@ -400,22 +440,39 @@ const DashboardLayout = () => {
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) =>
                         `
-                relative flex items-center rounded-xl
-                px-3 py-3 text-sm transition-all
+                        relative flex items-center rounded-xl
+                        px-3 py-3 text-sm transition-all
 
-                ${
-                  isActive
-                    ? "bg-gradient-to-r from-primary/10 to-secondary/10 text-base-content"
-                    : "text-base-content/70 hover:bg-base-300"
-                }
+                        ${
+                          isActive
+                            ? "bg-gradient-to-r from-primary/10 to-secondary/10 text-base-content"
+                            : "text-base-content/70 hover:bg-base-300"
+                        }
 
-                ${collapsed ? "xl:justify-center xl:px-0" : "gap-3"}
-              `
+                        ${collapsed ? "xl:justify-center xl:px-0" : "justify-between"}
+                      `
                       }
                     >
-                      <Icon size={18} className="shrink-0" />
+                      <div
+                        className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}
+                      >
+                        <div className="relative shrink-0">
+                          <Icon size={18} />
+                          {/* Red dot when sidebar is collapsed and unread notifications exist */}
+                          {collapsed && item.badge > 0 && (
+                            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-base-100" />
+                          )}
+                        </div>
 
-                      {!collapsed && <span>{item.label}</span>}
+                        {!collapsed && <span>{item.label}</span>}
+                      </div>
+
+                      {/* Unread count pill when sidebar is expanded */}
+                      {!collapsed && item.badge > 0 && (
+                        <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-500">
+                          {item.badge > 99 ? "99+" : item.badge}
+                        </span>
+                      )}
                     </NavLink>
                   );
                 })
@@ -426,7 +483,6 @@ const DashboardLayout = () => {
           {/* ============================= */}
           {/* AI CARD */}
           {/* ============================= */}
-
           {!loading && userRole && !collapsed && (
             <div className="p-3">
               <CardWithBlurBlob className="p-3">
@@ -434,7 +490,7 @@ const DashboardLayout = () => {
                   <img
                     src={logo}
                     alt="logo"
-                    className="h-8 w-8 object-center object-cover"
+                    className="h-8 w-8 object-cover object-center"
                   />
 
                   <div className="min-w-0">
@@ -448,7 +504,7 @@ const DashboardLayout = () => {
                   </div>
                 </div>
 
-                <Link to={`${userRole}/ai-assistant`}>
+                <Link to={`/${userRole}/ai-assistant`}>
                   <GradientButton
                     className="mt-3 w-full"
                     buttonClassName="btn-sm w-full"
@@ -464,31 +520,29 @@ const DashboardLayout = () => {
         {/* ============================= */}
         {/* MAIN AREA */}
         {/* ============================= */}
-
         <div className="flex min-w-0 flex-1 flex-col">
           {/* ============================= */}
           {/* TOPBAR HEADER */}
           {/* ============================= */}
-
           <header className="sticky top-0 z-30 border-b border-base-content/10 bg-base-100/80 backdrop-blur">
             <div className="flex h-16 items-center justify-between px-4 lg:px-6">
               {/* left */}
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex min-w-0 items-center gap-3">
                 {/* mobile menu */}
                 <button
                   onClick={() => setMobileOpen(true)}
-                  className="btn btn-square rounded-xl btn-sm xl:hidden h-9 w-9"
+                  className="btn btn-square btn-sm h-9 w-9 rounded-xl xl:hidden"
                 >
                   <Menu size={17} />
                 </button>
 
                 {/* header */}
-                <div className="xl:flex flex-col min-w-0 flex-1">
-                  <h1 className="flex items-center text-xl font-semibold tracking-tight truncate">
-                    <span className="mr-1">Welcome back,</span>
+                <div className="min-w-0 flex-1 xl:flex xl:flex-col">
+                  <h1 className="flex items-center truncate text-xl font-semibold tracking-tight">
+                    <span className="mr-1.5">Welcome back,</span>
 
                     {loading ? (
-                      <div className="mx-1 h-5 w-12 skeleton" />
+                      <div className="skeleton mx-1 h-5 w-16" />
                     ) : (
                       <GradientText className="capitalize">
                         {getFirstName(user?.displayName)}
@@ -497,21 +551,16 @@ const DashboardLayout = () => {
 
                     {!loading && userRole && (
                       <TextBadge
-                        className="ml-2 mt-1"
+                        className="ml-2.5 gap-1.5 font-semibold"
                         size="sm"
-                        variant={
-                          userRole.toLowerCase() === "owner"
-                            ? "pink"
-                            : userRole.toLowerCase() === "agent"
-                              ? "green"
-                              : "cyan"
-                        }
+                        variant={getRoleBadgeVariant(userRole)}
                       >
-                        {userRole}
+                        <Sparkles size={11} strokeWidth={2.2} />
+                        <span>{userRole}</span>
                       </TextBadge>
                     )}
                   </h1>
-                  <p className="text-xs text-base-content/60 truncate">
+                  <p className="truncate text-xs text-base-content/60">
                     Track and continue with support agents.
                   </p>
                 </div>
@@ -523,7 +572,7 @@ const DashboardLayout = () => {
                   type="button"
                   onClick={handleTheme}
                   aria-label="Toggle theme"
-                  className="h-10 w-10 flex justify-center items-center rounded-xl border border-base-content/10 text-base-content/70 backdrop-blur-xl transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-base-content/10 text-base-content/70 backdrop-blur-xl transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                 >
                   {theme === "dark" ? (
                     <Sun size={17} strokeWidth={2} />
@@ -531,39 +580,37 @@ const DashboardLayout = () => {
                     <Moon size={17} strokeWidth={2} />
                   )}
                 </button>
+
                 {loading ? (
                   <>
-                    <div className="h-10 w-10 skeleton rounded-xl" />
-                    <div className="h-10 w-10 skeleton rounded-xl" />
+                    <div className="skeleton h-10 w-10 rounded-xl" />
+                    <div className="skeleton h-10 w-10 rounded-xl" />
                   </>
                 ) : (
                   <>
-                    <button className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-base-content/10 text-base-content/70 backdrop-blur-xl transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary">
-                      <Bell size={16} />
-                      {hasNotifications && (
-                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-base-100" />
-                      )}
-                    </button>
-
-                    {/* ===================== profile button ====================*/}
+                    {/* ===================== profile button ==================== */}
                     <button
                       onClick={() => setIsProfileOpen((prev) => !prev)}
-                      className="btn btn-square rounded-xl border border-base-content/10 bg-base-100 overflow-hidden"
+                      className="btn btn-square overflow-hidden rounded-xl border border-base-content/10 bg-base-100"
                     >
-                      <img
-                        src={user?.photoURL}
-                        alt="user icon"
-                        className="w-full h-full object-cover object-center"
-                      />
+                      {user?.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt="user icon"
+                          className="h-full w-full object-cover object-center"
+                        />
+                      ) : (
+                        <User size={17} />
+                      )}
                     </button>
 
                     {/* ========================= Profile Menu ======================== */}
                     <div className="relative">
                       {isProfileOpen && (
-                        <div className="absolute right-3 top-10 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100 p-4 shadow-xl backdrop-blur-xl">
+                        <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100 p-4 shadow-xl backdrop-blur-xl">
                           <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-200 border text-primary/20">
-                              {user.photoURL ? (
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-base-200 text-primary">
+                              {user?.photoURL ? (
                                 <img
                                   src={user.photoURL}
                                   alt="userPhoto"
@@ -576,12 +623,12 @@ const DashboardLayout = () => {
 
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-base-content">
-                                {user.displayName}
+                                {user?.displayName}
                               </p>
 
                               <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
                                 <Mail size={12} strokeWidth={2} />
-                                <span className="truncate">{user.email}</span>
+                                <span className="truncate">{user?.email}</span>
                               </div>
                             </div>
                           </div>
@@ -589,7 +636,8 @@ const DashboardLayout = () => {
                           <div className="mt-4 grid grid-cols-2 gap-2">
                             {userRole !== null && (
                               <Link
-                                to={`${userRole}/profile`}
+                                to={`/profile`}
+                                onClick={() => setIsProfileOpen(false)}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
                               >
                                 <Pencil size={13} strokeWidth={2} />
@@ -611,8 +659,6 @@ const DashboardLayout = () => {
                     </div>
                   </>
                 )}
-
-                {/* Notification */}
               </div>
             </div>
           </header>
@@ -620,9 +666,8 @@ const DashboardLayout = () => {
           {/* ============================= */}
           {/* PAGE CONTENT */}
           {/* ============================= */}
-
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            {loading ? <LoadingPage></LoadingPage> : <Outlet />}
+            {loading ? <LoadingPage /> : <Outlet />}
           </main>
         </div>
       </div>

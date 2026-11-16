@@ -5,6 +5,8 @@ import {
   Flame,
   Inbox,
   MessageSquareText,
+  PieChart as PieChartIcon,
+  RefreshCw,
   Ticket,
   UserCheck,
 } from "lucide-react";
@@ -34,13 +36,24 @@ import TextBadge from "../../components/ui/Badge/TextBadge";
 import LoadingPage from "../loading/LoadingPage/LoadingPage";
 import AgentApprovalStatus from "./AgentApprovalStatus";
 
-// =============================
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:3021"
+).replace(/\/+$/, "");
+
 const statusColors = {
   open: "#3b82f6",
   assigned: "#A855F7",
   in_progress: "#f59e0b",
   resolved: "#22c55e",
   closed: "#64748b",
+};
+
+const statusVariants = {
+  open: "blue",
+  assigned: "purple",
+  in_progress: "yellow",
+  resolved: "green",
+  closed: "slate",
 };
 
 const priorityColors = {
@@ -50,806 +63,788 @@ const priorityColors = {
   critical: "#ef4444",
 };
 
-const AgentDashboard = () => {
+const priorityVariants = {
+  low: "green",
+  medium: "yellow",
+  high: "warning",
+  critical: "red",
+};
+
+const tooltipStyle = {
+  backgroundColor: "#1e293b",
+  border: "none",
+  borderRadius: "12px",
+  fontSize: "11px",
+};
+
+async function fetchApi(user, path, signal) {
+  const token = await user.getIdToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    signal,
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok || !result || result.success === false) {
+    const error = new Error(
+      result?.message || `Request failed (${response.status})`,
+    );
+
+    error.status = response.status;
+    throw error;
+  }
+
+  return result;
+}
+
+function getPriority(ticket) {
+  if (typeof ticket.priority === "string" && ticket.priority.trim()) {
+    return ticket.priority.trim().toLowerCase();
+  }
+
+  const states = Array.isArray(ticket.aiResult?.states)
+    ? ticket.aiResult.states
+    : [];
+
+  const priority = states.find(
+    (item) =>
+      String(item.title || "")
+        .trim()
+        .toLowerCase() === "priority",
+  );
+
+  return String(priority?.value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+}
+
+function EmptyState({ icon = Inbox, title, description }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+      <SoftIconCard icon={icon} variant="slate" className="mb-3" />
+
+      <p className="text-sm font-medium text-base-content/70">{title}</p>
+
+      {description && (
+        <p className="mt-2 max-w-sm text-xs leading-5 text-base-content/50">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry, fetching }) {
+  return (
+    <div className="rounded-xl border border-error/20 bg-error/5 p-5">
+      <p className="text-sm text-error">{message}</p>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={fetching}
+        className="mt-3 text-xs font-medium underline disabled:opacity-50"
+      >
+        {fetching ? "Retrying..." : "Try again"}
+      </button>
+    </div>
+  );
+}
+
+export default function AgentDashboard() {
   const { user } = useContext(AuthContext);
 
-  const {
-    data: currentAgent,
-    isLoading: agentLoading,
-    refetch: refetchAgent,
-  } = useQuery({
-    queryKey: ["currentAgent", user?.email],
-    enabled: !!user?.accessToken,
+  // =====================================================
+  // CURRENT AGENT
+  // =====================================================
 
-    queryFn: async () => {
-      const res = await fetch("http://localhost:3021/users/me", {
-        headers: {
-          authorization: `Bearer ${user.accessToken}`,
-        },
-      });
+  const agentQuery = useQuery({
+    queryKey: ["currentAgent", user?.uid],
+    enabled: Boolean(user),
+    retry: false,
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.message);
-      }
-
+    queryFn: async ({ signal }) => {
+      const result = await fetchApi(user, "/users/me", signal);
       return result.user;
     },
   });
 
-  const { data, isLoading: loading } = useQuery({
-    queryKey: ["agentDashboard"],
+  const currentAgent = agentQuery.data;
 
-    enabled: !!user?.accessToken && currentAgent?.verifyIdAgent === "approved",
+  const isApproved = currentAgent?.verifyIdAgent === "approved";
 
-    queryFn: async () => {
-      const res = await fetch(
-        "http://localhost:3021/dashboard/agent-overview",
-        {
-          headers: {
-            authorization: `Bearer ${user.accessToken}`,
-          },
-        },
+  const canLoadDashboard =
+    Boolean(user) &&
+    !agentQuery.isError &&
+    currentAgent?.role === "agent" &&
+    currentAgent?.status === "active" &&
+    isApproved;
+
+  // =====================================================
+  // DASHBOARD
+  // =====================================================
+
+  const dashboardQuery = useQuery({
+    queryKey: ["agentDashboard", user?.uid],
+    enabled: canLoadDashboard,
+    retry: false,
+
+    queryFn: ({ signal }) =>
+      fetchApi(user, "/dashboard/agent-overview", signal),
+
+    refetchInterval: (query) =>
+      query.state.status === "error" ? false : 15000,
+  });
+
+  // =====================================================
+  // RECENT NOTIFICATIONS
+  // =====================================================
+
+  const notificationQuery = useQuery({
+    queryKey: ["agentDashboardNotification", user?.uid],
+    enabled: canLoadDashboard,
+    retry: false,
+
+    queryFn: async ({ signal }) => {
+      const result = await fetchApi(
+        user,
+        "/notifications?limit=4&page=1",
+        signal,
       );
 
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        throw new Error(result.message);
-      }
-
-      return result;
+      return Array.isArray(result.notifications) ? result.notifications : [];
     },
+
+    refetchInterval: (query) =>
+      query.state.status === "error" ? false : 30000,
   });
 
-  // console.log(data)
+  const data = dashboardQuery.data;
+  const metrics = data?.metrics || {};
 
-  const { data: notificationData = [], isLoading: notifyLoading } = useQuery({
-    queryKey: ["agentDashboardNotification"],
-    enabled: !!user?.accessToken && currentAgent?.verifyIdAgent === "approved",
-    queryFn: async () => {
-      const res = await fetch("http://localhost:3021/notifications?limit=4", {
-        headers: {
-          authorization: `Bearer ${user.accessToken}`,
-        },
-      });
+  const recentTickets = Array.isArray(data?.recentTickets)
+    ? data.recentTickets
+    : [];
 
-      const result = await res.json();
+  const urgentTickets = Array.isArray(data?.urgentTickets)
+    ? data.urgentTickets
+    : [];
 
-      if (!res.ok || !result.success) {
-        throw new Error(result.message || "Failed to fetch notifications");
-      }
-
-      return result.notifications || [];
-    },
-  });
+  const notifications = notificationQuery.data || [];
 
   const stats = [
     {
       title: "Assigned to Me",
-      value: data?.metrics?.assignedToMe || 0,
-      meta: "Total Assigned",
+      value: metrics.assignedToMe || 0,
+      meta: "Assigned + in progress",
       icon: UserCheck,
       variant: "purple",
     },
     {
-      title: "Open Company Tickets",
-      value: data?.metrics?.openCompanyTickets || 0,
-      meta: "Open Tickets",
+      title: "Unassigned Company Tickets",
+      value: metrics.openCompanyTickets || 0,
+      meta: "Available to claim",
       icon: Inbox,
       variant: "cyan",
     },
     {
       title: "In Progress",
-      value: data?.metrics?.inProgressTickets || 0,
-      meta: "Active Work",
+      value: metrics.inProgressTickets || 0,
+      meta: "My active work",
       icon: Clock3,
       variant: "warning",
     },
     {
       title: "Critical & High Priority",
-      value: data?.priorityChart?.critical + data?.priorityChart?.high || 0,
-      meta: "Needs Action",
+      value: metrics.urgentActionableTickets || 0,
+      meta: "Queue + my active tickets",
       icon: Flame,
       variant: "red",
     },
   ];
 
-  const statusData = [
-    {
-      name: "Open",
-      key: "open",
-      value: data?.statusChart?.open || 0,
-    },
-    {
-      name: "Assigned",
-      key: "assigned",
-      value: data?.statusChart?.assigned || 0,
-    },
-    {
-      name: "In Progress",
-      key: "in_progress",
-      value: data?.statusChart?.in_progress || 0,
-    },
-    {
-      name: "Resolved",
-      key: "resolved",
-      value: data?.statusChart?.resolved || 0,
-    },
-    {
-      name: "Closed",
-      key: "closed",
-      value: data?.statusChart?.closed || 0,
-    },
-  ];
+  const statusData = Object.keys(statusColors).map((key) => ({
+    key,
+    name:
+      key === "in_progress"
+        ? "In Progress"
+        : key.charAt(0).toUpperCase() + key.slice(1),
+    value: data?.statusChart?.[key] || 0,
+  }));
 
-  const priorityData = [
-    {
-      name: "Low",
-      key: "low",
-      value: data?.priorityChart?.low || 0,
-    },
-    {
-      name: "Medium",
-      key: "medium",
-      value: data?.priorityChart?.medium || 0,
-    },
-    {
-      name: "High",
-      key: "high",
-      value: data?.priorityChart?.high || 0,
-    },
-    {
-      name: "Critical",
-      key: "critical",
-      value: data?.priorityChart?.critical || 0,
-    },
-  ];
+  const priorityData = Object.keys(priorityColors).map((key) => ({
+    key,
+    name: key.charAt(0).toUpperCase() + key.slice(1),
+    value: data?.priorityChart?.[key] || 0,
+  }));
 
-  if (agentLoading) {
-    return <LoadingPage></LoadingPage>;
+  const hasStatusData = statusData.some((item) => item.value > 0);
+  const hasPriorityData = priorityData.some((item) => item.value > 0);
+
+  const refreshDashboard = () =>
+    Promise.all([
+      agentQuery.refetch(),
+      dashboardQuery.refetch(),
+      notificationQuery.refetch(),
+    ]);
+
+  // =====================================================
+  // ACCESS / LOADING / ERROR
+  // =====================================================
+
+  if (!user) {
+    return (
+      <div className="p-5">
+        <EmptyState
+          title="Sign in required"
+          description="Sign in with your support agent account."
+        />
+      </div>
+    );
   }
 
-  if (currentAgent?.verifyIdAgent !== "approved") {
+  if (agentQuery.isLoading) {
+    return <LoadingPage />;
+  }
+
+  if (agentQuery.isError) {
     return (
-      <AgentApprovalStatus agent={currentAgent} onRefresh={refetchAgent} />
+      <div className="p-5">
+        <ErrorState
+          message={agentQuery.error.message}
+          onRetry={() => agentQuery.refetch()}
+          fetching={agentQuery.isFetching}
+        />
+      </div>
+    );
+  }
+
+  if (
+    !currentAgent ||
+    currentAgent.role !== "agent" ||
+    !["active", "suspended"].includes(currentAgent.status)
+  ) {
+    return (
+      <div className="p-5">
+        <EmptyState
+          title="Agent dashboard unavailable"
+          description="An active support agent account is required."
+        />
+      </div>
+    );
+  }
+
+  if (currentAgent.status === "suspended" || !isApproved) {
+    return (
+      <AgentApprovalStatus
+        agent={currentAgent}
+        onRefresh={() => agentQuery.refetch()}
+      />
+    );
+  }
+
+  if (dashboardQuery.isLoading) {
+    return <LoadingPage />;
+  }
+
+  // Do not show API errors as zero tickets.
+  if (dashboardQuery.isError || !data) {
+    return (
+      <div className="p-5">
+        <ErrorState
+          message={
+            dashboardQuery.error?.message || "Dashboard data is unavailable"
+          }
+          onRetry={() => dashboardQuery.refetch()}
+          fetching={dashboardQuery.isFetching}
+        />
+      </div>
     );
   }
 
   return (
-    <section className="relative min-h-full p-4 lg:p-5">
-      {/* ========================= */}
-      {/* TOP STATS - 6 CARDS */}
-      {/* ========================= */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {loading
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <CardWithBlurBlob key={i} interactive={false} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="skeleton h-10 w-10 rounded-xl"></div>
-                  <div className="skeleton h-4 w-10"></div>
-                </div>
+    <section className="relative min-h-full space-y-3 p-4 lg:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold">Agent Dashboard</h1>
+          <p className="text-xs text-base-content/50">
+            Company queue and your support workload
+          </p>
+        </div>
 
-                <div className="mt-5 space-y-2">
-                  <div className="skeleton h-8 w-24"></div>
-                  <div className="skeleton h-4 w-10"></div>
-                </div>
-              </CardWithBlurBlob>
-            ))
-          : stats.map((item) => (
-              <CardWithBlurBlob
-                key={item.title}
-                className="p-4"
-                interactive={false}
-              >
-                <div className="flex items-start justify-between">
-                  <SoftIconCard
-                    icon={item.icon}
-                    size={15}
-                    variant={item.variant}
-                  />
-
-                  <p className="text-[10px] text-base-content/50">
-                    {item.meta}
-                  </p>
-                </div>
-
-                <div className="mt-5">
-                  <h2 className="text-3xl font-semibold leading-none">
-                    {item.value}
-                  </h2>
-
-                  <p className="mt-2 text-xs text-base-content/60">
-                    {item.title}
-                  </p>
-                </div>
-              </CardWithBlurBlob>
-            ))}
+        <button
+          type="button"
+          onClick={refreshDashboard}
+          disabled={
+            agentQuery.isFetching ||
+            dashboardQuery.isFetching ||
+            notificationQuery.isFetching
+          }
+          className="flex items-center gap-2 rounded-xl border border-base-content/10 px-3 py-2 text-xs disabled:opacity-50"
+        >
+          <RefreshCw
+            size={14}
+            className={dashboardQuery.isFetching ? "animate-spin" : ""}
+          />
+          Refresh
+        </button>
       </div>
 
-      <div className="mt-3 flex flex-col xl:flex-row gap-3 w-full justify-center items-start">
-        {/* ====== */}
-        <div className="w-full xl:w-2/3 flex flex-col gap-3 justify-center items-center">
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
-            {/* Ticket Status Donut chart */}
-            <CardWithBlurBlob
-              className="w-full p-5 xl:w-1/2"
-              interactive={false}
-            >
-              {loading ? (
-                <div>
-                  <div className="mb-6 space-y-2">
-                    <div className="skeleton h-4 w-24 "></div>
-                    <div className="skeleton h-4 w-36 "></div>
-                  </div>
+      {/* Top statistics */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((item) => (
+          <CardWithBlurBlob
+            key={item.title}
+            className="p-4"
+            interactive={false}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <SoftIconCard icon={item.icon} size={15} variant={item.variant} />
 
-                  <div className="space-y-2.5">
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-1/2 mb-7"></div>
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-1/2 "></div>
-                  </div>
-                </div>
+              <p className="text-right text-[10px] text-base-content/50">
+                {item.meta}
+              </p>
+            </div>
+
+            <div className="mt-5">
+              <h2 className="text-3xl font-semibold leading-none">
+                {item.value}
+              </h2>
+
+              <p className="mt-2 text-xs text-base-content/60">{item.title}</p>
+            </div>
+          </CardWithBlurBlob>
+        ))}
+      </div>
+
+      <div className="flex flex-col items-start gap-3 xl:flex-row">
+        {/* Left column */}
+        <div className="min-w-0 w-full space-y-3 xl:w-2/3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {/* Company status chart */}
+            <CardWithBlurBlob className="min-w-0 p-5" interactive={false}>
+              <h3 className="text-sm font-semibold">Ticket Status</h3>
+              <p className="text-[11px] text-base-content/50">
+                All tickets in your company
+              </p>
+
+              {!hasStatusData ? (
+                <EmptyState icon={PieChartIcon} title="No status data yet" />
               ) : (
-                <div>
-                  <div className="mb-2">
-                    <h3 className="text-sm font-semibold">Ticket Status</h3>
-                    <p className="text-[11px] text-base-content/50">
-                      Distribution across 6 ticket states
-                    </p>
-                  </div>
+                <div className="mt-3 h-[260px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        itemStyle={{ color: "#f8fafc" }}
+                      />
 
-                  <div className="h-[260px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#1e293b",
-                            border: "none",
-                            borderRadius: "12px",
-                            fontSize: "10px",
-                          }}
-                          itemStyle={{ color: "#f8fafc" }}
-                        />
+                      <Legend
+                        verticalAlign="bottom"
+                        iconType="circle"
+                        wrapperStyle={{ fontSize: "11px" }}
+                        formatter={(value, entry) =>
+                          `${value} (${entry?.payload?.value || 0})`
+                        }
+                      />
 
-                        <Legend
-                          verticalAlign="bottom"
-                          align="center"
-                          iconType="circle"
-                          wrapperStyle={{
-                            fontSize: "12px",
-                            paddingTop: "20px",
-                          }}
-                          formatter={(value, entry) => {
-                            return `${value} (${entry.payload.value})`;
-                          }}
-                        />
-
-                        <Pie
-                          data={statusData}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius={50}
-                          outerRadius={88}
-                          paddingAngle={1}
-                        >
-                          {statusData.map((entry) => (
-                            <Cell
-                              key={entry.key}
-                              fill={statusColors[entry.key]}
-                            />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                      <Pie
+                        data={statusData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={50}
+                        outerRadius={85}
+                        paddingAngle={1}
+                      >
+                        {statusData.map((item) => (
+                          <Cell key={item.key} fill={statusColors[item.key]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </CardWithBlurBlob>
 
-            {/* Priority Breakdown bar chart */}
-            <CardWithBlurBlob
-              className="w-full p-5 xl:w-1/2"
-              interactive={false}
-            >
-              {loading ? (
-                <div>
-                  <div className="mb-6 space-y-2">
-                    <div className="skeleton h-4 w-24 "></div>
-                    <div className="skeleton h-4 w-36 "></div>
-                  </div>
-                  <div className="space-y-2.5">
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-1/2 mb-7"></div>
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-full "></div>
-                    <div className="skeleton h-4 w-1/2 "></div>
-                  </div>
-                </div>
+            {/* Actionable priority chart */}
+            <CardWithBlurBlob className="min-w-0 p-5" interactive={false}>
+              <h3 className="text-sm font-semibold">Priority Breakdown</h3>
+              <p className="text-[11px] text-base-content/50">
+                Unassigned queue + my active tickets
+              </p>
+
+              {!hasPriorityData ? (
+                <EmptyState
+                  icon={Flame}
+                  title="No priority data for actionable tickets"
+                />
               ) : (
-                <div>
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold">
-                      Priority Breakdown
-                    </h3>
-                    <p className="text-[11px] text-base-content/50">
-                      Tickets by severity
-                    </p>
-                  </div>
+                <div className="mt-3 h-[260px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={priorityData}
+                      margin={{ top: 10, left: -25 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="rgba(148,163,184,0.26)"
+                      />
 
-                  <div className="h-[260px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={priorityData}
-                        margin={{
-                          top: 5,
-                          left: -30,
-                        }}
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "#94a3b8", fontSize: 10 }}
+                      />
+
+                      <YAxis
+                        allowDecimals={false}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "#94a3b8", fontSize: 10 }}
+                      />
+
+                      <Tooltip
+                        cursor={{ fill: "transparent" }}
+                        contentStyle={tooltipStyle}
+                        labelStyle={{ color: "#f8fafc" }}
+                        itemStyle={{ color: "#f8fafc" }}
+                      />
+
+                      <Bar
+                        dataKey="value"
+                        name="Tickets"
+                        radius={[8, 8, 0, 0]}
+                        barSize={45}
                       >
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          vertical={false}
-                          stroke="rgba(148,163,184,0.26)"
-                        />
-
-                        <XAxis
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: "#94a3b8", fontSize: 10 }}
-                        />
-
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: "#94a3b8", fontSize: 10 }}
-                        />
-
-                        <Tooltip
-                          cursor={{ fill: "transparent" }}
-                          contentStyle={{
-                            backgroundColor: "#1e293b",
-                            border: "none",
-                            borderRadius: "12px",
-                            fontSize: "10px",
-                          }}
-                          labelStyle={{ color: "#f8fafc" }}
-                          itemStyle={{ color: "#f8fafc" }}
-                        />
-
-                        <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={70}>
-                          {priorityData.map((entry) => (
-                            <Cell
-                              key={entry.key}
-                              fill={priorityColors[entry.key]}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                        {priorityData.map((item) => (
+                          <Cell
+                            key={item.key}
+                            fill={priorityColors[item.key]}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </CardWithBlurBlob>
           </div>
-          {/* ============= table ================= */}
-          {/* Recent Tickets Table */}
-          <div className="w-full">
-            {/* ======================= */}
-            <CardWithBlurBlob
-              className="overflow-hidden p-0"
-              interactive={false}
-            >
-              {/* header */}
-              {loading ? (
-                <div className="flex items-center justify-between border-b border-base-content/5 px-5 py-3">
-                  <div>
-                    <div className="skeleton h-3 my-2 w-20"></div>
-                    <div className="skeleton h-3 my-2 w-30"></div>
-                  </div>
-                  <div className="skeleton h-5 my-2 w-20"></div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between border-b border-base-content/5 px-5 py-4">
-                  <div>
-                    <h2 className="text-sm font-semibold">Recent tickets</h2>
-                    <p className="text-[11px] text-base-content/50 uppercase tracking-wider">
-                      Latest updates
-                    </p>
-                  </div>
-                  <Link
-                    to="/agent/tickets"
-                    className="flex items-center gap-2 text-xs font-medium text-base-content/50 hover:gap-3 hover:text-primary transition-all"
-                  >
-                    View all <ArrowRight size={14} />
-                  </Link>
-                </div>
-              )}
 
-              {/* table */}
+          {/* Recent company tickets */}
+          <CardWithBlurBlob className="overflow-hidden p-0" interactive={false}>
+            <div className="flex items-center justify-between gap-3 border-b border-base-content/5 px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold">
+                  Recent Company Tickets
+                </h2>
+
+                <p className="mt-1 text-[11px] text-base-content/50">
+                  Latest {recentTickets.length} of {data.recentTotal || 0}
+                  {" · "}Sorted by latest update
+                </p>
+              </div>
+
+              <Link
+                to="/agent/tickets"
+                className="flex shrink-0 items-center gap-2 text-xs text-base-content/60 hover:text-primary"
+              >
+                View all <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            {recentTickets.length === 0 ? (
+              <EmptyState
+                icon={Ticket}
+                title="No company tickets found"
+                description="New company tickets will appear here."
+              />
+            ) : (
               <div className="overflow-x-auto">
                 <table className="table table-zebra">
                   <thead>
-                    <tr className="text-sm uppercase text-base-content/50">
-                      <th className="p-5 font-semibold">Ticket</th>
-                      <th className="p-5 font-semibold">Category</th>
-                      <th className="p-5 font-semibold">Priority</th>
-                      <th className="p-5 font-semibold">Status</th>
-                      <th className="p-5 font-semibold">Updated</th>
+                    <tr className="text-[11px] uppercase text-base-content/50">
+                      <th className="px-5">Ticket</th>
+                      <th>Priority</th>
+                      <th>Status</th>
+                      <th>Assignment</th>
+                      <th>Updated</th>
                     </tr>
                   </thead>
 
-                  {loading ? (
-                    <tbody>
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <tr key={i}>
-                          {/* Ticket */}
-                          <td className="max-w-lg p-5">
-                            <div className="space-y-2">
-                              <div className="skeleton h-3 w-6/12"></div>
-                              <div className="skeleton h-4 w-sm"></div>
-                            </div>
-                          </td>
-                          {/* Category */}
-                          <td>
-                            <div className="skeleton h-5 w-7/12"></div>
-                          </td>
-                          {/* Priority */}
-                          <td>
-                            <div className="skeleton h-5 w-7/12"></div>
-                          </td>
-                          {/* Status */}
-                          <td>
-                            <div className="skeleton h-5 w-7/12"></div>
-                          </td>
-                          {/* Updated */}
-                          <td>
-                            <div className="skeleton h-5 w-7/12"></div>
-                          </td>
-                          {/* Action */}
-                          <td>
-                            <div className="skeleton h-8 w-16"></div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  ) : data?.recentTickets?.length === 0 ? (
-                    <tbody>
-                      <tr>
-                        <td>
-                          <div className="w-106"></div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  ) : (
-                    <tbody>
-                      {data?.recentTickets?.map((ticket) => (
+                  <tbody>
+                    {recentTickets.map((ticket) => {
+                      const priority = getPriority(ticket);
+                      const canRead = ticket.permission?.canRead === true;
+
+                      const assignment = ticket.currentAgent?.uid
+                        ? ticket.currentAgent.uid === user.uid
+                          ? "Assigned to me"
+                          : "Another agent"
+                        : ticket.aiResolved === true
+                          ? "AI resolved"
+                          : ticket.status === "open"
+                            ? "Unassigned"
+                            : "No current agent";
+
+                      const ticketTitle =
+                        ticket.aiResult?.ticketTitle || "Untitled Ticket";
+
+                      return (
                         <tr key={ticket._id}>
-                          {/* Ticket */}
-                          <td className="max-w-lg px-5 py-2">
-                            <div>
-                              <p className="text-xs text-base-content/50">
-                                {ticket.ticketNumber}
-                              </p>
-
-                              <h3 className="font-medium">
-                                {ticket.aiResult.ticketTitle}
-                              </h3>
-
-                              <p className="max-w-11/12 text-sm text-base-content/60 line-clamp-1">
-                                {ticket.aiResult.summary}
-                              </p>
-                            </div>
-                          </td>
-
-                          {/* Category */}
-                          <td>
-                            <TextBadge variant="cyan">
-                              {ticket.aiResult.category}
-                            </TextBadge>
-                          </td>
-
-                          {/* Priority */}
-                          <td>
-                            <TextBadge
-                              variant={
-                                ticket?.aiResult?.states?.find(
-                                  (item) =>
-                                    item.title?.toLowerCase() === "priority",
-                                )?.variant
-                              }
-                            >
-                              {
-                                ticket?.aiResult?.states?.find(
-                                  (item) =>
-                                    item.title?.toLowerCase() === "priority",
-                                )?.value
-                              }
-                            </TextBadge>
-                          </td>
-
-                          {/* Status */}
-                          <td>
-                            <TextBadge
-                              variant={
-                                ticket.status === "open"
-                                  ? "blue"
-                                  : ticket.status === "assigned"
-                                    ? "purple"
-                                    : ticket.status === "in_progress"
-                                      ? "yellow"
-                                      : ticket.status === "resolved"
-                                        ? "green"
-                                        : "slate"
-                              }
-                            >
-                              {(ticket.status || "open").replace("_", " ")}
-                            </TextBadge>
-                          </td>
-
-                          {/* Updated */}
-                          <td>
-                            <span className="text-sm text-base-content/60">
-                              {new Date(ticket.updatedAt).toLocaleDateString()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  )}
-                </table>
-              </div>
-
-              {/* ================== */}
-              {!loading && data?.recentTickets?.length === 0 && (
-                <div className="py-14 px-5 text-center flex flex-col justify-center items-center">
-                  <SoftIconCard icon={Ticket} variant="slate"></SoftIconCard>
-                  <p className="mt-3 text-xl text-base-content/60 mb-3">
-                    No company tickets found
-                  </p>
-                  <p className="text-sm text-base-content/60 mt-1 max-w-md">
-                    No customer tickets are available in your company queue
-                    right now, or your current filters did not match any ticket.
-                  </p>
-                </div>
-              )}
-            </CardWithBlurBlob>
-
-            {/* ======================= */}
-          </div>
-        </div>
-
-        <div className="w-full xl:w-1/3  flex flex-col sm:flex-row xl:flex-col gap-3">
-          <div className="space-y-3 w-full">
-            {/* Urgent Tickets */}
-            <CardWithBlurBlob className="p-5" interactive={false}>
-              {loading ? (
-                <div>
-                  <div className="skeleton h-4 w-28"></div>
-                  <div className="mt-2 skeleton h-3 w-36"></div>
-                  <div className="mt-6 space-y-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="skeleton h-20 w-full"></div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div className="mb-5">
-                    <h3 className="text-sm font-semibold">Urgent Tickets</h3>
-                    <p className="text-[11px] text-base-content/50">
-                      Needs attention now
-                    </p>
-                  </div>
-
-                  {data?.urgentTickets.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center px-5 py-8 text-center">
-                      <SoftIconCard
-                        icon={Flame}
-                        className="mb-2"
-                        variant="slate"
-                      ></SoftIconCard>
-
-                      <h3 className="text-base-content/60">
-                        No urgent tickets right now.
-                      </h3>
-
-                      <p className="mt-2 max-w-sm text-xs text-base-content/60">
-                        You're all caught up. None of your active support
-                        tickets currently require urgent action or immediate
-                        follow-up.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {data?.urgentTickets.map((ticket) => (
-                        <Link
-                          key={ticket._id}
-                          to={`/agent/tickets/${ticket._id}`}
-                          className="block rounded-xl border-dashed border-2 border-base-content/10 px-5 py-4 transition hover:border-primary/30 hover:bg-primary/5"
-                        >
-                          <div className="mb-2 flex items-start justify-between gap-3">
-                            <p className="text-[11px] font-medium text-base-content/50">
+                          <td className="min-w-[220px] max-w-sm px-5 py-3">
+                            <p className="font-mono text-[11px] text-base-content/50">
                               {ticket.ticketNumber}
                             </p>
 
+                            {canRead ? (
+                              <Link
+                                to={`/agent/tickets/${ticket._id}`}
+                                className="mt-1 block line-clamp-1 text-sm font-medium hover:text-primary"
+                              >
+                                {ticketTitle}
+                              </Link>
+                            ) : (
+                              <p className="mt-1 line-clamp-1 text-sm font-medium">
+                                {ticketTitle}
+                              </p>
+                            )}
+
+                            <p className="mt-1 line-clamp-1 text-xs text-base-content/50">
+                              {ticket.aiResult?.summary ||
+                                "No summary available"}
+                            </p>
+
+                            {!canRead && (
+                              <span className="mt-1 block text-[10px] text-base-content/40">
+                                Summary only
+                              </span>
+                            )}
+                          </td>
+
+                          <td>
                             <TextBadge
-                              variant={
-                                ticket?.aiResult?.states.find(
-                                  (item) =>
-                                    item.title?.toLowerCase() === "priority",
-                                )?.variant || "red"
-                              }
+                              variant={priorityVariants[priority] || "slate"}
                             >
-                              {ticket?.aiResult?.states.find(
-                                (item) =>
-                                  item.title?.toLowerCase() === "priority",
-                              )?.value || "High"}
+                              {priority || "Not set"}
                             </TextBadge>
-                          </div>
+                          </td>
 
-                          <h4 className="text-sm font-semibold line-clamp-1">
-                            {ticket.aiResult?.ticketTitle || "Urgent ticket"}
-                          </h4>
+                          <td>
+                            <TextBadge
+                              variant={statusVariants[ticket.status] || "slate"}
+                            >
+                              {(ticket.status || "unknown").replaceAll(
+                                "_",
+                                " ",
+                              )}
+                            </TextBadge>
+                          </td>
 
-                          <p className="mt-1 text-xs text-base-content/50 line-clamp-1">
-                            {ticket?.email + " - " + ticket?.uid ||
-                              "Customer Information"}
+                          <td className="text-xs text-base-content/60">
+                            {assignment}
+                          </td>
+
+                          <td className="whitespace-nowrap text-xs text-base-content/60">
+                            {formatDate(ticket.updatedAt || ticket.createdAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardWithBlurBlob>
+        </div>
+
+        {/* Right column */}
+        <div className="w-full space-y-3 xl:w-1/3">
+          {/* Unassigned urgent queue */}
+          <CardWithBlurBlob className="p-5" interactive={false}>
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold">
+                  Unassigned Urgent Tickets
+                </h3>
+                <p className="mt-1 text-[11px] text-base-content/50">
+                  High / critical tickets waiting for an agent
+                </p>
+              </div>
+
+              <TextBadge variant="red">{data.urgentTotal || 0}</TextBadge>
+            </div>
+
+            {urgentTickets.length === 0 ? (
+              <EmptyState
+                icon={Flame}
+                title="No unassigned urgent tickets"
+                description="There are no open, unassigned high or critical priority tickets in your company queue."
+              />
+            ) : (
+              <>
+                <p className="mb-3 text-[11px] text-base-content/50">
+                  Showing {urgentTickets.length} of {data.urgentTotal}
+                  {" · "}Critical first, then oldest
+                </p>
+
+                <div className="space-y-2">
+                  {urgentTickets.map((ticket) => {
+                    const priority = getPriority(ticket);
+
+                    return (
+                      <Link
+                        key={ticket._id}
+                        to={`/agent/tickets/${ticket._id}`}
+                        className="block rounded-xl border-2 border-dashed border-base-content/10 px-4 py-4 transition hover:border-primary/30 hover:bg-primary/5"
+                      >
+                        <div className="mb-2 flex items-start justify-between gap-3">
+                          <p className="font-mono text-[11px] text-base-content/50">
+                            {ticket.ticketNumber}
                           </p>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardWithBlurBlob>
 
-            {/* Recent Activity */}
-            <CardWithBlurBlob className="p-5 xl:col-span-2" interactive={false}>
-              {notifyLoading || loading ? (
-                <div>
-                  <div className="skeleton h-4 w-32"></div>
-
-                  <div className="mt-6 space-y-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="flex gap-3">
-                        <div className="skeleton h-8 w-8 rounded-xl"></div>
-                        <div className="w-full space-y-2">
-                          <div className="skeleton h-3 w-1/2"></div>
-                          <div className="skeleton h-3 w-1/3"></div>
+                          <TextBadge
+                            variant={priorityVariants[priority] || "red"}
+                          >
+                            {priority || "Not set"}
+                          </TextBadge>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+
+                        <h4 className="line-clamp-2 text-sm font-semibold">
+                          {ticket.aiResult?.ticketTitle || "Untitled Ticket"}
+                        </h4>
+
+                        <p className="mt-1 truncate text-xs text-base-content/50">
+                          {ticket.userInfo?.displayName ||
+                            ticket.customerName ||
+                            ticket.email ||
+                            "Customer"}
+                        </p>
+
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <TextBadge variant="blue">Unassigned</TextBadge>
+
+                          <span className="flex items-center gap-1 text-[11px] text-primary">
+                            View & claim <ArrowRight size={12} />
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
-              ) : (
-                <div>
-                  <h3 className="text-sm font-semibold">Recent Activity</h3>
-                  <p className="text-[11px] text-base-content/50">
-                    Your latest actions
+
+                <Link
+                  to="/agent/tickets"
+                  className="mt-4 flex items-center justify-center gap-2 text-xs text-primary"
+                >
+                  Open company queue <ArrowRight size={14} />
+                </Link>
+              </>
+            )}
+          </CardWithBlurBlob>
+
+          {/* Notifications */}
+          <CardWithBlurBlob className="p-5" interactive={false}>
+            <h3 className="text-sm font-semibold">Recent Activity</h3>
+            <p className="text-[11px] text-base-content/50">
+              Your latest notifications
+            </p>
+
+            {notificationQuery.isLoading ? (
+              <div className="mt-5 space-y-3">
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={item} className="skeleton h-12 w-full" />
+                ))}
+              </div>
+            ) : notificationQuery.isError ? (
+              <div className="mt-4">
+                <ErrorState
+                  message={notificationQuery.error.message}
+                  onRetry={() => notificationQuery.refetch()}
+                  fetching={notificationQuery.isFetching}
+                />
+              </div>
+            ) : notifications.length === 0 ? (
+              <EmptyState
+                icon={MessageSquareText}
+                title="No recent notifications"
+              />
+            ) : (
+              <div className="mt-5 space-y-4">
+                {notifications.map((item) => (
+                  <div key={item._id} className="flex items-start gap-3">
+                    <SoftIconCard
+                      icon={MessageSquareText}
+                      size={14}
+                      variant={
+                        item.type === "ticket_resolved"
+                          ? "green"
+                          : item.type === "customer_reply"
+                            ? "purple"
+                            : "slate"
+                      }
+                      className="h-8 w-8 shrink-0 rounded-xl"
+                    />
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium">{item.title}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-base-content/50">
+                        {item.message}
+                      </p>
+                      <p className="mt-1 text-[10px] text-base-content/40">
+                        {formatDate(item.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardWithBlurBlob>
+
+          {/* Work insights */}
+          <CardWithBlurBlob className="p-5" interactive={false}>
+            <h3 className="text-sm font-semibold">Agent Work Insights</h3>
+
+            <div className="mt-4 space-y-3">
+              {[
+                `${metrics.assignedToMe || 0} active tickets assigned to you.`,
+                `${metrics.inProgressTickets || 0} tickets currently in progress.`,
+                `${metrics.unassignedUrgentTickets || 0} urgent tickets waiting for an agent.`,
+                `${metrics.resolvedToday || 0} currently resolved or closed tickets resolved by you today.`,
+              ].map((text) => (
+                <div key={text} className="flex gap-3">
+                  <CheckCircle2
+                    size={16}
+                    className="mt-0.5 shrink-0 text-success"
+                  />
+                  <p className="text-xs leading-5 text-base-content/70">
+                    {text}
                   </p>
-
-                  {notificationData.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center px-5 py-8 text-center">
-                      <SoftIconCard
-                        icon={MessageSquareText}
-                        className="mb-2"
-                        variant="slate"
-                      ></SoftIconCard>
-
-                      <h3 className="text-base-content/60">
-                        No Recent Activity Yet
-                      </h3>
-
-                      <p className="mt-2 max-w-sm text-xs text-base-content/50">
-                        Ticket claims, replies, notes, and status changes will
-                        appear here.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-5 space-y-4">
-                      {notificationData.map((act, i) => (
-                        <div key={i} className="flex items-start gap-3">
-                          <SoftIconCard
-                            icon={MessageSquareText}
-                            size={14}
-                            variant={
-                              act.type === "ticket_claimed"
-                                ? "blue"
-                                : act.type === "agent_reply"
-                                  ? "purple"
-                                  : act.type === "ticket_resolved"
-                                    ? "green"
-                                    : act.type === "profile_updated"
-                                      ? "pink"
-                                      : act.type === "warning"
-                                        ? "yellow"
-                                        : "slate"
-                            }
-                            className="h-8 w-8 shrink-0 rounded-xl"
-                          />
-
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-medium">
-                              {act.title}
-                            </p>
-
-                            <p className="mt-1 text-[10px] text-base-content/40">
-                              {act.message}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              )}
-            </CardWithBlurBlob>
-
-            {/* Support Insights */}
-            <CardWithBlurBlob className="p-5" interactive={false}>
-              {loading ? (
-                <div>
-                  <div className="skeleton h-4 w-30 mb-6"></div>
-                  <div className="mt-4 space-y-3">
-                    <div className="skeleton h-4 w-full"></div>
-                    <div className="skeleton h-4 w-full"></div>
-                    <div className="skeleton h-4 w-full"></div>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <h3 className="text-sm font-semibold">Agent Work Insights</h3>
-
-                  <div className="mt-4 space-y-3">
-                    <div className="flex gap-3">
-                      <CheckCircle2 size={16} className="text-success mt-0.5" />
-
-                      <p className="text-xs text-base-content/70">
-                        You currently have{" "}
-                        <span className="font-semibold text-base-content">
-                          {data?.metrics?.assignedToMe || 0}
-                        </span>{" "}
-                        tickets assigned to you.
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <CheckCircle2 size={16} className="text-success mt-0.5" />
-
-                      <p className="text-xs text-base-content/70">
-                        You are actively working on{" "}
-                        <span className="font-semibold text-base-content">
-                          {data?.metrics?.inProgressTickets || 0}
-                        </span>{" "}
-                        in-progress tickets.
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <CheckCircle2 size={16} className="text-success mt-0.5" />
-
-                      <p className="text-xs text-base-content/70">
-                        You resolved{" "}
-                        <span className="font-semibold text-base-content">
-                          {data?.metrics?.resolvedToday || 0}
-                        </span>{" "}
-                        tickets today.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardWithBlurBlob>
-          </div>
+              ))}
+            </div>
+          </CardWithBlurBlob>
         </div>
       </div>
     </section>
   );
-};
-
-export default AgentDashboard;
+}

@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import {
   Copy,
   Gauge,
@@ -34,23 +34,39 @@ const AgentAiAssistant = () => {
   const [pendingMessages, setPendingMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const queryClient = useQueryClient();
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+  const sendingRef = useRef(false);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // =========================
   const {
     data: conversations = [],
     isLoading: listLoading,
+    isError: listError,
+    error: listErrorInfo,
     refetch: refetchList,
   } = useQuery({
-    queryKey: ["ai-conversations", search],
-    enabled: !!user?.accessToken,
+    queryKey: ["ai-conversations", user?.uid, debouncedSearch],
+    enabled: !!user,
     queryFn: async () => {
+      const token = await user.getIdToken();
       const res = await fetch(
-        `http://localhost:3021/ai/conversations?search=${search}`,
+        `http://localhost:3021/ai/conversations?search=${encodeURIComponent(debouncedSearch)}`,
         {
           headers: {
-            authorization: `Bearer ${user.accessToken}`,
+            authorization: `Bearer ${token}`,
           },
         },
       );
@@ -63,15 +79,22 @@ const AgentAiAssistant = () => {
   });
 
   // =================================
-  const { data: messages = [], isLoading: messagesLoading } = useQuery({
-    queryKey: ["conversation-messages", conversationId],
-    enabled: !!user?.accessToken && !!conversationId,
+  const {
+    data: messages = [],
+    isLoading: messagesLoading,
+    isError: messagesError,
+    error: messagesErrorInfo,
+    refetch: refetchMessages,
+  } = useQuery({
+    queryKey: ["conversation-messages", user?.uid, conversationId],
+    enabled: !!user && !!conversationId,
     queryFn: async () => {
+      const token = await user.getIdToken();
       const res = await fetch(
         `http://localhost:3021/ai/conversations/${conversationId}/messages`,
         {
           headers: {
-            authorization: `Bearer ${user.accessToken}`,
+            authorization: `Bearer ${token}`,
           },
         },
       );
@@ -82,14 +105,31 @@ const AgentAiAssistant = () => {
       return result.data;
     },
   });
+
   const visibleMessages = [...messages, ...pendingMessages];
-  // console.log(visibleMessages);
+
+  // Auto-scroll to bottom on new message or typing
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [visibleMessages.length, isAiTyping]);
+
+  // Adjust textarea height whenever message changes programmatically
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const maxHeight = 72;
+    textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
+  }, [message]);
 
   // ++++++++++++++++++++++++++++++++++++++++++++++++
+
   const handleSend = async () => {
     const text = message.trim();
-    if (!text || isAiTyping) return;
 
+    if (!text || isAiTyping || sendingRef.current) return;
+
+    sendingRef.current = true;
     const tempUserId = `temp-user-${Date.now()}`;
 
     const userTempMessage = {
@@ -109,11 +149,12 @@ const AgentAiAssistant = () => {
     setPendingMessages((prev) => [...prev, userTempMessage]);
 
     try {
+      const token = await user.getIdToken();
       const res = await fetch("http://localhost:3021/ai/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user.accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           message: text,
@@ -134,20 +175,30 @@ const AgentAiAssistant = () => {
       setConversationId(newId);
       setActiveChat(newId);
 
-      queryClient.setQueryData(["conversation-messages", newId], (old = []) => {
-        const oldMessages = Array.isArray(old) ? old : [];
-
-        return [...oldMessages, savedUserMessage, savedAiMessage];
-      });
+      queryClient.setQueryData(
+        ["conversation-messages", user?.uid, newId],
+        (old = []) => {
+          const oldMessages = Array.isArray(old) ? old : [];
+          return [...oldMessages, savedUserMessage, savedAiMessage];
+        },
+      );
 
       // remove temp user message after real DB message added
       setPendingMessages([]);
       refetchList();
-      //  =================
+      queryClient.invalidateQueries({
+        queryKey: ["conversation-messages", user?.uid, newId],
+      });
     } catch (err) {
+      setPendingMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === tempUserId ? { ...msg, error: true } : msg,
+        ),
+      );
       toast.error(err.message || "Something went wrong");
       console.error(err);
     } finally {
+      sendingRef.current = false;
       setIsAiTyping(false);
     }
   };
@@ -282,13 +333,19 @@ const AgentAiAssistant = () => {
 
               <GradientButton
                 size="sm"
-                disabled={listLoading}
+                disabled={listLoading || isAiTyping}
                 onClick={() => {
+                  if (sendingRef.current) {
+                    toast.info("Please finish the current AI response first.");
+                    return;
+                  }
+
                   setConversationId(null);
                   setActiveChat(null);
                   setPendingMessages([]);
                   setMessage("");
                   setIsAiTyping(false);
+                  setOpen(false);
                 }}
                 buttonClassName={`${listLoading && "from-primary/10 to-secondary/20"}`}
               >
@@ -342,6 +399,20 @@ const AgentAiAssistant = () => {
               <div className="skeleton h-13 w-full rounded-xl" />
               <div className="skeleton h-13 w-full rounded-xl" />
             </div>
+          ) : listError ? (
+            <div className="flex flex-1 flex-col items-center justify-center p-5 text-center">
+              <p className="text-sm text-error">
+                {listErrorInfo?.message || "Failed to load conversations."}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => refetchList()}
+                className="btn btn-sm btn-outline mt-3"
+              >
+                Retry
+              </button>
+            </div>
           ) : conversations.length === 0 ? (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="max-w-xs text-center">
@@ -367,14 +438,26 @@ const AgentAiAssistant = () => {
                 <CardWithBlurBlob
                   key={item._id}
                   onClick={() => {
+                    if (sendingRef.current) {
+                      toast.info(
+                        "Please finish the current AI response first.",
+                      );
+                      return;
+                    }
+
+                    if (item._id !== conversationId) {
+                      setPendingMessages([]);
+                    }
+
                     setActiveChat(item._id);
                     setConversationId(item._id);
+                    setOpen(false);
                   }}
                   interactive={false}
                   blobClassName="bg-transparent"
                   blobHoverColor="group-hover:none"
                   className={`
-       rounded-xl px-3 py-2 transition hover:bg-base-300 border-none
+       rounded-xl px-3 py-2 transition hover:bg-base-300 border-none cursor-pointer
       ${activeChat === item._id && "bg-gradient-to-r from-primary/10 to-secondary/10"}
     `}
                 >
@@ -432,6 +515,20 @@ const AgentAiAssistant = () => {
                       <span className="skeleton block h-4 w-7/12" />
                     </div>
                   </div>
+                </div>
+              ) : messagesError ? (
+                <div className="flex flex-col items-center justify-center p-6 text-center">
+                  <p className="text-sm text-error">
+                    {messagesErrorInfo?.message || "Failed to load messages."}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => refetchMessages()}
+                    className="btn btn-sm btn-outline mt-3"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : visibleMessages.length > 0 ? (
                 <div className="space-y-5 ">
@@ -554,9 +651,11 @@ const AgentAiAssistant = () => {
                           {item.message && (
                             <div className="flex gap-4 mt-3 text-xs text-base-content/50">
                               <button
-                                onClick={() =>
-                                  navigator.clipboard.writeText(item.message)
-                                }
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(item.message);
+                                  toast.success("Copied to clipboard");
+                                }}
                                 className="flex items-center gap-1 hover:text-primary"
                               >
                                 <Copy size={14} />
@@ -584,6 +683,8 @@ const AgentAiAssistant = () => {
                       </div>
                     </div>
                   )}
+
+                  <div ref={messagesEndRef} />
                 </div>
               ) : (
                 <div className="min-h-full w-full flex flex-col items-center justify-center px-4">
@@ -606,9 +707,10 @@ const AgentAiAssistant = () => {
                     {suggestions.map((item, index) => (
                       <div
                         key={index}
-                        onClick={() =>
-                          setMessage(`${item.title}\n${item.subtitle}`)
-                        }
+                        onClick={() => {
+                          setMessage(`${item.title}\n${item.subtitle}`);
+                          textareaRef.current?.focus();
+                        }}
                         className="rounded-2xl border border-base-content/10 px-5 py-4 hover:bg-base-200 transition cursor-pointer"
                       >
                         <div className="flex gap-4 items-start">
@@ -637,6 +739,7 @@ const AgentAiAssistant = () => {
               <Sparkles size={18} className="shrink-0" />
 
               <textarea
+                ref={textareaRef}
                 rows={1}
                 onInput={handleInput}
                 value={message}

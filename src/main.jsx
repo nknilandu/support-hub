@@ -31,6 +31,7 @@ import AgentCompanyTicket from "../pages/agent/AgentCompanyTickets";
 import AgentAssignTicket from "../pages/agent/AgentAssignTicket";
 import AgentAiAssistant from "../pages/agent/AgentAiAssistant";
 import AgentTicketDetails from "../pages/agent/AgentTicketDetails";
+import Notifications from "../pages/Notifications/Notifications";
 
 const router = createBrowserRouter([
   {
@@ -76,6 +77,14 @@ const router = createBrowserRouter([
         path: "dashboard",
         element: <DashboardRedirect />,
       },
+      {
+        path: "notifications",
+        element: <Notifications />,
+      },
+      {
+        path: "profile",
+        Component: Profile,
+      },
 
       // customer
       {
@@ -113,10 +122,6 @@ const router = createBrowserRouter([
             path: "ai-assistant",
             Component: CustomerAiAssistant,
           },
-          {
-            path: "profile",
-            Component: Profile,
-          },
         ],
       },
 
@@ -149,14 +154,10 @@ const router = createBrowserRouter([
             path: "ai-assistant",
             Component: AgentAiAssistant,
           },
-           // Single Ticket
+          // Single Ticket
           {
             path: "tickets/:ticketId",
             Component: AgentTicketDetails,
-          },
-          {
-            path: "profile",
-            Component: Profile,
           },
         ],
       },
