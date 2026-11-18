@@ -10,12 +10,8 @@ import {
   Sparkles,
   User,
   Users,
-  UserRound,
-  CreditCard,
-  BarChart3,
-  History,
-  Settings,
-  Building2,
+  Headset,
+  UserCog,
   PanelLeftOpen,
   PanelLeftClose,
   X,
@@ -85,8 +81,6 @@ const DashboardLayout = () => {
       return result.unreadCount ?? result.notifications?.length ?? 0;
     },
   });
-
-  const hasUnreadNotifications = unreadCount > 0;
 
   // ======== role badge variant helper =========
   const getRoleBadgeVariant = (role) => {
@@ -174,41 +168,26 @@ const DashboardLayout = () => {
       },
     ],
 
-    owner: [
+    manager: [
       {
-        label: "Dashboard",
+        label: "Overview",
         icon: LayoutGrid,
-        path: "/owner/dashboard",
+        path: "/manager/dashboard",
       },
       {
         label: "Tickets",
         icon: Ticket,
-        path: "/owner/tickets",
+        path: "/manager/tickets",
       },
       {
         label: "Agents",
-        icon: Users,
-        path: "/owner/agents",
+        icon: Headset,
+        path: "/manager/agents",
       },
       {
         label: "Customers",
-        icon: UserRound,
-        path: "/owner/customers",
-      },
-      {
-        label: "Billing",
-        icon: CreditCard,
-        path: "/owner/billing",
-      },
-      {
-        label: "Usage",
-        icon: BarChart3,
-        path: "/owner/usage",
-      },
-      {
-        label: "Activity Logs",
-        icon: History,
-        path: "/owner/activity-logs",
+        icon: Users,
+        path: "/manager/customers",
       },
       {
         label: "Notifications",
@@ -217,63 +196,9 @@ const DashboardLayout = () => {
         badge: unreadCount,
       },
       {
-        label: "Settings",
-        icon: Settings,
-        path: "/owner/settings",
-      },
-    ],
-
-    platform: [
-      {
-        label: "Dashboard",
-        icon: LayoutGrid,
-        path: "/platform/dashboard",
-      },
-      {
-        label: "Organizations",
-        icon: Building2,
-        path: "/platform/organizations",
-      },
-      {
-        label: "Owners",
-        icon: Users,
-        path: "/platform/owners",
-      },
-      {
-        label: "Agents",
-        icon: UserRound,
-        path: "/platform/agents",
-      },
-      {
-        label: "Customers",
-        icon: User,
-        path: "/platform/customers",
-      },
-      {
-        label: "Tickets",
-        icon: Ticket,
-        path: "/platform/tickets",
-      },
-      {
-        label: "Metrics",
-        icon: BarChart3,
-        path: "/platform/metrics",
-      },
-      {
-        label: "Activity Logs",
-        icon: History,
-        path: "/platform/activity-logs",
-      },
-      {
-        label: "Notifications",
-        icon: Bell,
-        path: "/notifications",
-        badge: unreadCount,
-      },
-      {
-        label: "Settings",
-        icon: Settings,
-        path: "/platform/settings",
+        label: "Profile",
+        icon: UserCog,
+        path: "/profile",
       },
     ],
   };
@@ -485,34 +410,36 @@ const DashboardLayout = () => {
           {/* ============================= */}
           {!loading && userRole && !collapsed && (
             <div className="p-3">
-              <CardWithBlurBlob className="p-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={logo}
-                    alt="logo"
-                    className="h-8 w-8 object-cover object-center"
-                  />
+              {(userRole === "agent" || userRole === "customer") && (
+                <CardWithBlurBlob className="p-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={logo}
+                      alt="logo"
+                      className="h-8 w-8 object-cover object-center"
+                    />
 
-                  <div className="min-w-0">
-                    <h3 className="truncate text-xs font-semibold">
-                      AI Assistant
-                    </h3>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-xs font-semibold">
+                        AI Assistant
+                      </h3>
 
-                    <p className="truncate text-[10px] text-base-content/50">
-                      First-response suggestions
-                    </p>
+                      <p className="truncate text-[10px] text-base-content/50">
+                        First-response suggestions
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <Link to={`/${userRole}/ai-assistant`}>
-                  <GradientButton
-                    className="mt-3 w-full"
-                    buttonClassName="btn-sm w-full"
-                  >
-                    Ask AI
-                  </GradientButton>
-                </Link>
-              </CardWithBlurBlob>
+                  <Link to={`/${userRole}/ai-assistant`}>
+                    <GradientButton
+                      className="mt-3 w-full"
+                      buttonClassName="btn-sm w-full"
+                    >
+                      Ask AI
+                    </GradientButton>
+                  </Link>
+                </CardWithBlurBlob>
+              )}
             </div>
           )}
         </aside>

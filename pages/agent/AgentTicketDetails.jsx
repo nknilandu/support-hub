@@ -13,6 +13,7 @@ import {
   Clock4,
   Lightbulb,
   MessagesSquare,
+  RefreshCw,
   SendHorizonal,
   Sparkles,
   Ticket,
@@ -584,7 +585,7 @@ function AgentTicketDetailsContent({ user, ticketId }) {
     );
   }
 
-  if (
+if (
     !user ||
     !validTicketId ||
     ticketQuery.isError ||
@@ -596,49 +597,78 @@ function AgentTicketDetailsContent({ user, ticketId }) {
     const heading = !user
       ? "Sign in required"
       : !validTicketId
-        ? "Invalid ticket"
+        ? "Invalid ticket link"
         : errorStatus === 404
           ? "Ticket not found"
           : errorStatus === 403 || (ticketData && !canReadTicket)
-            ? "Ticket access unavailable"
+            ? "Access restricted"
             : "Unable to load ticket";
 
     const description = !user
-      ? "Please sign in with your support agent account."
+      ? "Please sign in with your support agent account to view this ticket."
       : !validTicketId
-        ? "The ticket link is invalid."
-        : ticketQuery.error?.message ||
-          "You do not currently have permission to view this ticket.";
+        ? "This ticket URL looks incomplete or malformed. Check the link and try again."
+        : errorStatus === 404
+          ? "This ticket may have been removed, released, or does not belong to your workspace."
+          : ticketQuery.error?.message ||
+            "You do not currently have permission to view this ticket.";
 
     return (
       <div className="p-4 lg:p-5">
         <CardWithBlurBlob
           interactive={false}
-          className="flex min-h-[70vh] flex-col items-center justify-center px-5 py-12 text-center"
+          className="flex min-h-[72vh] flex-col items-center justify-center px-6 py-16 text-center"
         >
-          <SoftIconCard icon={TriangleAlert} className="mb-3" variant="slate" />
+          <div className="mx-auto flex w-full max-w-sm flex-col items-center">
+            <div className="relative mb-5">
+              <div className="absolute -inset-2 rounded-3xl bg-warning/15 blur-md" />
+              <SoftIconCard
+                icon={TriangleAlert}
+                variant="warning"
+                size={24}
+                className="relative h-14 w-14 rounded-2xl border border-warning/20 shadow-xs"
+              />
+            </div>
 
-          <h3 className="text-lg font-semibold">{heading}</h3>
+            {ticketId && (
+              <span className="mb-2.5 rounded-full border border-base-content/10 bg-base-200/70 px-3 py-0.5 font-mono text-[11px] text-base-content/55">
+                ID: {ticketId.slice(0, 8)}...
+              </span>
+            )}
 
-          <p className="mt-2 max-w-md text-sm text-base-content/60">
-            {description}
-          </p>
+            <h3 className="text-xl font-bold tracking-tight text-base-content">
+              {heading}
+            </h3>
 
-          <div className="mt-5 flex gap-3">
-            <GradientButton size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft size={15} />
-              Go Back
-            </GradientButton>
+            <p className="mt-2 text-sm leading-relaxed text-base-content/60">
+              {description}
+            </p>
 
-            {user && validTicketId && (
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <GradientButton
                 size="sm"
-                disabled={ticketQuery.isFetching}
-                onClick={() => ticketQuery.refetch()}
+                onClick={() => navigate("/agent/my-tickets")}
+                buttonClassName="from-base-content/10 to-base-content/5 text-base-content hover:from-base-content/15 hover:to-base-content/10 px-4"
               >
-                {ticketQuery.isFetching ? "Retrying..." : "Try again"}
+                <ArrowLeft size={15} />
+                Back to My Tickets
               </GradientButton>
-            )}
+
+              {user && validTicketId && (
+                <GradientButton
+                  size="sm"
+                  disabled={ticketQuery.isFetching}
+                  onClick={() => ticketQuery.refetch()}
+                  buttonClassName="from-primary to-secondary text-white px-4"
+                >
+                  <RefreshCw
+                    size={14}
+                    className={ticketQuery.isFetching ? "animate-spin" : ""}
+                  />
+                  {ticketQuery.isFetching ? "Retrying..." : "Try Again"}
+                </GradientButton>
+              )}
+            </div>
           </div>
         </CardWithBlurBlob>
       </div>

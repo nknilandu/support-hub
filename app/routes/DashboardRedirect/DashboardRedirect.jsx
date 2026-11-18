@@ -20,7 +20,7 @@ export default function DashboardRedirect() {
       setUserRole(role);
     };
     loadRole();
-  }, [user]);
+  }, [user, fetchUserRole]);
   // ============================
 
   // Auth / Role loading
@@ -34,11 +34,8 @@ export default function DashboardRedirect() {
   }
 
   switch (userRole) {
-    case "platform":
-      return <Navigate to="/platform/organizations" replace />;
-
-    case "owner":
-      return <Navigate to="/owner/dashboard" replace />;
+    case "manager":
+      return <Navigate to="/manager/dashboard" replace />;
 
     case "agent":
       return <Navigate to="/agent/dashboard" replace />;

@@ -32,6 +32,11 @@ import AgentAssignTicket from "../pages/agent/AgentAssignTicket";
 import AgentAiAssistant from "../pages/agent/AgentAiAssistant";
 import AgentTicketDetails from "../pages/agent/AgentTicketDetails";
 import Notifications from "../pages/Notifications/Notifications";
+import ManagerDashboard from "../pages/manager/ManagerDashboard";
+import ManagerTickets from "../pages/manager/ManagerTickets";
+import ManagerTicketDetails from "../pages/manager/ManagerTicketDetails";
+import ManagerAgents from "../pages/manager/ManagerAgents";
+import ManagerCustomers from "../pages/manager/ManagerCustomers";
 
 const router = createBrowserRouter([
   {
@@ -158,6 +163,38 @@ const router = createBrowserRouter([
           {
             path: "tickets/:ticketId",
             Component: AgentTicketDetails,
+          },
+        ],
+      },
+
+// manager
+      {
+        path: "manager",
+        element: <RoleRoute role="manager" />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="dashboard" replace />,
+          },
+          {
+            path: "dashboard",
+            Component: ManagerDashboard,
+          },
+          {
+            path: "tickets",
+            Component: ManagerTickets,
+          },
+          {
+            path: "tickets/:ticketId",
+            Component: ManagerTicketDetails,
+          },
+          {
+            path: "agents",
+            Component: ManagerAgents,
+          },
+          {
+            path: "customers",
+            Component: ManagerCustomers,
           },
         ],
       },

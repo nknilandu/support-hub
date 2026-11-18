@@ -8,7 +8,7 @@ import SupportProblemSection from "../../components/home/SupportProblemSection/S
 import WorkflowSection from "../../components/home/WorkflowSection/WorkflowSection";
 import Hero from "../../components/home/Hero/Hero";
 
-const home = () => {
+const Home = () => {
   return (
     <div>
       <Hero></Hero>
@@ -31,4 +31,4 @@ const home = () => {
   );
 };
 
-export default home;
+export default Home;

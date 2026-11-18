@@ -3,12 +3,14 @@ import GradientButton from "../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import {
   AlertTriangle,
+  ArrowLeft,
   CalendarDays,
   CheckCircle2,
   Clock3,
   Clock4,
   Lightbulb,
   MessagesSquare,
+  RefreshCw,
   SendHorizonal,
   Ticket,
   TicketCheck,
@@ -66,6 +68,7 @@ const CustomerTicketDetails = () => {
   const {
     data: resData,
     isLoading: dataLoading,
+    isFetching: dataFetching,
     isError: ticketError,
     error: ticketErrorInfo,
     refetch: refetchTicket,
@@ -350,6 +353,86 @@ const CustomerTicketDetails = () => {
     ticket?.supportMode === "human" &&
     permission?.canReadMessages;
 
+  // ==================== NOT FOUND / ERROR / AUTH STATE ====================
+  if (!dataLoading && (!user || ticketError || !ticket)) {
+    const isNotFound =
+      !ticket || /not found|404/i.test(ticketErrorInfo?.message || "");
+
+    const heading = !user
+      ? "Sign in required"
+      : isNotFound
+        ? "Ticket not found"
+        : "Unable to load ticket";
+
+    const description = !user
+      ? "Please sign in with your customer account to view this support ticket."
+      : isNotFound
+        ? "We couldn't find this ticket. It may have been deleted or the link might be incorrect."
+        : ticketErrorInfo?.message ||
+          "Something went wrong while loading your ticket details.";
+
+    return (
+      <div className="p-4 lg:p-5">
+        <CardWithBlurBlob
+          interactive={false}
+          className="flex min-h-[72vh] flex-col items-center justify-center px-6 py-16 text-center"
+        >
+          <div className="mx-auto flex w-full max-w-sm flex-col items-center">
+            <div className="relative mb-5">
+              <div className="absolute -inset-2 rounded-3xl bg-warning/15 blur-md" />
+              <SoftIconCard
+                icon={TriangleAlert}
+                variant="warning"
+                size={24}
+                className="relative h-14 w-14 rounded-2xl border border-warning/20 shadow-xs"
+              />
+            </div>
+
+            {ticketId && (
+              <span className="mb-2.5 rounded-full border border-base-content/10 bg-base-200/70 px-3 py-0.5 font-mono text-[11px] text-base-content/55">
+                ID: {ticketId.slice(0, 8)}...
+              </span>
+            )}
+
+            <h3 className="text-xl font-bold tracking-tight text-base-content">
+              {heading}
+            </h3>
+
+            <p className="mt-2 text-sm leading-relaxed text-base-content/60">
+              {description}
+            </p>
+
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <GradientButton
+                size="sm"
+                onClick={() => navigate("/customer/tickets")}
+                buttonClassName="from-base-content/10 to-base-content/5 text-base-content hover:from-base-content/15 hover:to-base-content/10 px-4"
+              >
+                <ArrowLeft size={15} />
+                Back to My Tickets
+              </GradientButton>
+
+              {user && ticketId && (
+                <GradientButton
+                  size="sm"
+                  disabled={dataFetching}
+                  onClick={() => refetchTicket()}
+                  buttonClassName="from-primary to-secondary text-white px-4"
+                >
+                  <RefreshCw
+                    size={14}
+                    className={dataFetching ? "animate-spin" : ""}
+                  />
+                  {dataFetching ? "Retrying..." : "Try Again"}
+                </GradientButton>
+              )}
+            </div>
+          </div>
+        </CardWithBlurBlob>
+      </div>
+    );
+  }
+
   // ================================
   return (
     <div className="space-y-5 p-4 lg:p-5">
@@ -535,49 +618,6 @@ const CustomerTicketDetails = () => {
               <div className="skeleton mt-4 h-5 w-1/3 rounded-full"></div>
               <div className="skeleton h-5 w-2/5 rounded-full"></div>
               <div className="skeleton h-5 w-2/5 rounded-full"></div>
-            </div>
-          ) : ticketError ? (
-            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-              <h3 className="font-semibold text-error">
-                Failed to load ticket
-              </h3>
-
-              <p className="mt-2 text-sm text-base-content/60">
-                {ticketErrorInfo?.message || "Something went wrong."}
-              </p>
-
-              <button
-                type="button"
-                onClick={() => refetchTicket()}
-                className="btn btn-primary btn-sm mt-4"
-              >
-                Retry
-              </button>
-            </div>
-          ) : !ticket ? (
-            <div className="flex h-full flex-col items-center justify-center px-5 py-8 text-center">
-              <SoftIconCard
-                icon={TriangleAlert}
-                className="mb-3"
-                variant="slate"
-              />
-
-              <h3 className="text-base font-semibold text-base-content/70">
-                Ticket Not Found
-              </h3>
-
-              <p className="mt-2 max-w-sm text-xs leading-5 text-base-content/50">
-                We couldn&apos;t find this support ticket. It may have been
-                deleted, moved, or you may not have permission to view it.
-              </p>
-
-              <GradientButton
-                size="sm"
-                className="mt-5"
-                onClick={() => navigate("/customer/tickets")}
-              >
-                Back to My Tickets
-              </GradientButton>
             </div>
           ) : (
             <div className="h-full overflow-y-auto pr-2">

@@ -11,7 +11,7 @@ const RoleRoute = ({ role }) => {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!user) {
-      setUserRole(null);  
+      setUserRole(null);
       return;
     }
     const loadRole = async () => {
@@ -19,7 +19,7 @@ const RoleRoute = ({ role }) => {
       setUserRole(role);
     };
     loadRole();
-  }, [user]);
+  }, [user, fetchUserRole]);
   // ===============================
 
   if (loading || !userRole) {
