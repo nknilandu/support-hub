@@ -12,6 +12,8 @@ import {
   MessageSquareText,
   Upload,
   ChevronDown,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 
@@ -44,11 +46,18 @@ const roles = [
     description: "Handle assigned tickets and reply faster with AI.",
   },
   {
+    value: "manager",
+    label: "Manager",
+    icon: ShieldCheck,
+    variant: "pink",
+    description: "Oversee team agents, assignments, and workflows.",
+  },
+  {
     value: "owner",
     label: "Owner",
     icon: Crown,
-    variant: "blue",
-    description: "Manage workspace, team, billing, and tickets.",
+    variant: "orange",
+    description: "Create company, manage team, billing, and workspace.",
   },
 ];
 
@@ -62,7 +71,7 @@ const infoCards = [
   {
     title: "Role-based onboarding",
     description:
-      "Owners, agents, and customers get separate dashboards from day one.",
+      "Owners, managers, agents, and customers get separate dashboards from day one.",
     icon: UserRound,
   },
   {
@@ -73,8 +82,13 @@ const infoCards = [
   },
 ];
 
+const COMPANY_NAME_REGEX = /^[a-zA-Z0-9 _-]+$/;
+
+const normalizeCompanyKey = (name) =>
+  typeof name === "string" ? name.trim().toLowerCase().replace(/\s+/g, "") : "";
+
 export default function Register() {
-  const { googleSignIn, createUser, setUser, updateUserProfile } =
+  const { googleSignIn, createUser, updateUserProfile, logOut } =
     useContext(AuthContext);
 
   const [selectedRole, setSelectedRole] = useState("customer");
@@ -83,7 +97,8 @@ export default function Register() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [profileImage, setProfileImage] = useState(null);
-  const [companyData, setCompanyData] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [companyData, setCompanyData] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [companyLoading, setCompanyLoading] = useState(true);
 
@@ -95,104 +110,175 @@ export default function Register() {
     formState: { errors },
     handleSubmit,
     getValues,
+    setError,
+    clearErrors,
   } = useForm();
 
-  // ================= load company data from database ===================
+  // ================= Load active companies from database ===================
   useEffect(() => {
     fetch("http://localhost:3021/companies")
       .then((res) => res.json())
       .then((data) => {
-        setCompanyData(data);
-        // console.log(data);
+        setCompanyData(Array.isArray(data) ? data : []);
       })
       .catch((e) => {
-        toast.error("Unable to load company's information");
-        console.log(e);
+        toast.error("Unable to load companies information");
+        console.error(e);
       })
       .finally(() => {
         setCompanyLoading(false);
       });
   }, []);
 
-  // ++++++++++++ save data to db ============
-  const saveUserToDB = async (url, infoData, token) => {
+  // Cleanup image preview URL
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  // Helper: Validate company name format & uniqueness before creating account
+  const validateOwnerCompanyName = (rawName) => {
+    const cleaned =
+      typeof rawName === "string" ? rawName.trim().replace(/\s+/g, " ") : "";
+
+    if (!cleaned) {
+      return { valid: false, message: "Company name is required" };
+    }
+
+    if (!COMPANY_NAME_REGEX.test(cleaned)) {
+      return {
+        valid: false,
+        message:
+          "Only letters, numbers, spaces, underscore (_), and hyphen (-) are allowed",
+      };
+    }
+
+    const normalizedInput = normalizeCompanyKey(cleaned);
+    if (!normalizedInput) {
+      return { valid: false, message: "Company name cannot be empty" };
+    }
+
+    const isDuplicate = companyData.some(
+      (c) => normalizeCompanyKey(c.companyName) === normalizedInput,
+    );
+
+    if (isDuplicate) {
+      return {
+        valid: false,
+        message: "This company name is already registered",
+      };
+    }
+
+    return { valid: true, companyName: cleaned };
+  };
+
+  // Helper: Optional ImgBB upload
+  const uploadOptionalPhoto = async (file) => {
+    if (!file) return null;
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const imgRes = await fetch(
+      `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+
+    const imgData = await imgRes.json();
+    if (!imgData.success) {
+      throw new Error("Image upload failed");
+    }
+
+    return imgData.data.display_url;
+  };
+
+  // Helper: Save data to backend
+  const saveToDB = async (url, payload, token) => {
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(infoData),
+      body: JSON.stringify(payload),
     });
-    return await res.json();
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "Request failed");
+    }
+    return data;
   };
 
-  // =========== handle Google Submit ==============
+  // =========== Handle Google Sign-Up ==============
   const googleSubmit = async () => {
+    clearErrors();
+
+    const usernameInput = (getValues("username") || "").trim();
+    if (!usernameInput) {
+      setError("username", {
+        type: "manual",
+        message: "User name is required for Google sign up",
+      });
+      toast.error("Please enter your user name first");
+      return;
+    }
+
+    let validatedCompanyName = "";
+    if (selectedRole === "owner") {
+      const check = validateOwnerCompanyName(getValues("companyname"));
+      if (!check.valid) {
+        setError("companyname", {
+          type: "manual",
+          message: check.message,
+        });
+        toast.error(check.message);
+        return;
+      }
+      validatedCompanyName = check.companyName;
+    } else if (!selectedCompany) {
+      setError("companyselection", {
+        type: "manual",
+        message: "Company selection is required",
+      });
+      toast.error("Please select a company first");
+      return;
+    }
+
     try {
       setGoogleLoading(true);
+      sessionStorage.setItem("isRegistering", "true");
 
-      const usernameInput = getValues("username");
-      const companyNameInput = getValues("companyname");
+      // 1. Optional photo upload first
+      const uploadedPhoto = await uploadOptionalPhoto(profileImage);
 
-      if (selectedRole === "owner" && !companyNameInput) {
-        toast.error("Company name is required");
-        return;
-      }
-
-      if (
-        (selectedRole === "customer" || selectedRole === "agent") &&
-        !selectedCompany
-      ) {
-        toast.error("Company selection is required");
-        return;
-      }
-
-      // 1. ========================== Google Sign In =========================
+      // 2. Google Sign In
       const res = await googleSignIn();
       const userData = res.user;
+      const finalPhoto = uploadedPhoto || userData.photoURL || null;
 
-      const finalName = usernameInput || userData.displayName || "User";
-      let finalPhoto = userData.photoURL || null;
-
-      // 2. =========================== Upload image (if selected) ===================
-      if (profileImage) {
-        const formData = new FormData();
-        formData.append("image", profileImage);
-
-        const imgRes = await fetch(
-          `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
-          {
-            method: "POST",
-            body: formData,
-          },
-        );
-        const imgData = await imgRes.json();
-        if (!imgData.success) {
-          throw new Error("Image upload failed");
-        }
-        finalPhoto = imgData.data.display_url;
-      }
-
-      // 3. ======================== Update Firebase profile =========================
+      // 3. Update Firebase profile & refresh AuthContext user state immediately
       await updateUserProfile({
-        displayName: finalName,
+        displayName: usernameInput,
         photoURL: finalPhoto,
       });
 
-      // 4. ======================== Get Firebase token ===========================
-      const token = await userData.getIdToken();
+      // 4. Get fresh Firebase token
+      const token = await userData.getIdToken(true);
 
-      // 5. ======================== Save user in DB ===========================
+      // 5. Save user in MongoDB
       const userInfo = {
         uid: userData.uid,
-        displayName: finalName,
+        displayName: usernameInput,
         photoURL: finalPhoto,
         email: userData.email,
-        status: "active",
         role: selectedRole,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
       if (selectedRole !== "owner" && selectedCompany) {
@@ -200,93 +286,86 @@ export default function Register() {
         userInfo.companyId = selectedCompany._id;
       }
 
-      const dbResult = await saveUserToDB(
+      const dbResult = await saveToDB(
         "http://localhost:3021/users",
         userInfo,
         token,
       );
 
-      if (!dbResult.success) {
-        throw new Error(dbResult.message || "User save failed");
-      }
-
-      // 6. ============================== Company create (only owner) =====================
+      // 6. Create company if role is owner
       if (selectedRole === "owner") {
-        const companyInfo = {
-          companyName: companyNameInput,
-          companyLogo: finalPhoto,
-          ownerId: dbResult.insertedId,
-          ownerUid: userData.uid,
-          status: "active",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        const companyResult = await saveUserToDB(
-          "http://localhost:3021/companies",
-          companyInfo,
-          token,
-        );
-
-        if (!companyResult.success) {
-          throw new Error(companyResult.message || "Company creation failed");
+        try {
+          await saveToDB(
+            "http://localhost:3021/companies",
+            {
+              companyName: validatedCompanyName,
+              companyLogo: finalPhoto,
+              ownerId: dbResult.insertedId,
+              ownerUid: userData.uid,
+            },
+            token,
+          );
+        } catch (companyErr) {
+          await logOut();
+          throw companyErr;
         }
       }
 
-      // =================== GET USER ===================
-      setUser(userData);
-      // ===========
-      toast("Account created successfully");
+      toast.success("Account created successfully");
       navigate(location.state || "/dashboard", { replace: true });
     } catch (error) {
-      console.error(error);
-      toast.error(error.message || "Something went wrong");
+      console.error("Google registration error:", error);
+      toast.error(error.message || "Google registration failed");
     } finally {
+      sessionStorage.removeItem("isRegistering");
       setGoogleLoading(false);
-      setBtnLoading(false);
     }
   };
-
-  // +++++++++++++++++ button submit +++++++++++++++++
+  // +++++++++++++++++ Email & Password Submit +++++++++++++++++
   const onSubmit = async (data) => {
+    clearErrors();
+
+    let validatedCompanyName = "";
+    if (selectedRole === "owner") {
+      const check = validateOwnerCompanyName(data.companyname);
+      if (!check.valid) {
+        setError("companyname", {
+          type: "manual",
+          message: check.message,
+        });
+        return;
+      }
+      validatedCompanyName = check.companyName;
+    }
+
     try {
       setBtnLoading(true);
 
-      // ======================= upload image ========================
-      const formData = new FormData();
-      formData.append("image", profileImage);
+      // 1. Optional photo upload
+      const uploadedPhoto = await uploadOptionalPhoto(profileImage);
+      const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        data.username.trim(),
+      )}&background=random`;
+      const finalPhoto = uploadedPhoto || fallbackAvatar;
 
-      const imageRes = await fetch(
-        `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
-      const imageResult = await imageRes.json();
-      if (!imageResult.success) {
-        throw new Error("Image upload failed");
-      }
-      const photoLink = imageResult.data.display_url;
-
-      // ======================= create firebase user ========================
-      const userCredential = await createUser(data.email, data.password);
+      // 2. Create Firebase user
+      const userCredential = await createUser(data.email.trim(), data.password);
       const userData = userCredential.user;
 
-      // ======================= update profile ========================
+      // 3. Update Firebase profile & refresh AuthContext user state immediately
       await updateUserProfile({
-        displayName: data.username,
-        photoURL: photoLink,
+        displayName: data.username.trim(),
+        photoURL: finalPhoto,
       });
 
-      //===================== Get Firebase JWT token =================
-      const token = await userData.getIdToken();
+      // 4. Get fresh Firebase JWT token
+      const token = await userData.getIdToken(true);
 
-      // ======================= save user db ========================
+      // 5. Save user in MongoDB
       const userInfo = {
         uid: userData.uid,
-        displayName: data.username,
-        photoURL: photoLink,
+        displayName: data.username.trim(),
+        photoURL: finalPhoto,
         email: userData.email,
         role: selectedRole,
       };
@@ -296,47 +375,33 @@ export default function Register() {
         userInfo.companyId = selectedCompany._id;
       }
 
-      // Save user to DB
-      const dbResult = await saveUserToDB(
+      const dbResult = await saveToDB(
         "http://localhost:3021/users",
         userInfo,
         token,
       );
 
-      if (!dbResult.success) {
-        throw new Error(dbResult.message || "User save failed");
-      }
-
-      // ======================= save company db ========================
+      // 6. Save company in MongoDB (only owner)
       if (selectedRole === "owner") {
-        const companyInfo = {
-          companyName: data.companyname,
-          companyLogo: photoLink,
-          ownerId: dbResult.insertedId,
-          ownerUid: userData.uid,
-        };
-
-        const companyResult = await saveUserToDB(
+        await saveToDB(
           "http://localhost:3021/companies",
-          companyInfo,
+          {
+            companyName: validatedCompanyName,
+            companyLogo: finalPhoto,
+            ownerId: dbResult.insertedId,
+            ownerUid: userData.uid,
+          },
           token,
         );
-
-        if (!companyResult.success) {
-          throw new Error(companyResult.message || "Company save failed");
-        }
       }
-      // =================== GET USER ===================
-      setUser(userData);
 
-      // ============
-      toast("Account created successfully");
-      navigate("/dashboard", { replace: true });
+      toast.success("Account created successfully");
+      navigate(location.state || "/dashboard", { replace: true });
     } catch (error) {
-      toast.error(error.message);
+      console.error("Registration error:", error);
+      toast.error(error.message || "Registration failed");
     } finally {
       setBtnLoading(false);
-      setGoogleLoading(false);
     }
   };
 
@@ -367,13 +432,13 @@ export default function Register() {
       <div className="relative z-10 mx-auto grid min-h-screen max-w-7xl grid-cols-1 px-6 py-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
         {/* Left side */}
         <section className="hidden lg:flex lg:flex-col lg:justify-center">
-          <a
-            href="/"
+          <Link
+            to="/"
             className="mb-8 inline-flex w-fit items-center gap-2 text-sm font-medium text-base-content/60 transition hover:text-primary"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to home
-          </a>
+          </Link>
 
           <div>
             <div className="mb-3 inline-flex">
@@ -424,7 +489,7 @@ export default function Register() {
           <div className="w-full max-w-md">
             {/* Mobile top */}
             <div className="mb-7 flex items-center justify-between lg:hidden">
-              <a href="/" className="flex items-center gap-2">
+              <Link to="/" className="flex items-center gap-2">
                 <GradientCard className="h-9 w-9 rounded-xl">
                   <Bot size={18} strokeWidth={2} />
                 </GradientCard>
@@ -432,15 +497,15 @@ export default function Register() {
                 <span className="text-lg font-semibold tracking-tight text-base-content">
                   Support<GradientText>Hub</GradientText>
                 </span>
-              </a>
+              </Link>
 
-              <a
-                href="/"
+              <Link
+                to="/"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-base-content/60 hover:text-primary"
               >
                 <ArrowLeft size={14} strokeWidth={2} />
                 Home
-              </a>
+              </Link>
             </div>
 
             <GradientShadow
@@ -463,10 +528,9 @@ export default function Register() {
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  {/* Profile + username */}
+                  {/* Optional Profile Photo + Required Username */}
                   <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
-                    {/* Compact profile upload */}
-                    <div className="flex justify-center sm:justify-start">
+                    <div className="relative flex justify-center sm:justify-start">
                       <button
                         type="button"
                         onClick={() =>
@@ -474,11 +538,11 @@ export default function Register() {
                         }
                         className="group relative flex h-18 w-18 items-center justify-center rounded-full border-2 border-dashed border-base-content/20 bg-base-100/70 text-base-content/40 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                       >
-                        {profileImage ? (
+                        {imagePreview ? (
                           <img
-                            src={URL.createObjectURL(profileImage)}
+                            src={imagePreview}
                             alt="Profile"
-                            className="h-full w-full object-cover rounded-full"
+                            className="h-full w-full rounded-full object-cover"
                           />
                         ) : (
                           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-secondary/20">
@@ -486,31 +550,44 @@ export default function Register() {
                           </div>
                         )}
 
-                        <span className="absolute -bottom-3 rounded-full border bg-base-100 px-2 py-0.5 text-[10px] font-medium border-base-content/10 text-base-content/50">
-                          Photo
+                        <span className="absolute -bottom-3 rounded-full border border-base-content/10 bg-base-100 px-2 py-0.5 text-[10px] font-medium text-base-content/50">
+                          Optional
                         </span>
                       </button>
-                      {/* ====== */}
+
+                      {profileImage && (
+                        <button
+                          type="button"
+                          title="Remove photo"
+                          onClick={() => {
+                            setProfileImage(null);
+                            setImagePreview(null);
+                          }}
+                          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-white shadow-xs transition hover:scale-105"
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+
                       <input
-                        {...register("profileImage", {
-                          required: "Profile image is required",
-                          onChange: (e) => {
-                            const file = e.target.files?.[0];
-                            setProfileImage(file || null);
-                          },
-                        })}
                         id="profileImage"
                         type="file"
                         accept="image/*"
                         className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setProfileImage(file);
+                          setImagePreview(URL.createObjectURL(file));
+                          e.target.value = "";
+                        }}
                       />
                     </div>
 
-                    {/* username */}
-
+                    {/* Username */}
                     <div>
                       <label className="mb-2 block text-sm font-medium text-base-content/75">
-                        User name
+                        User name <span className="text-red-500">*</span>
                       </label>
 
                       <div className="relative">
@@ -522,22 +599,23 @@ export default function Register() {
                         <input
                           {...register("username", {
                             required: "User name is required",
+                            validate: (val) =>
+                              val.trim().length > 0 || "User name is required",
                           })}
                           id="username"
                           type="text"
-                          placeholder="user name"
+                          placeholder="Your full name"
                           className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* company name */}
-
+                  {/* Company Name (Owner only) */}
                   {selectedRole === "owner" && (
                     <div>
                       <label className="mb-2 block text-sm font-medium text-base-content/75">
-                        Company name
+                        Company name <span className="text-red-500">*</span>
                       </label>
 
                       <div className="relative">
@@ -548,20 +626,28 @@ export default function Register() {
                         />
                         <input
                           {...register("companyname", {
-                            required: "Company name is required",
+                            validate: (value) => {
+                              if (selectedRole !== "owner") return true;
+                              const check = validateOwnerCompanyName(value);
+                              return check.valid ? true : check.message;
+                            },
                           })}
                           id="companyname"
                           type="text"
-                          placeholder="company name"
+                          placeholder="e.g. Soft Tech"
                           className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                         />
                       </div>
+                      <p className="mt-1 text-[11px] text-base-content/45">
+                        Unique name. Letters, numbers, spaces, _ and - allowed.
+                      </p>
                     </div>
                   )}
 
+                  {/* Email */}
                   <div>
                     <label className="mb-2 block text-sm font-medium text-base-content/75">
-                      Email
+                      Email <span className="text-red-500">*</span>
                     </label>
 
                     <div className="relative">
@@ -578,8 +664,7 @@ export default function Register() {
                             message: "Enter a valid email address",
                           },
                         })}
-                        type="text"
-                        name="email"
+                        type="email"
                         autoComplete="email"
                         placeholder="example@email.com"
                         className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
@@ -593,7 +678,7 @@ export default function Register() {
                       htmlFor="password"
                       className="mb-2 block text-sm font-medium text-base-content/75"
                     >
-                      Password
+                      Password <span className="text-red-500">*</span>
                     </label>
 
                     <div className="relative">
@@ -604,21 +689,21 @@ export default function Register() {
                       />
                       <input
                         {...register("password", {
-                          required: "password field is empty",
+                          required: "Password is required",
                           minLength: {
                             value: 8,
                             message:
-                              "password must contains minimum 8 characters",
+                              "Password must contain at least 8 characters",
                           },
                           pattern: {
                             value: /^(?=.*[a-z])(?=.*[A-Z]).+$/,
                             message:
-                              "password must contain at least one lowercase and one uppercase letter",
+                              "Password must contain at least one lowercase and one uppercase letter",
                           },
                         })}
-                        name="password"
+                        id="password"
                         placeholder="At least 8 characters"
-                        autoComplete="current-password"
+                        autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
                         className="h-10 w-full rounded-xl border border-base-content/10 bg-base-100 px-9 pr-11 text-sm text-base-content outline-none transition placeholder:text-base-content/35 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                       />
@@ -637,13 +722,13 @@ export default function Register() {
                     </div>
                   </div>
 
-                  {/* Compact role selection */}
+                  {/* 4-Role Selection */}
                   <div>
                     <p className="mb-2 text-sm font-medium text-base-content/75">
                       I am joining as
                     </p>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {roles.map((role) => {
                         const Icon = role.icon;
                         const isSelected = selectedRole === role.value;
@@ -652,7 +737,10 @@ export default function Register() {
                           <button
                             key={role.value}
                             type="button"
-                            onClick={() => setSelectedRole(role.value)}
+                            onClick={() => {
+                              setSelectedRole(role.value);
+                              clearErrors(["companyname", "companyselection"]);
+                            }}
                             className={cn(
                               "relative flex h-16 flex-col items-center justify-center rounded-xl border bg-base-100/70 text-center transition",
                               "hover:border-primary/30 hover:bg-primary/5",
@@ -666,9 +754,10 @@ export default function Register() {
                               strokeWidth={2}
                               className={cn(
                                 "mb-1",
-                                role.variant === "blue" && "text-blue-500",
-                                role.variant === "cyan" && "text-cyan-500",
                                 role.variant === "green" && "text-green-500",
+                                role.variant === "cyan" && "text-cyan-500",
+                                role.variant === "pink" && "text-pink-500",
+                                role.variant === "orange" && "text-orange-500",
                               )}
                             />
 
@@ -685,13 +774,11 @@ export default function Register() {
                     </div>
                   </div>
 
-                  {/* +++++++++++++++++++++++++++ */}
-
-                  {(selectedRole === "agent" ||
-                    selectedRole === "customer") && (
+                  {/* Select Company (Customer, Agent, Manager) */}
+                  {selectedRole !== "owner" && (
                     <div>
                       <label
-                        htmlFor="organizationId"
+                        htmlFor="companyselection"
                         className="mb-2 block text-sm font-medium text-base-content/75"
                       >
                         Select Company <span className="text-red-500">*</span>
@@ -704,22 +791,19 @@ export default function Register() {
                           className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
                         />
 
-                        {/* =========== */}
                         <select
                           {...register("companyselection", {
-                            required:
-                              selectedRole === "customer" ||
-                              selectedRole === "agent"
-                                ? "Company selection is required"
-                                : false,
-
+                            validate: (val) => {
+                              if (selectedRole === "owner") return true;
+                              return val
+                                ? true
+                                : "Company selection is required";
+                            },
                             onChange: (e) => {
                               const selectedId = e.target.value;
-
                               const company = companyData.find(
-                                (company) => company._id === selectedId,
+                                (item) => item._id === selectedId,
                               );
-
                               setSelectedCompany(company || null);
                             },
                           })}
@@ -754,41 +838,45 @@ export default function Register() {
                           </p>
                         ) : (
                           <p className="mt-2 text-xs text-base-content/50">
-                            {companyData.length} company found.
+                            {companyData.length} active company found.
                           </p>
                         ))}
 
                       {selectedRole === "agent" && (
                         <p className="mt-2 text-xs leading-5 text-amber-500">
                           Agent account will stay pending until the company
+                          owner or manager approves your request.
+                        </p>
+                      )}
+
+                      {selectedRole === "manager" && (
+                        <p className="mt-2 text-xs leading-5 text-amber-500">
+                          Manager account will stay pending until the company
                           owner approves your request.
                         </p>
                       )}
                     </div>
                   )}
-                  {/* +++++++++++++++++++++++++++ */}
 
                   <GradientButton
                     type="submit"
-                    disabled={btnLoading}
+                    disabled={btnLoading || googleLoading}
                     shadow
                     className="w-full"
-                    buttonClassName={`min-h-0 h-11 w-full text-sm font-semibold ${btnLoading && "from-primary/10 to-secondary/20"}`}
+                    buttonClassName={`min-h-0 h-11 w-full text-sm font-semibold ${
+                      btnLoading && "from-primary/10 to-secondary/20"
+                    }`}
                     glowClassName="opacity-30"
                   >
                     {btnLoading ? (
-                      <span className="loading loading-spinner loading-sm"></span>
+                      <span className="loading loading-spinner loading-sm" />
                     ) : (
                       "Create Account"
                     )}
                   </GradientButton>
 
-                  {/* error */}
-                  {errors.profileImage ? (
-                    <p className="-m-2 px-3 text-xs text-red-500">
-                      {errors.profileImage.message}
-                    </p>
-                  ) : errors.username ? (
+                  {/* Validation Errors */}
+                  {errors.username ? (
                     <p className="-m-2 px-3 text-xs text-red-500">
                       {errors.username.message}
                     </p>
@@ -819,18 +907,18 @@ export default function Register() {
                   <div className="h-px flex-1 bg-base-content/10" />
                 </div>
 
-                {/* google  */}
+                {/* Google Sign Up */}
                 <button
                   type="button"
                   onClick={googleSubmit}
                   disabled={btnLoading || googleLoading}
-                  className="h-11 w-full items-center rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5"
+                  className="h-11 w-full items-center rounded-xl border border-base-content/10 bg-base-100 text-sm font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/5 disabled:opacity-60"
                 >
                   {googleLoading ? (
-                    <span className="loading loading-spinner loading-sm text-base-content"></span>
+                    <span className="loading loading-spinner loading-sm text-base-content" />
                   ) : (
-                    <div className="flex justify-center gap-3 ">
-                      <FcGoogle size={18}></FcGoogle>
+                    <div className="flex justify-center gap-3">
+                      <FcGoogle size={18} />
                       <span>Continue with Google</span>
                     </div>
                   )}
@@ -849,8 +937,18 @@ export default function Register() {
             </GradientShadow>
 
             <p className="mt-5 text-center text-xs leading-5 text-base-content/45">
-              By continuing, you agree to SupportHub&apos;s Terms and Privacy
-              Policy.
+              By continuing, you agree to our{" "}
+              <Link to="/legal#terms" className="underline hover:text-primary">
+                Terms &amp; Conditions
+              </Link>{" "}
+              and{" "}
+              <Link
+                to="/legal#privacy"
+                className="underline hover:text-primary"
+              >
+                Privacy Policy
+              </Link>
+              .
             </p>
           </div>
         </section>

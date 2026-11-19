@@ -1,9 +1,9 @@
 import {
   MessageSquare,
-  Bot,
+  Sparkles,
   CheckCircle2,
-  Tag,
-  PencilLine,
+  UserCheck,
+  Wand2,
   BarChart3,
   Workflow,
 } from "lucide-react";
@@ -16,41 +16,44 @@ import CardWithBlurBlob from "../../ui/Card/CardWithBlurBlob";
 const workflowSteps = [
   {
     step: "01",
-    title: "Customer submits issue",
+    title: "Customer describes issue",
     description:
-      "Ticket created from the support portal, email, or embedded widget.",
+      "Customer submits issue details from the support portal with full context.",
     icon: MessageSquare,
   },
   {
     step: "02",
-    title: "AI generates first response",
+    title: "AI diagnosis & triage",
     description:
-      "Instant contextual reply attempts to deflect common questions.",
-    icon: Bot,
+      "AI detects category, priority, risk level, root cause, and resolution steps.",
+    icon: Sparkles,
   },
   {
     step: "03",
-    title: "Solved or human support",
+    title: "Solved or escalated",
     description:
-      "Customer marks the ticket resolved or requests a human agent.",
+      "Marked resolved by AI immediately or escalated to the human queue.",
     icon: CheckCircle2,
   },
   {
     step: "04",
-    title: "Classification & priority",
-    description: "Category, intent, and priority detected before triage.",
-    icon: Tag,
+    title: "Assigned to an agent",
+    description:
+      "Managers or owners assign open tickets to an active, approved agent.",
+    icon: UserCheck,
   },
   {
     step: "05",
-    title: "Agent gets summary & draft",
-    description: "AI summary plus a polished reply draft, awaiting approval.",
-    icon: PencilLine,
+    title: "Live chat & Suggest reply",
+    description:
+      "Agent chats in real time and uses one-click Suggest reply when needed.",
+    icon: Wand2,
   },
   {
     step: "06",
     title: "Resolved & tracked",
-    description: "Outcome logged, CSAT captured, AI performance measured.",
+    description:
+      "Ticket marked resolved and tracked across workspace analytics.",
     icon: BarChart3,
   },
 ];
@@ -61,7 +64,7 @@ export default function WorkflowSection() {
       <div className="mx-auto max-w-7xl px-6">
         {/* Badge */}
         <div className="mb-4 flex justify-center">
-          <Badge icon={Workflow} label="" text="How it works" />
+          <Badge icon={Workflow} text="How it works" />
         </div>
 
         {/* Heading */}
@@ -71,8 +74,9 @@ export default function WorkflowSection() {
           </h2>
 
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-base-content/70 md:text-base">
-            A simple AI-assisted workflow from issue submission to ticket
-            resolution. AI suggests. Humans stay in control. Every outbound reply requires explicit agent approval.
+            A clear AI-assisted lifecycle from instant triage to human
+            resolution — AI assists every step while your team stays in full
+            control.
           </p>
         </div>
 
@@ -98,33 +102,31 @@ export default function WorkflowSection() {
           {workflowSteps.map(({ step, title, description, icon: Icon }) => (
             <CardWithBlurBlob
               key={step}
-              className="min-h-[190px] p-4 text-center"
+              className="h-full min-h-[195px] p-4 text-center"
               contentClassName="items-center"
             >
               {/* Mobile step badge */}
               <div className="mb-4 flex justify-center lg:hidden">
-                <GradientCard className="h-10 w-10 rounded-full text-xs font-bold">
+                <GradientCard className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold">
                   {step}
                 </GradientCard>
               </div>
 
-              <div className="flex justify-center items-center">
+              <div className="flex items-center justify-center">
                 <GradientIconCard
-                icon={Icon}
-                size={16}
-                strokeWidth={2}
-                className="mb-4 from-primary/10 to-secondary/20 text-primary"
-                iconClassName="text-primary"
-              />
-
+                  icon={Icon}
+                  size={16}
+                  strokeWidth={2}
+                  className="mb-4 from-primary/10 to-secondary/20 text-primary"
+                  iconClassName="text-primary"
+                />
               </div>
 
-              
-              <h3 className="mx-auto max-w-[140px] text-sm font-semibold leading-5 text-base-content">
+              <h3 className="mx-auto max-w-[150px] text-sm font-semibold leading-5 text-base-content">
                 {title}
               </h3>
 
-              <p className="mx-auto mt-3 max-w-[150px] text-xs leading-5 text-base-content/60">
+              <p className="mx-auto mt-3 max-w-[165px] text-xs leading-5 text-base-content/65">
                 {description}
               </p>
             </CardWithBlurBlob>

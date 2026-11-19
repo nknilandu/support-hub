@@ -26,6 +26,7 @@ import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import GradientButton from "../../components/ui/Button/GradientButton";
 import Pagination from "../../components/ui/Pagination/pagination";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3021"
@@ -210,6 +211,7 @@ export default function ManagerCustomers() {
     isLoading: profileLoading,
     isError: profileError,
     error: profileErrorInfo,
+    isFetching: profileFetching,
     refetch: refetchProfile,
   } = useQuery({
     queryKey: ["manager-profile", user?.uid],
@@ -221,7 +223,10 @@ export default function ManagerCustomers() {
     staleTime: 30_000,
   });
 
-  const isManager = manager?.role === "manager" && manager?.status === "active";
+  const isApprovedManager =
+    manager?.role === "manager" &&
+    manager?.status === "active" &&
+    !["pending", "rejected"].includes(manager?.verifyIdAgent);
 
   // 2. Load Customers List & Summary Stats
   const {
@@ -241,7 +246,7 @@ export default function ManagerCustomers() {
       ticketFilter,
       page,
     ],
-    enabled: !!user && isManager,
+    enabled: !!user && isApprovedManager,
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(page),
@@ -264,7 +269,8 @@ export default function ManagerCustomers() {
     refetch: refetchDetails,
   } = useQuery({
     queryKey: ["manager-customer-details", user?.uid, modal?.uid, ticketPage],
-    enabled: !!user && isManager && modal?.type === "details" && !!modal?.uid,
+    enabled:
+      !!user && isApprovedManager && modal?.type === "details" && !!modal?.uid,
     queryFn: () =>
       fetchWithAuth(
         user,
@@ -333,7 +339,33 @@ export default function ManagerCustomers() {
     return <LoadingPage />;
   }
 
-  if (!user || profileError || !isManager) {
+  if (
+    user &&
+    !profileError &&
+    manager?.role === "manager" &&
+    !isApprovedManager
+  ) {
+    const restrictedStatus =
+      manager.verifyIdAgent === "rejected"
+        ? "rejected"
+        : manager.verifyIdAgent === "pending"
+          ? "pending"
+          : manager.status;
+
+    return (
+      <AccountStatusNotice
+        role="manager"
+        status={restrictedStatus}
+        rejectionReason={manager.rejectionReason}
+        userEmail={manager.email || user?.email}
+        companyName={manager.companyName}
+        isChecking={profileFetching}
+        onRefresh={() => refetchProfile()}
+      />
+    );
+  }
+
+  if (!user || profileError || !isApprovedManager) {
     return (
       <div className="p-4 lg:p-5">
         <CardWithBlurBlob className="p-5" interactive={false}>

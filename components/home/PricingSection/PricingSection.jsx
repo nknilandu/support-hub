@@ -1,58 +1,74 @@
+import { useContext, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { CheckCircle2, ArrowRight, Gem } from "lucide-react";
 
 import Badge from "../../ui/Badge/PromoBadge";
 import { cn } from "../../../src/lib/cn";
 import CardWithBlurBlob from "../../ui/Card/CardWithBlurBlob";
 import GradientButton from "../../ui/Button/GradientButton";
+import { AuthContext } from "../../../app/providers/AuthProvider";
 
+// Synced with backend ownerRoutes.js SUBSCRIPTION_PLANS
 const pricingPlans = [
   {
-    name: "Free",
-    price: "$0",
-    period: "/ mo",
-    description: "Try the platform with a small team.",
-    features: ["2 agents", "50 tickets / month", "100 AI credits / month"],
-    buttonText: "Start free",
-    highlighted: false,
-  },
-  {
+    id: "starter",
     name: "Starter",
-    price: "$29",
+    price: "$19",
     period: "/ mo",
-    description: "For lean support teams getting started.",
-    features: ["5 agents", "500 tickets / month", "1,000 AI credits / month"],
+    description: "For small support teams.",
+    features: [
+      "2 Managers & 6 Support Agents",
+      "500 tickets per month",
+      "250 AI replies per month",
+    ],
     buttonText: "Choose Starter",
     highlighted: false,
   },
   {
-    name: "Pro",
-    price: "$99",
+    id: "growth",
+    name: "Growth",
+    price: "$49",
     period: "/ mo",
-    description: "For growing teams that need automation.",
+    description: "For growing multi-manager teams.",
     features: [
-      "15 agents",
-      "3,000 tickets / month",
-      "10,000 AI credits / month",
+      "5 Managers & 15 Support Agents",
+      "Unlimited monthly tickets",
+      "2,500 AI replies per month",
     ],
-    buttonText: "Choose Pro",
+    buttonText: "Choose Growth",
     highlighted: true,
   },
   {
-    name: "Business",
-    price: "$299",
+    id: "scale",
+    name: "Scale",
+    price: "$99",
     period: "/ mo",
     description: "For high-volume support operations.",
     features: [
-      "50 agents",
-      "10,000 tickets / month",
-      "50,000 AI credits / month",
+      "10 Managers & 40 Support Agents",
+      "Unlimited monthly tickets",
+      "10,000 AI replies per month",
     ],
-    buttonText: "Choose Business",
+    buttonText: "Choose Scale",
+    highlighted: false,
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    price: "$249",
+    period: "/ mo",
+    description: "For large organizations.",
+    features: [
+      "25 Managers & 100 Support Agents",
+      "Unlimited monthly tickets",
+      "Unlimited AI replies",
+    ],
+    buttonText: "Choose Enterprise",
     highlighted: false,
   },
 ];
 
-function PricingCard({ plan }) {
+function PricingCard({ plan, targetPath }) {
   return (
     <div className="group relative pt-4 transition duration-200 hover:-translate-y-1">
       {plan.highlighted && (
@@ -66,7 +82,7 @@ function PricingCard({ plan }) {
       <CardWithBlurBlob
         interactive={false}
         className={cn(
-          "h-full p-6",
+          "flex h-full flex-col justify-between p-6",
           "group-hover:shadow-lg",
           plan.highlighted &&
             "border-primary/40 shadow-xl shadow-primary/10 ring-1 ring-primary/25",
@@ -78,7 +94,7 @@ function PricingCard({ plan }) {
             : "group-hover:bg-primary/20"
         }
       >
-        {/* content */}
+        {/* Top content */}
         <div>
           <h3 className="text-sm font-medium text-base-content/80">
             {plan.name}
@@ -112,25 +128,54 @@ function PricingCard({ plan }) {
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Bottom CTA */}
+        <Link to={targetPath} className="mt-6 block">
           <GradientButton
-            className="w-full mt-5"
-            buttonClassName={`${
+            className="w-full"
+            buttonClassName={cn(
+              "w-full",
               plan.highlighted
-                ? "bg-gradient-to-r from-primary to-secondary text-primary-content hover:opacity-90"
-                : "border border-base-content/15 bg-base-100 text-base-content hover:border-primary/40 hover:text-primary"
-            }`}
+                ? "from-primary to-secondary text-primary-content hover:opacity-90"
+                : "border border-base-content/15 from-base-100 to-base-100 text-base-content hover:border-primary/40 hover:text-primary",
+            )}
+            glowClassName={
+              plan.highlighted ? "opacity-60 blur-md" : "opacity-0"
+            }
           >
             {plan.buttonText}
           </GradientButton>
-        </div>
+        </Link>
       </CardWithBlurBlob>
     </div>
   );
 }
 
 export default function PricingSection() {
+  const { user, fetchUserRole } = useContext(AuthContext);
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setUserRole(null);
+      return;
+    }
+
+    fetchUserRole(user).then((role) => {
+      if (active) setUserRole(role);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user, fetchUserRole]);
+
+  const targetPath = userRole === "owner" ? "/owner/subscription" : "/register";
+
   return (
-    <section className="w-full bg-base-200/30 py-20 md:py-24">
+    <section id="pricing" className="w-full bg-base-200/30 py-20 md:py-24">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mb-4 flex justify-center">
           <Badge icon={Gem} text="Pricing Plan" />
@@ -142,24 +187,27 @@ export default function PricingSection() {
           </h2>
 
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-base-content/70 md:text-base">
-            Start free. Upgrade when ticket volume or AI usage requires it.
+            Start free with our Default Plan (1 Manager, 3 Agents, 30 tickets
+            &amp; 50 AI replies/mo). Upgrade anytime via Stripe.
           </p>
         </div>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {pricingPlans.map((plan) => (
-            <PricingCard key={plan.name} plan={plan} />
+            <PricingCard key={plan.id} plan={plan} targetPath={targetPath} />
           ))}
         </div>
 
         <div className="mt-8 flex justify-center">
-          <a
-            href="#pricing"
+          <Link
+            to={targetPath}
             className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:gap-3"
           >
-            View full pricing
+            {userRole === "owner"
+              ? "Manage workspace subscription & billing"
+              : "Start free with Default Plan"}
             <ArrowRight size={15} strokeWidth={2} />
-          </a>
+          </Link>
         </div>
       </div>
     </section>

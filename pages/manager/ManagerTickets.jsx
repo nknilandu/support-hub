@@ -9,6 +9,8 @@ import TextBadge from "../../components/ui/Badge/TextBadge";
 import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import Pagination from "../../components/ui/Pagination/pagination";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
+import LoadingPage from "../loading/LoadingPage/LoadingPage";
 
 // =====================================================
 // CONFIGURATION
@@ -94,6 +96,31 @@ function combinedLabel(value, options) {
     .join(" + ");
 }
 
+async function fetchManagerProfile({ user, signal }) {
+  const token = await user.getIdToken();
+  const response = await fetch(`${API_BASE_URL}/users/me`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+    signal,
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok || result?.success === false || !result?.user) {
+    const error = new Error(
+      result?.message || `Unable to verify profile (${response.status}).`,
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return result.user;
+}
+
 async function fetchManagerTickets({ user, filters, page, signal }) {
   const token = await user.getIdToken();
 
@@ -124,19 +151,14 @@ async function fetchManagerTickets({ user, filters, page, signal }) {
 
   if (!response.ok || result?.success !== true) {
     const error = new Error(
-      result?.message ||
-        `Unable to load company tickets (${response.status}).`,
+      result?.message || `Unable to load company tickets (${response.status}).`,
     );
 
     error.status = response.status;
     throw error;
   }
 
-  if (
-    !Array.isArray(result.tickets) ||
-    !result.pagination ||
-    !result.counts
-  ) {
+  if (!Array.isArray(result.tickets) || !result.pagination || !result.counts) {
     throw new Error("Incomplete company tickets response.");
   }
 
@@ -303,53 +325,62 @@ export default function ManagerTickets() {
 
   const page = parsePage(searchParams.get("page"));
 
-  const {
-    data,
-    error,
-    isPending,
-    isPlaceholderData,
-    isFetching,
-    refetch,
-  } = useQuery({
-    queryKey: [
-      "manager-tickets",
-      session.user?.uid || null,
-      filters,
-      page,
-    ],
-
+  // 1. Check Manager Profile Status FIRST
+  const profileQuery = useQuery({
+    queryKey: ["manager-profile", session.user?.uid],
     enabled: session.ready && !!session.user,
-
     queryFn: ({ signal }) =>
-      fetchManagerTickets({
+      fetchManagerProfile({
         user: session.user,
-        filters,
-        page,
         signal,
       }),
-
-    placeholderData: keepPreviousData,
-    staleTime: 15_000,
-    gcTime: 0,
-    refetchOnWindowFocus: true,
-    refetchIntervalInBackground: false,
-
-    refetchInterval: (query) =>
-      [401, 403, 404].includes(query.state.error?.status)
-        ? false
-        : 30_000,
-
+    staleTime: 30_000,
     retry: (failureCount, requestError) => {
-      if (
-        requestError?.status >= 400 &&
-        requestError?.status < 500
-      ) {
+      if (requestError?.status >= 400 && requestError?.status < 500) {
         return false;
       }
-
       return failureCount < 1;
     },
   });
+
+  const manager = profileQuery.data;
+  const isApprovedManager =
+    manager?.role === "manager" &&
+    manager?.status === "active" &&
+    !["pending", "rejected"].includes(manager?.verifyIdAgent);
+
+  // 2. Fetch Tickets ONLY if approved manager
+  const { data, error, isPending, isPlaceholderData, isFetching, refetch } =
+    useQuery({
+      queryKey: ["manager-tickets", session.user?.uid || null, filters, page],
+
+      enabled: session.ready && !!session.user && isApprovedManager,
+
+      queryFn: ({ signal }) =>
+        fetchManagerTickets({
+          user: session.user,
+          filters,
+          page,
+          signal,
+        }),
+
+      placeholderData: keepPreviousData,
+      staleTime: 15_000,
+      gcTime: 0,
+      refetchOnWindowFocus: true,
+      refetchIntervalInBackground: false,
+
+      refetchInterval: (query) =>
+        [401, 403, 404].includes(query.state.error?.status) ? false : 30_000,
+
+      retry: (failureCount, requestError) => {
+        if (requestError?.status >= 400 && requestError?.status < 500) {
+          return false;
+        }
+
+        return failureCount < 1;
+      },
+    });
 
   const accessDenied = [401, 403, 404].includes(error?.status);
 
@@ -359,8 +390,7 @@ export default function ManagerTickets() {
   const initialLoading =
     !session.ready || (!!session.user && isPending && !usableData);
 
-  const tableLoading =
-    initialLoading || (!!session.user && isPlaceholderData);
+  const tableLoading = initialLoading || (!!session.user && isPlaceholderData);
 
   const visibleTickets = usableData?.tickets || [];
   const counts = usableData?.counts || EMPTY_COUNTS;
@@ -418,8 +448,7 @@ export default function ManagerTickets() {
   }
 
   function changePage(value) {
-    const requested =
-      typeof value === "function" ? value(currentPage) : value;
+    const requested = typeof value === "function" ? value(currentPage) : value;
 
     if (!Number.isInteger(requested)) return;
 
@@ -438,6 +467,37 @@ export default function ManagerTickets() {
     });
   }
 
+  // Early gate: Wait for profile check before rendering page skeleton
+  if (!session.ready || (session.user && profileQuery.isPending)) {
+    return <LoadingPage />;
+  }
+
+  if (
+    session.user &&
+    !profileQuery.isError &&
+    manager?.role === "manager" &&
+    !isApprovedManager
+  ) {
+    const restrictedStatus =
+      manager.verifyIdAgent === "rejected"
+        ? "rejected"
+        : manager.verifyIdAgent === "pending"
+          ? "pending"
+          : manager.status;
+
+    return (
+      <AccountStatusNotice
+        role="manager"
+        status={restrictedStatus}
+        rejectionReason={manager.rejectionReason}
+        userEmail={manager.email || session.user?.email}
+        companyName={manager.companyName}
+        isChecking={profileQuery.isFetching}
+        onRefresh={() => profileQuery.refetch()}
+      />
+    );
+  }
+
   let emptyTitle = "No company tickets found";
   let emptyDescription =
     "Your current filters did not match any ticket. Try another search or reset the filters.";
@@ -448,6 +508,12 @@ export default function ManagerTickets() {
   } else if (!session.user) {
     emptyTitle = "Authentication required";
     emptyDescription = "Sign in with your manager account to continue.";
+  } else if (profileQuery.isError) {
+    emptyTitle = "Unable to verify manager access";
+    emptyDescription = profileQuery.error.message;
+  } else if (!isApprovedManager) {
+    emptyTitle = "Access restricted";
+    emptyDescription = "An active manager account is required.";
   } else if (!usableData && error) {
     emptyTitle = "Unable to load company tickets";
     emptyDescription = error.message;
@@ -498,20 +564,14 @@ export default function ManagerTickets() {
             ) : (
               <>
                 <div className="flex items-center justify-between gap-3">
-                  <SoftIconCard
-                    icon={Ticket}
-                    variant={variant}
-                    size={17}
-                  />
+                  <SoftIconCard icon={Ticket} variant={variant} size={17} />
 
                   <p className="text-2xl font-semibold tabular-nums">
                     {usableData ? counts[key] : "—"}
                   </p>
                 </div>
 
-                <p className="mt-3 text-sm text-base-content/60">
-                  {label}
-                </p>
+                <p className="mt-3 text-sm text-base-content/60">{label}</p>
               </>
             )}
           </CardWithBlurBlob>
@@ -541,18 +601,13 @@ export default function ManagerTickets() {
           <select
             aria-label="Status"
             value={filters.status}
-            onChange={(event) =>
-              changeFilter("status", event.target.value)
-            }
+            onChange={(event) => changeFilter("status", event.target.value)}
             className={SELECT_CLASS}
           >
             <option value="">All Status</option>
 
             {filters.status &&
-              !Object.prototype.hasOwnProperty.call(
-                STATUS,
-                filters.status,
-              ) && (
+              !Object.prototype.hasOwnProperty.call(STATUS, filters.status) && (
                 <option value={filters.status}>
                   {combinedLabel(filters.status, STATUS)}
                 </option>
@@ -568,9 +623,7 @@ export default function ManagerTickets() {
           <select
             aria-label="Priority"
             value={filters.priority}
-            onChange={(event) =>
-              changeFilter("priority", event.target.value)
-            }
+            onChange={(event) => changeFilter("priority", event.target.value)}
             className={SELECT_CLASS}
           >
             <option value="">All Priority</option>
@@ -595,19 +648,14 @@ export default function ManagerTickets() {
           <select
             aria-label="Category"
             value={filters.category}
-            onChange={(event) =>
-              changeFilter("category", event.target.value)
-            }
+            onChange={(event) => changeFilter("category", event.target.value)}
             className={SELECT_CLASS}
           >
             <option value="">All Category</option>
 
-            {filters.category &&
-              !CATEGORIES.includes(filters.category) && (
-                <option value={filters.category}>
-                  {filters.category}
-                </option>
-              )}
+            {filters.category && !CATEGORIES.includes(filters.category) && (
+              <option value={filters.category}>{filters.category}</option>
+            )}
 
             {CATEGORIES.map((category) => (
               <option key={category} value={category}>
@@ -643,16 +691,21 @@ export default function ManagerTickets() {
               {emptyDescription}
             </p>
 
-            {session.user && error && !usableData && (
-              <button
-                type="button"
-                onClick={() => refetch()}
-                disabled={isFetching}
-                className="mt-3 text-sm text-primary hover:underline"
-              >
-                {isFetching ? "Retrying..." : "Try again"}
-              </button>
-            )}
+            {session.user &&
+              (profileQuery.isError || (error && !usableData)) && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    profileQuery.isError ? profileQuery.refetch() : refetch()
+                  }
+                  disabled={profileQuery.isFetching || isFetching}
+                  className="mt-3 text-sm text-primary hover:underline"
+                >
+                  {profileQuery.isFetching || isFetching
+                    ? "Retrying..."
+                    : "Try again"}
+                </button>
+              )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -668,11 +721,7 @@ export default function ManagerTickets() {
                     "Assigned",
                     "Updated",
                   ].map((label) => (
-                    <th
-                      key={label}
-                      scope="col"
-                      className="p-5 font-semibold"
-                    >
+                    <th key={label} scope="col" className="p-5 font-semibold">
                       {label}
                     </th>
                   ))}
@@ -708,13 +757,11 @@ export default function ManagerTickets() {
                           </p>
 
                           <h3 className="line-clamp-1 font-medium">
-                            {ticket.aiResult?.ticketTitle ||
-                              "Untitled Ticket"}
+                            {ticket.aiResult?.ticketTitle || "Untitled Ticket"}
                           </h3>
 
                           <p className="line-clamp-1 max-w-11/12 text-sm text-base-content/60">
-                            {ticket.aiResult?.summary ||
-                              "No summary available"}
+                            {ticket.aiResult?.summary || "No summary available"}
                           </p>
                         </td>
 
@@ -784,9 +831,7 @@ export default function ManagerTickets() {
 
                         <td className="p-5">
                           <span className="whitespace-nowrap text-sm text-base-content/60">
-                            {formatDate(
-                              ticket.updatedAt || ticket.createdAt,
-                            )}
+                            {formatDate(ticket.updatedAt || ticket.createdAt)}
                           </span>
                         </td>
 

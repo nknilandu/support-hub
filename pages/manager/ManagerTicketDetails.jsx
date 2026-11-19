@@ -38,6 +38,7 @@ import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import GradientCard from "../../components/ui/Card/GradientCard";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
 
 const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3021"
@@ -373,12 +374,33 @@ function ManagerTicketDetailsContent({ user, ticketId }) {
   }, [message, activeTab]);
 
   // =====================================================
+  // CURRENT MANAGER PROFILE GATE
+  // =====================================================
+
+  const profileQuery = useQuery({
+    queryKey: ["manager-profile", user?.uid],
+    enabled: Boolean(user),
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const result = await requestApi(user, "/users/me", { signal });
+      return result.user;
+    },
+    staleTime: 30_000,
+  });
+
+  const managerProfile = profileQuery.data;
+  const isRestrictedManager =
+    managerProfile?.role === "manager" &&
+    (managerProfile?.status !== "active" ||
+      ["pending", "rejected"].includes(managerProfile?.verifyIdAgent));
+
+  // =====================================================
   // TICKET DETAILS
   // =====================================================
 
   const ticketQuery = useQuery({
     queryKey: detailsKey,
-    enabled: Boolean(user && validTicketId),
+    enabled: Boolean(user && validTicketId && !isRestrictedManager),
     retry: false,
 
     queryFn: ({ signal }) =>
@@ -714,8 +736,44 @@ function ManagerTicketDetailsContent({ user, ticketId }) {
   // LOADING / ERROR / ACCESS STATES
   // =====================================================
 
-  if (user && validTicketId && ticketQuery.isLoading) {
+  if (
+    user &&
+    (profileQuery.isLoading ||
+      (!isRestrictedManager && validTicketId && ticketQuery.isLoading))
+  ) {
     return <ManagerTicketDetailsSkeleton />;
+  }
+
+  const isAccountRestricted =
+    isRestrictedManager ||
+    (ticketQuery.error?.status === 403 &&
+      /pending|rejected|suspended|not active|approval/i.test(
+        ticketQuery.error?.message || "",
+      ));
+
+  if (isAccountRestricted) {
+    const restrictedStatus =
+      managerProfile?.verifyIdAgent === "rejected"
+        ? "rejected"
+        : managerProfile?.verifyIdAgent === "pending"
+          ? "pending"
+          : managerProfile?.status;
+
+    return (
+      <AccountStatusNotice
+        role="manager"
+        status={restrictedStatus}
+        errorMessage={!managerProfile ? ticketQuery.error?.message : ""}
+        rejectionReason={managerProfile?.rejectionReason}
+        userEmail={managerProfile?.email || user?.email}
+        companyName={managerProfile?.companyName}
+        isChecking={profileQuery.isFetching || ticketQuery.isFetching}
+        onRefresh={() => {
+          profileQuery.refetch();
+          if (!isRestrictedManager) ticketQuery.refetch();
+        }}
+      />
+    );
   }
 
   if (

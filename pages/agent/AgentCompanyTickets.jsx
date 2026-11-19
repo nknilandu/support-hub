@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Pagination from "../../components/ui/Pagination/pagination";
 import { toast } from "react-toastify";
 import LoadingPage from "../loading/LoadingPage/LoadingPage";
-import AgentApprovalStatus from "./AgentApprovalStatus";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
 
 const AgentCompanyTickets = () => {
   const { user } = useContext(AuthContext);
@@ -48,6 +48,7 @@ const AgentCompanyTickets = () => {
   const {
     data: currentAgentData,
     isLoading: agentLoading,
+    isFetching: agentFetching,
     isError: agentError,
     error: agentErrorInfo,
     refetch: refetchAgent,
@@ -187,8 +188,23 @@ const AgentCompanyTickets = () => {
   }
 
   if (!isApproved) {
+    const noticeStatus =
+      currentAgentData?.status === "suspended"
+        ? "suspended"
+        : currentAgentData?.verifyIdAgent === "rejected"
+          ? "rejected"
+          : "pending";
+
     return (
-      <AgentApprovalStatus agent={currentAgentData} onRefresh={refetchAgent} />
+      <AccountStatusNotice
+        role="agent"
+        status={noticeStatus}
+        rejectionReason={currentAgentData?.rejectionReason}
+        userEmail={currentAgentData?.email || user?.email}
+        companyName={currentAgentData?.companyName}
+        isChecking={agentFetching}
+        onRefresh={refetchAgent}
+      />
     );
   }
 

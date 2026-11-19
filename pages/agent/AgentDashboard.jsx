@@ -34,7 +34,7 @@ import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import LoadingPage from "../loading/LoadingPage/LoadingPage";
-import AgentApprovalStatus from "./AgentApprovalStatus";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
 
 const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3021"
@@ -352,10 +352,22 @@ export default function AgentDashboard() {
     );
   }
 
-  if (currentAgent.status === "suspended" || !isApproved) {
+if (currentAgent.status === "suspended" || !isApproved) {
+    const noticeStatus =
+      currentAgent.status === "suspended"
+        ? "suspended"
+        : currentAgent.verifyIdAgent === "rejected"
+          ? "rejected"
+          : "pending";
+
     return (
-      <AgentApprovalStatus
-        agent={currentAgent}
+      <AccountStatusNotice
+        role="agent"
+        status={noticeStatus}
+        rejectionReason={currentAgent.rejectionReason}
+        userEmail={currentAgent.email || user?.email}
+        companyName={currentAgent.companyName}
+        isChecking={agentQuery.isFetching}
         onRefresh={() => agentQuery.refetch()}
       />
     );

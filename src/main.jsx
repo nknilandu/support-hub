@@ -44,6 +44,7 @@ import OwnerSubscription from "../pages/owner/OwnerSubscription";
 import OwnerTicketDetails from "../pages/owner/OwnerTicketDetails";
 import OwnerPaymentSuccess from "../pages/owner/OwnerPaymentSuccess";
 import OwnerPaymentCancelled from "../pages/owner/OwnerPaymentCancelled";
+import LegalPage from "../pages/LegalPage/LegalPage";
 
 const router = createBrowserRouter([
   {
@@ -54,6 +55,10 @@ const router = createBrowserRouter([
       {
         index: true,
         Component: Home,
+      },
+      {
+        path: "/legal",
+        element: <LegalPage />,
       },
     ],
   },

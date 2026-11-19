@@ -24,6 +24,7 @@ import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import GradientButton from "../../components/ui/Button/GradientButton";
 import Pagination from "../../components/ui/Pagination/pagination";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
 
 // =====================================================
 // CONFIGURATION
@@ -369,9 +370,38 @@ export default function ManagerAgents() {
 
   const manager = profileQuery.data;
 
-  const isManager = manager?.role === "manager" && manager?.status === "active";
+  const isApprovedManager =
+    manager?.role === "manager" &&
+    manager?.status === "active" &&
+    !["pending", "rejected"].includes(manager?.verifyIdAgent);
 
-  if (!user || profileQuery.isError || !isManager) {
+  if (
+    user &&
+    !profileQuery.isError &&
+    manager?.role === "manager" &&
+    !isApprovedManager
+  ) {
+    const restrictedStatus =
+      manager.verifyIdAgent === "rejected"
+        ? "rejected"
+        : manager.verifyIdAgent === "pending"
+          ? "pending"
+          : manager.status;
+
+    return (
+      <AccountStatusNotice
+        role="manager"
+        status={restrictedStatus}
+        rejectionReason={manager.rejectionReason}
+        userEmail={manager.email || user?.email}
+        companyName={manager.companyName}
+        isChecking={profileQuery.isFetching}
+        onRefresh={() => profileQuery.refetch()}
+      />
+    );
+  }
+
+  if (!user || profileQuery.isError || !isApprovedManager) {
     return (
       <div className="p-4 lg:p-5">
         <CardWithBlurBlob className="p-5" interactive={false}>

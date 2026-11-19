@@ -6,25 +6,43 @@ import LoadingPage from "../../../pages/loading/LoadingPage/LoadingPage";
 export default function DashboardRedirect() {
   const { user, loading, fetchUserRole } = useContext(AuthContext);
   const [userRole, setUserRole] = useState(null);
+  const [roleChecked, setRoleChecked] = useState(false);
 
-  // ============ fetching user role ==============
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    let isMounted = true;
+
     if (!user) {
       setUserRole(null);
+      setRoleChecked(true);
       return;
     }
 
-    const loadRole = async () => {
-      const role = await fetchUserRole(user);
-      setUserRole(role);
-    };
-    loadRole();
-  }, [user, fetchUserRole]);
-  // ============================
+    setRoleChecked(false);
 
-  // Auth / Role loading
-  if (loading || !userRole) {
+    const loadRole = async () => {
+      // Retry briefly in case registration DB write is still completing
+      let role = await fetchUserRole(user);
+
+      if (!role && isMounted) {
+        await new Promise((r) => setTimeout(r, 800));
+        role = await fetchUserRole(user);
+      }
+
+      if (isMounted) {
+        setUserRole(role);
+        setRoleChecked(true);
+      }
+    };
+
+    loadRole();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, fetchUserRole]);
+
+  // Auth or Role loading
+  if (loading || (user && !roleChecked)) {
     return <LoadingPage />;
   }
 
@@ -33,7 +51,10 @@ export default function DashboardRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  switch (userRole) {
+  switch (userRole?.toLowerCase()) {
+    case "owner":
+      return <Navigate to="/owner/dashboard" replace />;
+
     case "manager":
       return <Navigate to="/manager/dashboard" replace />;
 

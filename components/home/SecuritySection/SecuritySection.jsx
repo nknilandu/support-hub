@@ -2,9 +2,9 @@ import {
   Building2,
   Lock,
   KeyRound,
-  Webhook,
-  FileWarning,
-  EyeOff,
+  CreditCard,
+  Gauge,
+  MessageSquareLock,
   ShieldCheck,
 } from "lucide-react";
 
@@ -14,50 +14,50 @@ import GradientIconCard from "../../ui/Card/GradientIconCard";
 
 const securityItems = [
   {
-    title: "Organization-level data isolation",
+    title: "Company-level data isolation",
     description:
-      "Tenant boundaries enforced at the data layer for every read and write.",
+      "Workspace boundaries enforced via company-scoped queries on every read and write.",
     icon: Building2,
   },
   {
-    title: "Role-based route protection",
+    title: "Role & approval route guards",
     description:
-      "Frontend and API routes guarded by role on every request.",
+      "Firebase token verification paired with strict role and staff approval checks on every API call.",
     icon: Lock,
   },
   {
     title: "AI API keys stay on backend",
     description:
-      "No provider key ever ships to the browser.",
+      "All AI generation and ticket triage run server-side — no provider key ever ships to the browser.",
     icon: KeyRound,
   },
   {
-    title: "Stripe webhook verification",
+    title: "Server-side Stripe verification",
     description:
-      "All webhook events verified with signing secrets.",
-    icon: Webhook,
+      "Checkout sessions and workspace ownership are verified on the backend before activating plans.",
+    icon: CreditCard,
   },
   {
-    title: "File type and size restrictions",
+    title: "Workspace quotas & rate limits",
     description:
-      "Uploads validated server-side to prevent abuse.",
-    icon: FileWarning,
+      "Seat limits, monthly ticket caps, and API rate limiting protect every workspace from abuse.",
+    icon: Gauge,
   },
   {
-    title: "Customers cannot see internal notes",
+    title: "Scoped conversation access",
     description:
-      "Agent collaboration stays private by design.",
-    icon: EyeOff,
+      "Only authorized customers, assigned agents, managers, and owners can view or reply to tickets.",
+    icon: MessageSquareLock,
   },
 ];
 
 export default function SecuritySection() {
   return (
-    <section className="w-full bg-base-200/30 py-20 md:py-24">
+    <section id="security" className="w-full bg-base-200/30 py-20 md:py-24">
       <div className="mx-auto max-w-7xl px-6">
         {/* Badge */}
         <div className="mb-4 flex justify-center">
-          <Badge icon={ShieldCheck} label="" text="Security" />
+          <Badge icon={ShieldCheck} text="Security" />
         </div>
 
         {/* Heading */}
@@ -66,9 +66,9 @@ export default function SecuritySection() {
             Designed with SaaS security fundamentals
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-base-content/70 md:text-base">
-  Core protections are built into the product architecture — from tenant
-  isolation to role-based access and backend-only AI keys.
-</p>
+            Core protections are built into the product architecture — from
+            company isolation to role-based access and backend-only AI keys.
+          </p>
         </div>
 
         {/* Cards */}
@@ -76,7 +76,7 @@ export default function SecuritySection() {
           {securityItems.map(({ title, description, icon: Icon }) => (
             <CardWithBlurBlob
               key={title}
-              className="p-6"
+              className="h-full p-6"
               blobColor="bg-primary/10"
               blobHoverColor="group-hover:bg-primary/20"
             >

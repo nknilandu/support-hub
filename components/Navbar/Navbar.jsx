@@ -9,13 +9,17 @@ import {
   X,
   Moon,
   Sun,
-  Bot,
   CheckCheck,
   ChevronRight,
   Bell,
   Sparkles,
+  Crown,
+  ShieldCheck,
+  Headphones,
+  UserRound,
 } from "lucide-react";
 
+import logo from "../../src/assets/logo.png";
 import { cn } from "../../src/lib/cn";
 import GradientButton from "../ui/Button/GradientButton";
 import GradientText from "../ui/Text/GradientText";
@@ -25,6 +29,10 @@ import { Link, NavLink, useNavigate } from "react-router";
 import Swal from "sweetalert2";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:3021"
+).replace(/\/+$/, "");
+
 const navLinks = [
   { label: "Features", to: "features" },
   { label: "Workflow", to: "workflow" },
@@ -32,18 +40,19 @@ const navLinks = [
   { label: "Security", to: "security" },
 ];
 
+// Synced with DashboardLayout working routes (Max 4 per role)
 const navByRole = {
   manager: [
-    { label: "Dashboard", path: "/manager/dashboard" },
+    { label: "Overview", path: "/manager/dashboard" },
     { label: "Tickets", path: "/manager/tickets" },
-    { label: "Employees", path: "/manager/employees" },
-    { label: "Company", path: "/manager/company" },
+    { label: "Agents", path: "/manager/agents" },
+    { label: "Customers", path: "/manager/customers" },
   ],
   owner: [
     { label: "Dashboard", path: "/owner/dashboard" },
-    { label: "Tickets", path: "/owner/tickets" },
-    { label: "Agents", path: "/owner/agents" },
-    { label: "Customers", path: "/owner/customers" },
+    { label: "Company Tickets", path: "/owner/tickets" },
+    { label: "Team & Roles", path: "/owner/team" },
+    { label: "Subscription", path: "/owner/subscription" },
   ],
   agent: [
     { label: "Dashboard", path: "/agent/dashboard" },
@@ -57,18 +66,13 @@ const navByRole = {
     { label: "New Ticket", path: "/customer/tickets/new" },
     { label: "AI Assistant", path: "/customer/ai-assistant" },
   ],
-  platform: [
-    { label: "Dashboard", path: "/platform/dashboard" },
-    { label: "Organizations", path: "/platform/organizations" },
-    { label: "Tickets", path: "/platform/tickets" },
-    { label: "Metrics", path: "/platform/metrics" },
-  ],
-  platform_admin: [
-    { label: "Dashboard", path: "/platform/dashboard" },
-    { label: "Organizations", path: "/platform/organizations" },
-    { label: "Tickets", path: "/platform/tickets" },
-    { label: "Metrics", path: "/platform/metrics" },
-  ],
+};
+
+const ROLE_BADGE_CONFIG = {
+  owner: { label: "Owner", variant: "orange", icon: Crown },
+  manager: { label: "Manager", variant: "pink", icon: ShieldCheck },
+  agent: { label: "Agent", variant: "cyan", icon: Headphones },
+  customer: { label: "Customer", variant: "green", icon: UserRound },
 };
 
 const formatRelativeTime = (dateString) => {
@@ -100,24 +104,43 @@ export default function Navbar() {
 
   const { user, loading, logOut, fetchUserRole } = useContext(AuthContext);
   const [userRole, setUserRole] = useState(null);
+  const [roleLoading, setRoleLoading] = useState(false);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const isAuthLoading = loading || (Boolean(user) && roleLoading);
   const isAuthenticated = !loading && Boolean(user);
   const links = isAuthenticated && userRole ? navByRole[userRole] || [] : [];
 
   // =========== Fetching userRole ===============
   useEffect(() => {
+    let active = true;
+
     if (!user) {
       setUserRole(null);
+      setRoleLoading(false);
       return;
     }
+
     const loadRole = async () => {
-      const role = await fetchUserRole(user);
-      setUserRole(role);
+      setRoleLoading(true);
+      try {
+        const role = await fetchUserRole(user);
+        if (active) {
+          setUserRole(role);
+        }
+      } finally {
+        if (active) {
+          setRoleLoading(false);
+        }
+      }
     };
+
     loadRole();
+    return () => {
+      active = false;
+    };
   }, [user, fetchUserRole]);
 
   // =========== Close dropdowns on outside click ===========
@@ -141,7 +164,7 @@ export default function Navbar() {
     refetchInterval: 30000,
     queryFn: async () => {
       const token = await user.getIdToken();
-      const res = await fetch("http://localhost:3021/notifications?limit=10", {
+      const res = await fetch(`${API_URL}/notifications?limit=10`, {
         headers: {
           authorization: `Bearer ${token}`,
         },
@@ -162,15 +185,12 @@ export default function Navbar() {
   const markOneReadMutation = useMutation({
     mutationFn: async (notificationId) => {
       const token = await user.getIdToken();
-      const res = await fetch(
-        `http://localhost:3021/notifications/${notificationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            authorization: `Bearer ${token}`,
-          },
+      const res = await fetch(`${API_URL}/notifications/${notificationId}`, {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${token}`,
         },
-      );
+      });
       const result = await res.json();
       if (!res.ok || !result.success) {
         throw new Error(result.message || "Failed to update notification");
@@ -184,6 +204,9 @@ export default function Navbar() {
       queryClient.invalidateQueries({
         queryKey: ["notificationsPage", user?.uid],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["layoutUnreadNotifications", user?.uid],
+      });
     },
   });
 
@@ -191,7 +214,7 @@ export default function Navbar() {
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
       const token = await user.getIdToken();
-      const res = await fetch("http://localhost:3021/notifications/read-all", {
+      const res = await fetch(`${API_URL}/notifications/read-all`, {
         method: "PATCH",
         headers: {
           authorization: `Bearer ${token}`,
@@ -209,6 +232,9 @@ export default function Navbar() {
       });
       queryClient.invalidateQueries({
         queryKey: ["notificationsPage", user?.uid],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["layoutUnreadNotifications", user?.uid],
       });
     },
   });
@@ -280,9 +306,12 @@ export default function Navbar() {
     });
   };
 
-  const formattedRole = userRole
-    ? userRole.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())
-    : null;
+  const activeRoleBadge =
+    isAuthenticated && userRole
+      ? ROLE_BADGE_CONFIG[userRole.toLowerCase()] || null
+      : null;
+
+  const ActiveRoleIcon = activeRoleBadge?.icon || Sparkles;
 
   return (
     <header
@@ -294,95 +323,124 @@ export default function Navbar() {
       )}
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Logo */}
+        {/* Logo + Role / AI Workshop Badge */}
         <Link to="/" onClick={closeMenu} className="flex items-center gap-2.5">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-content shadow-sm">
-            <div className="absolute inset-0 rounded-xl bg-white/10" />
-            <Bot size={18} strokeWidth={2.2} className="relative z-10" />
-          </div>
+          <img
+            src={logo}
+            alt="SupportHub logo"
+            className="h-8 w-8 object-cover object-center"
+          />
 
           <span className="text-lg font-bold tracking-tight text-base-content">
             Support<GradientText>Hub</GradientText>
           </span>
 
-          <TextBadge
-            variant="cyan"
-            size="sm"
-            uppercase={false}
-            className="hidden font-medium md:inline-flex"
-          >
-            AI Workspace
-          </TextBadge>
+          {isAuthLoading ? (
+            <div className="skeleton hidden h-5 w-24 rounded-xl md:inline-block" />
+          ) : activeRoleBadge ? (
+            <TextBadge
+              variant={activeRoleBadge.variant}
+              size="sm"
+              className="hidden gap-1 px-2.5 py-1 font-semibold md:inline-flex border-none"
+            >
+              <ActiveRoleIcon size={10} strokeWidth={2.3} />
+              <span className="mt-px">{activeRoleBadge.label}</span>
+            </TextBadge>
+          ) : (
+            <TextBadge
+              variant="info"
+              size="sm"
+              className="hidden gap-1 px-2.5 py-1 font-semibold md:inline-flex border-none"
+            >
+              <Sparkles size={10} strokeWidth={2.3} />
+              <span className="mt-px">AI Workshop</span>
+            </TextBadge>
+          )}
         </Link>
 
         {/* ===================== Desktop nav ================ */}
         <div className="hidden items-center gap-1 rounded-2xl border border-base-content/10 bg-base-100/60 p-1 shadow-xs backdrop-blur-xl lg:flex">
-          {isAuthenticated
-            ? links.map((link, i) => (
-                <NavLink
-                  key={i}
-                  to={link.path}
-                  end={
-                    link.path === "/customer/tickets" ||
-                    link.path === "/agent/tickets"
-                  }
-                  className={({ isActive }) =>
-                    cn(
-                      "rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-200",
-                      isActive
-                        ? "bg-gradient-to-r from-primary/15 to-secondary/15 font-semibold text-primary shadow-2xs"
-                        : "text-base-content/70 hover:bg-base-content/5 hover:text-base-content",
-                    )
-                  }
-                >
-                  {link.label}
-                </NavLink>
-              ))
-            : navLinks.map((link, i) => (
-                <ScrollLink
-                  key={i}
-                  to={link.to}
-                  smooth
-                  offset={-20}
-                  duration={500}
-                  spy
-                  activeClass="bg-gradient-to-r from-primary/15 to-secondary/15 text-primary font-semibold rounded-xl"
-                  className="cursor-pointer rounded-xl px-4 py-1.5 text-sm font-medium text-base-content/70 transition-all duration-200 hover:bg-base-content/5 hover:text-base-content"
-                >
-                  {link.label}
-                </ScrollLink>
-              ))}
+          {isAuthLoading ? (
+            <div className="flex items-center gap-1.5 px-1 py-0.5">
+              <div className="skeleton h-7 w-20 rounded-xl" />
+              <div className="skeleton h-7 w-24 rounded-xl" />
+              <div className="skeleton h-7 w-20 rounded-xl" />
+              <div className="skeleton h-7 w-24 rounded-xl" />
+            </div>
+          ) : isAuthenticated ? (
+            links.map((link, i) => (
+              <NavLink
+                key={i}
+                to={link.path}
+                end={
+                  link.path === "/customer/tickets" ||
+                  link.path === "/agent/tickets"
+                }
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-gradient-to-r from-primary/15 to-secondary/15 font-semibold text-primary shadow-2xs"
+                      : "text-base-content/70 hover:bg-base-content/5 hover:text-base-content",
+                  )
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))
+          ) : (
+            navLinks.map((link, i) => (
+              <ScrollLink
+                key={i}
+                to={link.to}
+                smooth
+                offset={-20}
+                duration={500}
+                spy
+                activeClass="bg-gradient-to-r from-primary/15 to-secondary/15 text-primary font-semibold rounded-xl"
+                className="cursor-pointer rounded-xl px-4 py-1.5 text-sm font-medium text-base-content/70 transition-all duration-200 hover:bg-base-content/5 hover:text-base-content"
+              >
+                {link.label}
+              </ScrollLink>
+            ))
+          )}
         </div>
 
         {/* =============== Desktop right side =================== */}
         <div className="hidden items-center gap-2.5 lg:flex">
-          {loading ? (
-            <span className="loading loading-spinner loading-sm text-primary"></span>
+          {isAuthLoading ? (
+            <div className="flex items-center gap-2.5">
+              <div className="skeleton h-10 w-10 rounded-xl" />
+              <div className="skeleton h-10 w-10 rounded-xl" />
+              <div className="skeleton h-10 w-10 rounded-xl" />
+            </div>
           ) : isAuthenticated ? (
             <>
               {/* Notification Bell + Dropdown */}
               <div ref={notifRef} className="relative">
-                <button
+                <GradientButton
                   type="button"
                   onClick={() => {
                     setIsNotifOpen((prev) => !prev);
                     setIsProfileOpen(false);
                   }}
                   aria-label="Notifications"
-                  className={cn(
-                    "relative flex h-10 w-10 items-center justify-center rounded-xl border border-base-content/10 bg-base-100/70 text-base-content/75 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary",
-                    isNotifOpen &&
-                      "border-primary/40 bg-primary/10 text-primary",
+                  shadow
+                  className="w-10"
+                  buttonClassName={cn(
+                    "p-0 from-base-100 to-base-200 text-base-content/90",
+                    isNotifOpen && "text-primary",
                   )}
+                  glowClassName="opacity-30 blur-xs"
                 >
                   <Bell size={17} strokeWidth={2} />
+                </GradientButton>
 
-                  {unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-base-100">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </button>
+                {unreadCount > 0 && (
+                  <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-base-100">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
 
                 {isNotifOpen && (
                   <div className="absolute right-0 top-12 z-50 w-96 overflow-hidden rounded-2xl border border-base-content/10 bg-base-100 shadow-2xl">
@@ -484,7 +542,8 @@ export default function Navbar() {
                 onClick={handleTheme}
                 aria-label="Toggle theme"
                 shadow
-                buttonClassName="px-3 from-base-100 to-base-200 text-base-content/90"
+                className="w-10"
+                buttonClassName="p-0 from-base-100 to-base-200 text-base-content/90"
                 glowClassName="opacity-30 blur-xs"
               >
                 {theme === "dark" ? (
@@ -503,8 +562,9 @@ export default function Navbar() {
                     setIsProfileOpen((prev) => !prev);
                     setIsNotifOpen(false);
                   }}
+                  aria-label="Account menu"
                   shadow
-                  className="w-10"
+                  className="mt-1 w-10"
                   buttonClassName="p-0 from-base-100 to-base-200 text-base-content/90"
                   glowClassName="opacity-30 blur-xs"
                 >
@@ -543,24 +603,14 @@ export default function Navbar() {
                           <span className="truncate">{user.email}</span>
                         </div>
 
-                        {formattedRole && (
+                        {activeRoleBadge && (
                           <TextBadge
-                            className="mt-2 gap-1 font-semibold"
+                            className="mt-2 gap-1.5 px-2.5 py-0.5 font-semibold normal-case"
                             size="sm"
-                            variant={
-                              formattedRole.toLowerCase() === "customer"
-                                ? "green"
-                                : formattedRole.toLowerCase() === "agent"
-                                  ? "cyan"
-                                  : formattedRole.toLowerCase() === "manager"
-                                    ? "pink"
-                                    : formattedRole.toLowerCase() === "owner"
-                                      ? "orange"
-                                      : "purple"
-                            }
+                            variant={activeRoleBadge.variant}
                           >
-                            <Sparkles size={10} strokeWidth={2.2} />
-                            <span>{formattedRole}</span>
+                            <ActiveRoleIcon size={11} strokeWidth={2.2} />
+                            <span>{activeRoleBadge.label}</span>
                           </TextBadge>
                         )}
                       </div>
@@ -571,7 +621,7 @@ export default function Navbar() {
                     <div className="grid grid-cols-2 gap-2">
                       {userRole && (
                         <Link
-                          to={`/profile`}
+                          to="/profile"
                           onClick={() => setIsProfileOpen(false)}
                           className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-base-content/10 bg-base-200/60 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                         >
@@ -600,7 +650,8 @@ export default function Navbar() {
                 onClick={handleTheme}
                 aria-label="Toggle theme"
                 shadow
-                buttonClassName="px-3 from-base-100 to-base-200 text-base-content/90"
+                className="w-10"
+                buttonClassName="p-0 from-base-100 to-base-200 text-base-content/90"
                 glowClassName="opacity-30 blur-xs"
               >
                 {theme === "dark" ? (
@@ -634,7 +685,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile controls (Clean: only Menu toggle button; Theme & Notification moved inside drawer) */}
+        {/* Mobile controls */}
         <div className="flex items-center lg:hidden">
           <GradientButton
             type="button"
@@ -668,11 +719,17 @@ export default function Navbar() {
       >
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
           {/* User Profile Card inside Drawer */}
-          {loading ? (
-            <div className="flex items-center justify-center gap-3 py-3">
-              <span className="loading loading-spinner loading-sm text-primary"></span>
-              <p className="text-sm text-base-content/70">Loading account...</p>
-            </div>
+          {isAuthLoading ? (
+            <>
+              <div className="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-200/60 p-3">
+                <div className="skeleton h-11 w-11 shrink-0 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton h-3.5 w-32 rounded" />
+                  <div className="skeleton h-3 w-44 rounded" />
+                </div>
+              </div>
+              <div className="my-4 h-px bg-base-content/10" />
+            </>
           ) : (
             isAuthenticated && (
               <>
@@ -694,10 +751,15 @@ export default function Navbar() {
                       <p className="truncate text-sm font-semibold text-base-content">
                         {user.displayName || "User"}
                       </p>
-                      {formattedRole && (
-                        <span className="shrink-0 rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          {formattedRole}
-                        </span>
+                      {activeRoleBadge && (
+                        <TextBadge
+                          variant={activeRoleBadge.variant}
+                          size="sm"
+                          className="shrink-0 gap-1 font-semibold normal-case"
+                        >
+                          <ActiveRoleIcon size={10} strokeWidth={2.2} />
+                          <span>{activeRoleBadge.label}</span>
+                        </TextBadge>
                       )}
                     </div>
 
@@ -714,47 +776,56 @@ export default function Navbar() {
 
           {/* Nav Links */}
           <div className="flex flex-col gap-1.5">
-            {isAuthenticated
-              ? links.map((link, i) => (
-                  <NavLink
-                    key={i}
-                    to={link.path}
-                    end={
-                      link.path === "/customer/tickets" ||
-                      link.path === "/agent/tickets"
-                    }
-                    onClick={closeMenu}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition",
-                        isActive
-                          ? "bg-gradient-to-r from-primary/15 to-secondary/15 font-semibold text-primary"
-                          : "text-base-content/75 hover:bg-base-200/70 hover:text-base-content",
-                      )
-                    }
-                  >
-                    <span>{link.label}</span>
-                    <ChevronRight size={15} className="opacity-40" />
-                  </NavLink>
-                ))
-              : navLinks.map((link, i) => (
-                  <ScrollLink
-                    key={i}
-                    to={link.to}
-                    smooth
-                    offset={-20}
-                    duration={500}
-                    onClick={closeMenu}
-                    spy
-                    activeClass="bg-gradient-to-r from-primary/15 to-secondary/15 text-primary font-semibold rounded-xl"
-                    className="flex cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium text-base-content/75 transition hover:bg-base-200/70 hover:text-base-content"
-                  >
-                    <span>{link.label}</span>
-                  </ScrollLink>
-                ))}
+            {isAuthLoading ? (
+              <>
+                <div className="skeleton h-10 w-full rounded-xl" />
+                <div className="skeleton h-10 w-full rounded-xl" />
+                <div className="skeleton h-10 w-full rounded-xl" />
+                <div className="skeleton h-10 w-full rounded-xl" />
+              </>
+            ) : isAuthenticated ? (
+              links.map((link, i) => (
+                <NavLink
+                  key={i}
+                  to={link.path}
+                  end={
+                    link.path === "/customer/tickets" ||
+                    link.path === "/agent/tickets"
+                  }
+                  onClick={closeMenu}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition",
+                      isActive
+                        ? "bg-gradient-to-r from-primary/15 to-secondary/15 font-semibold text-primary"
+                        : "text-base-content/75 hover:bg-base-200/70 hover:text-base-content",
+                    )
+                  }
+                >
+                  <span>{link.label}</span>
+                  <ChevronRight size={15} className="opacity-40" />
+                </NavLink>
+              ))
+            ) : (
+              navLinks.map((link, i) => (
+                <ScrollLink
+                  key={i}
+                  to={link.to}
+                  smooth
+                  offset={-20}
+                  duration={500}
+                  onClick={closeMenu}
+                  spy
+                  activeClass="bg-gradient-to-r from-primary/15 to-secondary/15 text-primary font-semibold rounded-xl"
+                  className="flex cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium text-base-content/75 transition hover:bg-base-200/70 hover:text-base-content"
+                >
+                  <span>{link.label}</span>
+                </ScrollLink>
+              ))
+            )}
 
             {/* Notifications Link inside Drawer (Only when logged in) */}
-            {isAuthenticated && (
+            {!isAuthLoading && isAuthenticated && (
               <NavLink
                 to="/notifications"
                 onClick={closeMenu}
@@ -805,51 +876,52 @@ export default function Navbar() {
           </div>
 
           {/* Bottom Action Buttons */}
-          {isAuthenticated ? (
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              {userRole && (
-                <Link
-                  to={`/${userRole}/profile`}
-                  onClick={closeMenu}
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-200 px-4 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+          {!isAuthLoading &&
+            (isAuthenticated ? (
+              <div className="mt-4 grid grid-cols-2 gap-2.5">
+                {userRole && (
+                  <Link
+                    to="/profile"
+                    onClick={closeMenu}
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-200 px-4 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                  >
+                    <Pencil size={14} strokeWidth={2} />
+                    Profile
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
                 >
-                  <Pencil size={14} strokeWidth={2} />
-                  Profile
+                  <LogOut size={14} strokeWidth={2} />
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-2.5">
+                <Link to="/login" onClick={closeMenu} className="w-full">
+                  <GradientButton
+                    shadow
+                    className="w-full"
+                    buttonClassName="px-4 from-base-100 to-base-200 text-base-content/90"
+                    glowClassName="opacity-30 blur-xs"
+                  >
+                    Login
+                  </GradientButton>
                 </Link>
-              )}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
-              >
-                <LogOut size={14} strokeWidth={2} />
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              <Link to="/login" onClick={closeMenu} className="w-full">
-                <GradientButton
-                  shadow
-                  className="w-full"
-                  buttonClassName="px-4 from-base-100 to-base-200 text-base-content/90"
-                  glowClassName="opacity-30 blur-xs"
-                >
-                  Login
-                </GradientButton>
-              </Link>
-              <Link to="/register" onClick={closeMenu} className="w-full">
-                <GradientButton
-                  className="w-full"
-                  buttonClassName="rounded-xl px-4"
-                  shadow
-                  glowClassName="opacity-60 blur-md"
-                >
-                  Sign Up
-                </GradientButton>
-              </Link>
-            </div>
-          )}
+                <Link to="/register" onClick={closeMenu} className="w-full">
+                  <GradientButton
+                    className="w-full"
+                    buttonClassName="rounded-xl px-4"
+                    shadow
+                    glowClassName="opacity-60 blur-md"
+                  >
+                    Sign Up
+                  </GradientButton>
+                </Link>
+              </div>
+            ))}
         </div>
       </div>
     </header>

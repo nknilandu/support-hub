@@ -1,19 +1,53 @@
+import { useContext, useEffect, useState } from "react";
+import { Link } from "react-router";
+import { Link as ScrollLink } from "react-scroll";
+import { ArrowRight, CheckCircle, Sparkles, Workflow } from "lucide-react";
+
 import Badge from "../../ui/Badge/PromoBadge";
 import GradientButton from "../../ui/Button/GradientButton";
 import GradientText from "../../ui/Text/GradientText";
 import HeroWindow from "./HeroWindow";
-import { ArrowRight, CheckCircle, Sparkles, Workflow } from "lucide-react";
+import { AuthContext } from "../../../app/providers/AuthProvider";
+
+const ROLE_DASHBOARD_MAP = {
+  owner: "/owner/dashboard",
+  manager: "/manager/dashboard",
+  agent: "/agent/dashboard",
+  customer: "/customer/dashboard",
+};
 
 const Hero = () => {
   const companies = ["Linear", "Notion", "Vercel", "Framer", "Loom", "Stripe"];
   const trustItems = [
-    "Instant Replies",
-    "Smart ticket routing",
-    "Human handoff ready",
+    "AI First Response",
+    "Auto Root-Cause Triage",
+    "Human Handoff Ready",
   ];
 
+  const { user, fetchUserRole } = useContext(AuthContext);
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setUserRole(null);
+      return;
+    }
+
+    fetchUserRole(user).then((role) => {
+      if (active) setUserRole(role);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user, fetchUserRole]);
+
+  const primaryCtaPath =
+    user && userRole ? ROLE_DASHBOARD_MAP[userRole] || "/" : "/register";
+
   return (
-    <section className="relative min-h-screen overflow-hidden max-w-7xl mx-auto">
+    <section className="relative mx-auto min-h-screen max-w-7xl overflow-hidden">
       {/* Grid Background */}
       <div
         className="absolute inset-0 opacity-40"
@@ -32,19 +66,19 @@ const Hero = () => {
             "radial-gradient(circle at center, black 0%, black 10%, transparent 50%)",
         }}
       />
+
       {/* Center Soft Blob */}
-      {/* <div className="absolute left-1/2 top-1/2 h-[320px] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/40 blur-[140px]" /> */}
       <div className="absolute left-1/3 top-1/2 h-[320px] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary/40 blur-[140px]" />
 
       {/* Content */}
-      <div className="relative z-10 min-h-[95svh] px-6 mt-30 lg:mt-5 flex flex-col items-center justify-center">
+      <div className="relative z-10 mt-30 flex min-h-[95svh] flex-col items-center justify-center px-6 lg:mt-5">
         <div className="flex w-full flex-col items-center justify-center gap-10 lg:flex-row lg:gap-5">
           <div className="w-full min-w-0 lg:flex-1">
-            <div className="mx-auto max-w-2xl space-y-6 text-center lg:mx-0 lg:text-left flex flex-col items-center lg:items-start">
+            <div className="mx-auto flex max-w-2xl flex-col items-center space-y-6 text-center lg:mx-0 lg:items-start lg:text-left">
               {/* Badge */}
               <Badge
                 icon={Sparkles}
-                label="New"
+                label="AI Workspace"
                 text="AI-powered support is here"
               />
 
@@ -56,35 +90,39 @@ const Hero = () => {
 
               {/* Description */}
               <p className="max-w-xl text-base-content/70 sm:text-md md:text-lg">
-                Support Hub is the AI-first helpdesk for modern teams. Triage,
-                summarize, and reply to tickets in seconds — without losing the
-                human touch.{" "}
+                SupportHub is the AI-first helpdesk for modern teams. Deliver
+                instant first responses, diagnose root causes, and craft agent
+                replies in seconds — without losing human control.
               </p>
+
               {/* Buttons */}
-              <div className="flex flex-wrap items-center justify-start gap-4 w-fit">
-                <div>
+              <div className="flex w-fit flex-wrap items-center justify-center gap-4 lg:justify-start">
+                <Link to={primaryCtaPath}>
                   <GradientButton
                     buttonClassName="w-fit rounded-xl px-6"
                     shadow
                     glowClassName="opacity-60 blur-md"
                   >
-                    Start free trial
+                    {user && userRole ? "Go to Dashboard" : "Start Free"}
                     <ArrowRight className="h-5 w-5" />
                   </GradientButton>
-                </div>
+                </Link>
 
-                <GradientButton
-                  shadow
-                  buttonClassName="px-6 from-primary/5 to-secondary/10 text-base-content/90"
-                  glowClassName="opacity-30 blur-xs"
-                >
-                  View Workflow
-                  <Workflow size={16} strokeWidth={2}></Workflow>
-                </GradientButton>
+                <ScrollLink to="workflow" smooth offset={-20} duration={500}>
+                  <GradientButton
+                    type="button"
+                    shadow
+                    buttonClassName="px-6 from-primary/5 to-secondary/10 text-base-content/90"
+                    glowClassName="opacity-30 blur-xs"
+                  >
+                    View Workflow
+                    <Workflow size={16} strokeWidth={2} />
+                  </GradientButton>
+                </ScrollLink>
               </div>
 
               {/* Trust Indicators */}
-              <div className="mt-7 flex flex-wrap items-center justify-start gap-x-8 gap-y-4 text-xs text-base-content/60">
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-xs text-base-content/60 lg:justify-start">
                 {trustItems.map((item) => (
                   <div key={item} className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-primary" />
@@ -92,19 +130,19 @@ const Hero = () => {
                   </div>
                 ))}
               </div>
-              {/* ================ */}
             </div>
           </div>
+
           <div className="w-full min-w-0 lg:flex-1">
             <div className="mx-auto w-full max-w-[620px] overflow-hidden">
               <HeroWindow />
             </div>
           </div>
         </div>
-        {/* =================== */}
 
-        <div className="relative z-10 mx-auto max-w-7xl px-6 py-10 lg:mt-10 text-center ">
-          <p className="text-xs  uppercase tracking-[0.2em] text-base-content/60">
+        {/* Bottom strip */}
+        <div className="relative z-10 mx-auto max-w-7xl px-6 py-10 text-center lg:mt-10">
+          <p className="text-xs uppercase tracking-[0.2em] text-base-content/60">
             Built for support teams using modern tools
           </p>
 

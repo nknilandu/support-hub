@@ -18,56 +18,81 @@ const auth = getAuth(app);
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [userVersion, setUserVersion] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  //google singin
+  // Force React consumers to re-read updated auth.currentUser properties
+  const syncAuthUser = useCallback(() => {
+    setUser(auth.currentUser || null);
+    setUserVersion((v) => v + 1);
+    return auth.currentUser || null;
+  }, []);
+
+  // Google Sign-In
   const googleSignIn = () => {
     return signInWithPopup(auth, provider);
   };
 
-  // create user
+  // Create user
   const createUser = (email, password) => {
     return createUserWithEmailAndPassword(auth, email, password);
   };
 
-  // login user
-  const loginUser = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+  // Login user
+  const loginUser = async (email, password) => {
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    syncAuthUser();
+    return credential;
   };
 
-  // reset password
+  // Reset password
   const forgotPassword = (email) => {
     return sendPasswordResetEmail(auth, email);
   };
 
-  // log out user
+  // Log out user
   const logOut = () => {
     return signOut(auth);
   };
 
-  // update user
-  const updateUserProfile = (profileData) => {
-    return updateProfile(auth.currentUser, profileData);
+  // Update user profile in Firebase & immediately trigger UI refresh
+  const updateUserProfile = async (profileData) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return null;
+
+    const cleanProfile = {};
+    if (profileData.displayName !== undefined) {
+      cleanProfile.displayName = profileData.displayName;
+    }
+    if (profileData.photoURL !== undefined) {
+      cleanProfile.photoURL = profileData.photoURL;
+    }
+
+    await updateProfile(currentUser, cleanProfile);
+    await currentUser.reload();
+    return syncAuthUser();
   };
 
-  // observer
+  // Observer
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser || null);
+      setUserVersion((v) => v + 1);
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
-// check user role
+  // Check user role
   const fetchUserRole = useCallback(async (firebaseUser) => {
     try {
-      if (!firebaseUser) {
+      const targetUser = firebaseUser || auth.currentUser;
+      if (!targetUser) {
         return null;
       }
 
-      const token = await firebaseUser.getIdToken(true);
+      const token = await targetUser.getIdToken(true);
       const res = await fetch("http://localhost:3021/users/me", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -93,7 +118,9 @@ const AuthProvider = ({ children }) => {
     forgotPassword,
     logOut,
     user,
+    userVersion,
     setUser,
+    syncAuthUser,
     loading,
     updateUserProfile,
     fetchUserRole,

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import logo from "../../../src/assets/logo.png";
 import GradientText from "../../../components/ui/Text/GradientText";
@@ -26,6 +26,7 @@ import {
   TicketCheck,
   Headphones,
   ShieldCheck,
+  UserRound,
 } from "lucide-react";
 import GradientButton from "../../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
@@ -35,6 +36,17 @@ import TextBadge from "../../../components/ui/Badge/TextBadge";
 import Swal from "sweetalert2";
 import { useQuery } from "@tanstack/react-query";
 
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:3021"
+).replace(/\/+$/, "");
+
+const ROLE_BADGE_CONFIG = {
+  owner: { label: "Owner", variant: "orange", icon: Crown },
+  manager: { label: "Manager", variant: "pink", icon: ShieldCheck },
+  agent: { label: "Agent", variant: "cyan", icon: Headphones },
+  customer: { label: "Customer", variant: "green", icon: UserRound },
+};
+
 const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -42,6 +54,7 @@ const DashboardLayout = () => {
   const [userRole, setUserRole] = useState(null);
   const { user, loading, logOut, fetchUserRole } = useContext(AuthContext);
   const navigate = useNavigate();
+  const profileRef = useRef(null);
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("theme") || "light";
@@ -49,6 +62,7 @@ const DashboardLayout = () => {
 
   // ============ fetching user role ==============
   useEffect(() => {
+    let active = true;
     if (!user) {
       setUserRole(null);
       return;
@@ -56,10 +70,25 @@ const DashboardLayout = () => {
 
     const loadRole = async () => {
       const role = await fetchUserRole(user);
-      setUserRole(role);
+      if (active) setUserRole(role);
     };
     loadRole();
+
+    return () => {
+      active = false;
+    };
   }, [user, fetchUserRole]);
+
+  // ============ close profile dropdown on outside click ==============
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ============ fetching unread notifications count =============
   const { data: unreadCount = 0 } = useQuery({
@@ -68,7 +97,7 @@ const DashboardLayout = () => {
     queryFn: async () => {
       const token = await user.getIdToken();
       const res = await fetch(
-        "http://localhost:3021/notifications?unreadOnly=true&limit=1",
+        `${API_URL}/notifications?unreadOnly=true&limit=1`,
         {
           headers: {
             authorization: `Bearer ${token}`,
@@ -85,21 +114,10 @@ const DashboardLayout = () => {
     },
   });
 
-  // ======== role badge variant helper =========
-  const getRoleBadgeVariant = (role) => {
-    switch (role?.toLowerCase()) {
-      case "customer":
-        return "green";
-      case "agent":
-        return "cyan";
-      case "manager":
-        return "pink";
-      case "owner":
-        return "orange";
-      default:
-        return "purple";
-    }
-  };
+  const activeRoleBadge = userRole
+    ? ROLE_BADGE_CONFIG[userRole.toLowerCase()] || null
+    : null;
+  const ActiveRoleIcon = activeRoleBadge?.icon || Sparkles;
 
   // ======== nav items =========
   const dashboardNav = {
@@ -398,7 +416,10 @@ const DashboardLayout = () => {
                     <NavLink
                       key={item.label}
                       to={item.path}
-                      end={item.path === "/customer/tickets"}
+                      end={
+                        item.path === "/customer/tickets" ||
+                        item.path === "/agent/tickets"
+                      }
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) =>
                         `
@@ -407,7 +428,7 @@ const DashboardLayout = () => {
 
                         ${
                           isActive
-                            ? "bg-gradient-to-r from-primary/10 to-secondary/10 text-base-content"
+                            ? "bg-gradient-to-r from-primary/10 to-secondary/10 font-medium text-base-content"
                             : "text-base-content/70 hover:bg-base-300"
                         }
 
@@ -513,13 +534,14 @@ const DashboardLayout = () => {
                       </GradientText>
                     )}
 
-                    {!loading && userRole && (
+                    {!loading && activeRoleBadge && (
                       <TextBadge
-                        className="ml-2.5 gap-1.5 font-medium border-none py-1"
+                        variant={activeRoleBadge.variant}
                         size="sm"
-                        variant={getRoleBadgeVariant(userRole)}
+                        className="ml-2.5 gap-1 border-none px-2.5 py-1 font-semibold"
                       >
-                        <span>◉ {userRole}</span>
+                        <ActiveRoleIcon size={10} strokeWidth={2.3} />
+                        <span className="mt-px">{activeRoleBadge.label}</span>
                       </TextBadge>
                     )}
                   </h1>
@@ -550,7 +572,7 @@ const DashboardLayout = () => {
                     <div className="skeleton h-10 w-10 rounded-xl" />
                   </>
                 ) : (
-                  <>
+                  <div ref={profileRef} className="relative">
                     {/* ===================== profile button ==================== */}
                     <button
                       onClick={() => setIsProfileOpen((prev) => !prev)}
@@ -568,59 +590,70 @@ const DashboardLayout = () => {
                     </button>
 
                     {/* ========================= Profile Menu ======================== */}
-                    <div className="relative">
-                      {isProfileOpen && (
-                        <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100 p-4 shadow-xl backdrop-blur-xl">
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-base-200 text-primary">
-                              {user?.photoURL ? (
-                                <img
-                                  src={user.photoURL}
-                                  alt="userPhoto"
-                                  className="h-full w-full rounded-full object-cover object-center"
-                                />
-                              ) : (
-                                <User size={17} strokeWidth={2} />
-                              )}
-                            </div>
-
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-base-content">
-                                {user?.displayName}
-                              </p>
-
-                              <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
-                                <Mail size={12} strokeWidth={2} />
-                                <span className="truncate">{user?.email}</span>
-                              </div>
-                            </div>
+                    {isProfileOpen && (
+                      <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-base-content/10 bg-base-100 p-4 shadow-xl backdrop-blur-xl">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-base-200 text-primary">
+                            {user?.photoURL ? (
+                              <img
+                                src={user.photoURL}
+                                alt="userPhoto"
+                                className="h-full w-full rounded-full object-cover object-center"
+                              />
+                            ) : (
+                              <User size={17} strokeWidth={2} />
+                            )}
                           </div>
 
-                          <div className="mt-4 grid grid-cols-2 gap-2">
-                            {userRole !== null && (
-                              <Link
-                                to={`/profile`}
-                                onClick={() => setIsProfileOpen(false)}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
-                              >
-                                <Pencil size={13} strokeWidth={2} />
-                                Edit
-                              </Link>
-                            )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-base-content">
+                              {user?.displayName}
+                            </p>
 
-                            <button
-                              type="button"
-                              onClick={handleLogout}
-                              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
-                            >
-                              <LogOut size={13} strokeWidth={2} />
-                              Logout
-                            </button>
+                            <div className="mt-1 flex items-center gap-1.5 text-xs text-base-content/60">
+                              <Mail size={12} strokeWidth={2} />
+                              <span className="truncate">{user?.email}</span>
+                            </div>
+
+                            {activeRoleBadge && (
+                              <TextBadge
+                                variant={activeRoleBadge.variant}
+                                size="sm"
+                                className="mt-2 gap-1 border-none px-2.5 py-1 font-semibold"
+                              >
+                                <ActiveRoleIcon size={10} strokeWidth={2.3} />
+                                <span className="mt-px">
+                                  {activeRoleBadge.label}
+                                </span>
+                              </TextBadge>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
-                  </>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          {userRole !== null && (
+                            <Link
+                              to="/profile"
+                              onClick={() => setIsProfileOpen(false)}
+                              className="inline-flex items-center justify-center gap-2 rounded-xl border border-base-content/10 bg-base-100 px-3 py-2 text-xs font-semibold text-base-content transition hover:border-primary/30 hover:text-primary"
+                            >
+                              <Pencil size={13} strokeWidth={2} />
+                              Edit
+                            </Link>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/15"
+                          >
+                            <LogOut size={13} strokeWidth={2} />
+                            Logout
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

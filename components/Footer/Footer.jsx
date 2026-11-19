@@ -1,130 +1,244 @@
+import { Link, useLocation, useNavigate } from "react-router";
+import { scroller } from "react-scroll";
 import {
   Mail,
   ArrowRight,
   Sparkles,
+  Crown,
+  ShieldCheck,
+  Headphones,
+  UserRound,
 } from "lucide-react";
-
-import GradientText from "../ui/Text/GradientText";
-import TextBadge from "../ui/Badge/TextBadge"
-import { FaGithub } from "react-icons/fa";
+import { FaGithub, FaFacebook } from "react-icons/fa";
 import { TiSocialLinkedin } from "react-icons/ti";
-import { RiTwitterXLine } from "react-icons/ri";
 
-const footerLinks = [
-  {
-    title: "Product",
-    links: ["Features", "Pricing", "Security", "Demo"],
-  },
-  {
-    title: "Company",
-    links: ["About", "Contact", "Changelog", "Roadmap"],
-  },
-  {
-    title: "Resources",
-    links: ["Docs", "API", "Support", "Status"],
-  },
+import logo from "../../src/assets/logo.png";
+import GradientText from "../ui/Text/GradientText";
+import TextBadge from "../ui/Badge/TextBadge";
+
+const productLinks = [
+  { label: "Features", to: "features" },
+  { label: "Workflow", to: "workflow" },
+  { label: "Pricing", to: "pricing" },
+  { label: "Security", to: "security" },
+];
+
+const workspaceLinks = [
+  { label: "Create Workspace", path: "/register" },
+  { label: "Sign In", path: "/login" },
+  { label: "Notifications", path: "/notifications" },
+  { label: "Profile Settings", path: "/profile" },
+];
+
+const legalLinks = [
+  { label: "Terms & Conditions", path: "/legal#terms" },
+  { label: "Privacy Policy", path: "/legal#privacy" },
+];
+
+const roleBadges = [
+  { label: "Owner", variant: "orange", icon: Crown },
+  { label: "Manager", variant: "pink", icon: ShieldCheck },
+  { label: "Agent", variant: "cyan", icon: Headphones },
+  { label: "Customer", variant: "green", icon: UserRound },
 ];
 
 const socialLinks = [
   {
-    label: "Github",
+    label: "GitHub",
     icon: FaGithub,
-    href: "#",
-  },
-  {
-    label: "Twitter",
-    icon: RiTwitterXLine,
-    href: "#",
+    href: "https://github.com/nknilandu",
   },
   {
     label: "LinkedIn",
     icon: TiSocialLinkedin,
-    href: "#",
+    href: "https://www.linkedin.com/in/nilandu",
+  },
+  {
+    label: "Facebook",
+    icon: FaFacebook,
+    href: "https://www.facebook.com/nknilandu",
   },
 ];
 
 export default function Footer() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSectionScroll = (sectionId) => {
+    if (location.pathname === "/") {
+      scroller.scrollTo(sectionId, {
+        smooth: true,
+        offset: -20,
+        duration: 500,
+      });
+    } else {
+      navigate("/");
+      setTimeout(() => {
+        scroller.scrollTo(sectionId, {
+          smooth: true,
+          offset: -20,
+          duration: 500,
+        });
+      }, 120);
+    }
+  };
+
   return (
-    <footer className="w-full border-t-0 border-base-content/5 bg-base-100/60">
+    <footer className="w-full border-t border-base-content/10 bg-base-100/80 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
+        <div className="grid gap-10 lg:grid-cols-[1.35fr_1fr]">
           {/* Brand area */}
           <div>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-content">
-                <Sparkles size={15} strokeWidth={2} />
-              </div>
+            <Link to="/" className="inline-flex items-center gap-2.5">
+              <img
+                src={logo}
+                alt="SupportHub logo"
+                className="h-8 w-8 object-cover object-center"
+              />
 
-              <span className="text-xl font-semibold tracking-tight text-base-content">
+              <span className="text-xl font-bold tracking-tight text-base-content">
                 Support<GradientText>Hub</GradientText>
               </span>
-            </div>
+
+              <TextBadge
+                variant="info"
+                size="sm"
+                className="gap-1 border-none px-2.5 py-1 font-semibold normal-case"
+              >
+                <Sparkles size={10} strokeWidth={2.3} />
+                <span className="mt-px">AI Workshop</span>
+              </TextBadge>
+            </Link>
 
             <p className="mt-4 max-w-md text-sm leading-6 text-base-content/70">
-              AI-assisted support workspace for teams that need faster triage,
-              human-approved replies, and cleaner support workflows.
+              AI-assisted customer support workspace built for instant first
+              responses, automated root-cause triage, and real-time human
+              collaboration.
             </p>
 
+            {/* Role badges */}
             <div className="mt-5 flex flex-wrap gap-2">
-              <TextBadge variant="cyan" size="sm" uppercase={false}>
-                AI Support
-              </TextBadge>
-              <TextBadge variant="green" size="sm" uppercase={false}>
-                Human Review
-              </TextBadge>
-              <TextBadge variant="blue" size="sm" uppercase={false}>
-                SaaS Ready
-              </TextBadge>
+              {roleBadges.map(({ label, variant, icon: Icon }) => (
+                <TextBadge
+                  key={label}
+                  variant={variant}
+                  size="sm"
+                  className="gap-1 border-none px-2.5 py-1 font-semibold normal-case"
+                >
+                  <Icon size={10} strokeWidth={2.3} />
+                  <span className="mt-px">{label}</span>
+                </TextBadge>
+              ))}
             </div>
 
             <a
               href="mailto:nknilandu@gmail.com"
               className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-base-content/70 transition hover:text-primary"
             >
-              <Mail size={15} strokeWidth={2} />
-              support@example.com
+              <Mail size={15} strokeWidth={2} className="text-primary" />
+              nknilandu@gmail.com
             </a>
           </div>
 
-          {/* Links */}
+          {/* Navigation Columns */}
           <div className="grid gap-8 sm:grid-cols-3">
-            {footerLinks.map((group) => (
-              <div key={group.title}>
-                <h3 className="text-sm font-semibold text-base-content">
-                  {group.title}
-                </h3>
+            {/* Product (Scroll Links) */}
+            <div>
+              <h3 className="text-sm font-semibold text-base-content">
+                Product
+              </h3>
 
-                <ul className="mt-4 space-y-3">
-                  {group.links.map((link) => (
-                    <li key={link}>
-                      <a
-                        href="#"
-                        className="text-sm text-base-content/60 transition hover:text-primary"
-                      >
-                        {link}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+              <ul className="mt-4 space-y-3">
+                {productLinks.map((item) => (
+                  <li key={item.label}>
+                    <button
+                      type="button"
+                      onClick={() => handleSectionScroll(item.to)}
+                      className="cursor-pointer text-sm text-base-content/60 transition hover:text-primary"
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Workspace (Router Links) */}
+            <div>
+              <h3 className="text-sm font-semibold text-base-content">
+                Workspace
+              </h3>
+
+              <ul className="mt-4 space-y-3">
+                {workspaceLinks.map((item) => (
+                  <li key={item.label}>
+                    <Link
+                      to={item.path}
+                      className="text-sm text-base-content/60 transition hover:text-primary"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h3 className="text-sm font-semibold text-base-content">Legal</h3>
+
+              <ul className="mt-4 space-y-3">
+                {legalLinks.map((item) => (
+                  <li key={item.label}>
+                    <Link
+                      to={item.path}
+                      className="text-sm text-base-content/60 transition hover:text-primary"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col gap-5 border-t border-base-content/10 pt-6 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-base-content/50">
-            © {new Date().getFullYear()} SupportHub. All rights reserved.
-          </p>
+        <div className="mt-12 flex flex-col gap-4 border-t border-base-content/10 pt-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
+            <span className="text-sm">
+              © {new Date().getFullYear()} SupportHub. All rights reserved.
+            </span>
+            <span className="text-base-content/30">•</span>
+            <span>
+              Built by{" "}
+              <a
+                href="https://github.com/nknilandu"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-base-content/75 transition hover:text-primary"
+              >
+                Nilandu Kumar Das Vapon
+              </a>
+            </span>
+            <span className="text-base-content/30">•</span>
+            <Link to="/legal#terms" className="transition hover:text-primary">
+              Terms
+            </Link>
+            <span className="text-base-content/30">•</span>
+            <Link to="/legal#privacy" className="transition hover:text-primary">
+              Privacy
+            </Link>
+          </div>
 
           <div className="flex items-center gap-4">
-            <a
-              href="#"
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:gap-2"
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition hover:gap-2"
             >
               Start free
-              <ArrowRight size={14} strokeWidth={2} />
-            </a>
+              <ArrowRight size={14} strokeWidth={2.2} />
+            </Link>
 
             <div className="h-4 w-px bg-base-content/10" />
 
@@ -133,8 +247,10 @@ export default function Footer() {
                 <a
                   key={label}
                   href={href}
+                  target="_blank"
+                  rel="noreferrer"
                   aria-label={label}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-base-content/10 text-base-content/60 transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-base-content/10 bg-base-200/50 text-base-content/65 transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                 >
                   <Icon size={15} />
                 </a>

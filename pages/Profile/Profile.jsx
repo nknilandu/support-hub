@@ -4,7 +4,6 @@ import { AuthContext } from "../../app/providers/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import {
-  Award,
   Building2,
   Calendar,
   Camera,

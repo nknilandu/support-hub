@@ -11,7 +11,7 @@ import Pagination from "../../components/ui/Pagination/pagination";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import LoadingPage from "../loading/LoadingPage/LoadingPage";
-import AgentApprovalStatus from "./AgentApprovalStatus";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
 
 const AgentAssignTicket = () => {
   const { user } = useContext(AuthContext);
@@ -51,6 +51,7 @@ const AgentAssignTicket = () => {
     isLoading: agentLoading,
     isError: agentError,
     error: agentErrorInfo,
+    isFetching: agentFetching,
     refetch: refetchAgent,
   } = useQuery({
     queryKey: ["currentAgent", user?.uid],
@@ -211,9 +212,24 @@ const AgentAssignTicket = () => {
     );
   }
 
-  if (!isApproved) {
+if (!isApproved) {
+    const noticeStatus =
+      currentAgentData?.status === "suspended"
+        ? "suspended"
+        : currentAgentData?.verifyIdAgent === "rejected"
+          ? "rejected"
+          : "pending";
+
     return (
-      <AgentApprovalStatus agent={currentAgentData} onRefresh={refetchAgent} />
+      <AccountStatusNotice
+        role="agent"
+        status={noticeStatus}
+        rejectionReason={currentAgentData?.rejectionReason}
+        userEmail={currentAgentData?.email || user?.email}
+        companyName={currentAgentData?.companyName}
+        isChecking={agentFetching}
+        onRefresh={refetchAgent}
+      />
     );
   }
 

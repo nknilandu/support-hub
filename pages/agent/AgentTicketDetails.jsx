@@ -36,6 +36,8 @@ import CardWithBlurBlob from "../../components/ui/Card/CardWithBlurBlob";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import GradientCard from "../../components/ui/Card/GradientCard";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
+import LoadingPage from "../loading/LoadingPage/LoadingPage";
 
 const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3021"
@@ -220,12 +222,32 @@ function AgentTicketDetailsContent({ user, ticketId }) {
   }, [message, activeTab]);
 
   // =====================================================
+  // CURRENT AGENT PROFILE GATE
+  // =====================================================
+
+  const agentQuery = useQuery({
+    queryKey: ["currentAgent", user?.uid],
+    enabled: Boolean(user),
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const result = await requestApi(user, "/users/me", { signal });
+      return result.user;
+    },
+  });
+
+  const currentAgent = agentQuery.data;
+  const isApprovedAgent =
+    currentAgent?.role === "agent" &&
+    currentAgent?.status === "active" &&
+    currentAgent?.verifyIdAgent === "approved";
+
+  // =====================================================
   // TICKET DETAILS
   // =====================================================
 
   const ticketQuery = useQuery({
     queryKey: detailsKey,
-    enabled: Boolean(user && validTicketId),
+    enabled: Boolean(user && validTicketId && isApprovedAgent),
     retry: false,
 
     queryFn: ({ signal }) =>
@@ -570,6 +592,36 @@ function AgentTicketDetailsContent({ user, ticketId }) {
   // =====================================================
   // LOADING / ERROR / ACCESS STATES
   // =====================================================
+
+  if (user && agentQuery.isLoading) {
+    return <LoadingPage />;
+  }
+
+  if (
+    user &&
+    !agentQuery.isError &&
+    currentAgent?.role === "agent" &&
+    !isApprovedAgent
+  ) {
+    const noticeStatus =
+      currentAgent.status === "suspended"
+        ? "suspended"
+        : currentAgent.verifyIdAgent === "rejected"
+          ? "rejected"
+          : "pending";
+
+    return (
+      <AccountStatusNotice
+        role="agent"
+        status={noticeStatus}
+        rejectionReason={currentAgent.rejectionReason}
+        userEmail={currentAgent.email || user?.email}
+        companyName={currentAgent.companyName}
+        isChecking={agentQuery.isFetching}
+        onRefresh={() => agentQuery.refetch()}
+      />
+    );
+  }
 
   if (user && validTicketId && ticketQuery.isLoading) {
     return (

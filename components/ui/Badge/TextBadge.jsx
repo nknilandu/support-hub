@@ -1,3 +1,6 @@
+import { cn } from "../../../src/lib/cn";
+
+
 export default function TextBadge({
   children,
   variant = "primary",
@@ -38,13 +41,14 @@ export default function TextBadge({
 
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-xl border uppercase tracking-wide ${variantClass} ${sizeClass} ${className}`}
+      className={cn(
+        "inline-flex items-center justify-center rounded-xl border uppercase tracking-wide",
+        variantClass,
+        sizeClass,
+        className,
+      )}
     >
       {children}
     </span>
   );
 }
-
-// <TextBadge variant="cyan" size="lg" >PLATFORM</TextBadge>
-// <TextBadge variant="green" size="md" >PLATFORM</TextBadge>
-// <TextBadge variant="red" size="sm" className='border-none'>PLATFORM</TextBadge>

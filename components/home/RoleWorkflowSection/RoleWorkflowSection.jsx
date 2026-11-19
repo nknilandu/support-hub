@@ -16,14 +16,27 @@ const roles = [
   {
     title: "Owner dashboard",
     badge: "Owner",
-    badgeVariant: "blue",
+    badgeVariant: "orange",
     icon: Crown,
-    iconVariant: "blue",
+    iconVariant: "orange",
     features: [
-      "Dashboard analytics",
-      "Manage agents",
-      "Assign tickets",
-      "Billing & usage",
+      "Workspace analytics",
+      "Team & role approvals",
+      "Assign & resolve tickets",
+      "Stripe billing & limits",
+    ],
+  },
+  {
+    title: "Manager dashboard",
+    badge: "Manager",
+    badgeVariant: "pink",
+    icon: ShieldCheck,
+    iconVariant: "pink",
+    features: [
+      "Operations overview",
+      "Assign & reassign tickets",
+      "Manage agents & customers",
+      "Ticket queue monitoring",
     ],
   },
   {
@@ -33,10 +46,10 @@ const roles = [
     icon: Headphones,
     iconVariant: "cyan",
     features: [
-      "Assigned tickets",
-      "Internal notes",
-      "AI summary",
-      "AI reply draft",
+      "Company & assigned tickets",
+      "AI ticket summary",
+      "AI reply assistant",
+      "Live customer chat",
     ],
   },
   {
@@ -48,27 +61,15 @@ const roles = [
     features: [
       "Support portal",
       "AI first response",
-      "Create ticket",
-      "Track status",
-    ],
-  },
-  {
-    title: "Platform dashboard",
-    badge: "Platform",
-    badgeVariant: "purple",
-    icon: ShieldCheck,
-    iconVariant: "purple",
-    features: [
-      "Manage organizations",
-      "Subscription status",
-      "Suspend or activate companies",
+      "Create & track tickets",
+      "Real-time updates",
     ],
   },
 ];
 
 export default function RoleWorkflowSection() {
   return (
-    <section className="w-full bg-base-200/30 py-20 md:py-24">
+    <section id="workflow" className="w-full bg-base-200/30 py-20 md:py-24">
       <div className="mx-auto max-w-7xl px-6">
         {/* Badge */}
         <div className="mb-4 flex justify-center">
@@ -97,11 +98,10 @@ export default function RoleWorkflowSection() {
               iconVariant,
               features,
             }) => (
-              
-                <CardWithBlurBlob key={title}>
-                    <div>
+              <CardWithBlurBlob key={title} className="h-full p-6">
+                <div>
                   {/* Icon + badge */}
-                  <div className="mb-3 flex items-center justify-between">
+                  <div className="mb-4 flex items-center justify-between">
                     <SoftIconCard
                       icon={Icon}
                       variant={iconVariant}
@@ -119,7 +119,7 @@ export default function RoleWorkflowSection() {
                     {title}
                   </h3>
 
-                  <ul className="mt-2 space-y-3">
+                  <ul className="mt-3 space-y-3">
                     {features.map((feature) => (
                       <li
                         key={feature}
@@ -135,8 +135,7 @@ export default function RoleWorkflowSection() {
                     ))}
                   </ul>
                 </div>
-                </CardWithBlurBlob>
-          
+              </CardWithBlurBlob>
             ),
           )}
         </div>

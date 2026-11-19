@@ -39,6 +39,8 @@ import SoftIconCard from "../../components/ui/Card/SoftIconCard";
 import TextBadge from "../../components/ui/Badge/TextBadge";
 import GradientButton from "../../components/ui/Button/GradientButton";
 import { cn } from "../../src/lib/cn";
+import AccountStatusNotice from "../../components/ui/Notice/AccountStatusNotice";
+import LoadingPage from "../loading/LoadingPage/LoadingPage";
 
 // =====================================================
 // CONFIGURATION
@@ -359,7 +361,9 @@ function ManagerDashboardSkeleton() {
           <CardWithBlurBlob className="overflow-hidden p-0" interactive={false}>
             <div className="flex items-center justify-between gap-3 border-b border-base-content/5 px-5 py-4">
               <div className="space-y-1.5">
-                <div className="skeleton h-4 w-44 rounded-md" />
+                <div className="flex items-center gap-2">
+                  <div className="skeleton h-4 w-44 rounded-md" />
+                </div>
                 <div className="skeleton h-3 w-52 rounded-md" />
               </div>
               <div className="skeleton h-3.5 w-16 rounded-md" />
@@ -445,7 +449,7 @@ function ManagerDashboardSkeleton() {
 }
 
 // =====================================================
-// AUTH + QUERY
+// AUTH + PROFILE GATE + QUERY
 // =====================================================
 
 export default function ManagerDashboard() {
@@ -487,10 +491,34 @@ export default function ManagerDashboard() {
     return () => unsubscribe?.();
   }, []);
 
+  // 1. Check Manager Profile Status FIRST (before loading dashboard skeleton)
+  const profileQuery = useQuery({
+    queryKey: ["manager-profile", session.user?.uid],
+    enabled: session.ready && !!session.user,
+    queryFn: async ({ signal }) => {
+      const res = await apiRequest(session.user, "/users/me", { signal });
+      return res.user;
+    },
+    staleTime: 30_000,
+    retry: (failureCount, requestError) => {
+      if (requestError?.status >= 400 && requestError?.status < 500) {
+        return false;
+      }
+      return failureCount < 1;
+    },
+  });
+
+  const manager = profileQuery.data;
+  const isApprovedManager =
+    manager?.role === "manager" &&
+    manager?.status === "active" &&
+    !["pending", "rejected"].includes(manager?.verifyIdAgent);
+
+  // 2. Load Overview Data ONLY if approved manager
   const { data, error, isPending, isFetching, refetch } = useQuery({
     queryKey: ["manager-overview", session.user?.uid || null],
 
-    enabled: session.ready && !!session.user,
+    enabled: session.ready && !!session.user && isApprovedManager,
 
     queryFn: ({ signal }) =>
       fetchManagerOverview({
@@ -515,8 +543,8 @@ export default function ManagerDashboard() {
     },
   });
 
-  if (!session.ready || (session.user && isPending)) {
-    return <ManagerDashboardSkeleton />;
+  if (!session.ready || (session.user && profileQuery.isPending)) {
+    return <LoadingPage />;
   }
 
   if (session.error || !session.user) {
@@ -539,6 +567,65 @@ export default function ManagerDashboard() {
         </CardWithBlurBlob>
       </section>
     );
+  }
+
+  if (
+    !profileQuery.isError &&
+    manager?.role === "manager" &&
+    !isApprovedManager
+  ) {
+    const restrictedStatus =
+      manager.verifyIdAgent === "rejected"
+        ? "rejected"
+        : manager.verifyIdAgent === "pending"
+          ? "pending"
+          : manager.status;
+
+    return (
+      <AccountStatusNotice
+        role="manager"
+        status={restrictedStatus}
+        rejectionReason={manager.rejectionReason}
+        userEmail={manager.email || session.user?.email}
+        companyName={manager.companyName}
+        isChecking={profileQuery.isFetching}
+        onRefresh={() => profileQuery.refetch()}
+      />
+    );
+  }
+
+  if (profileQuery.isError || !isApprovedManager) {
+    return (
+      <section className="relative min-h-full space-y-4 p-4 lg:p-6">
+        <CardWithBlurBlob className="p-5" interactive={false}>
+          <EmptyState
+            icon={Inbox}
+            title="Unable to verify manager access"
+            description={
+              profileQuery.error?.message ||
+              "An active manager account is required."
+            }
+          />
+          {profileQuery.isError && (
+            <div className="flex justify-center">
+              <GradientButton
+                type="button"
+                size="sm"
+                disabled={profileQuery.isFetching}
+                onClick={() => profileQuery.refetch()}
+                buttonClassName="from-primary to-secondary text-white whitespace-nowrap px-4"
+              >
+                {profileQuery.isFetching ? "Retrying..." : "Try again"}
+              </GradientButton>
+            </div>
+          )}
+        </CardWithBlurBlob>
+      </section>
+    );
+  }
+
+  if (isPending) {
+    return <ManagerDashboardSkeleton />;
   }
 
   const accessDenied = [401, 403, 404].includes(error?.status);
