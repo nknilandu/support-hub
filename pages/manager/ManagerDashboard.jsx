@@ -595,6 +595,15 @@ function ManagerDashboardContent({ user, data, refreshError }) {
 
   const companyName = data.company?.companyName || "Your Company";
 
+  const agentSummary = data.agentSummary || {};
+  const seatLimit =
+    typeof agentSummary.limit === "number" ? agentSummary.limit : null;
+  const remainingSeats =
+    typeof agentSummary.remainingSeats === "number"
+      ? agentSummary.remainingSeats
+      : null;
+  const agentLimitReached = seatLimit !== null && remainingSeats <= 0;
+
   const pendingAgentsList = useMemo(
     () =>
       (data.pendingAgentApprovals || []).map((agent) => ({
@@ -942,7 +951,7 @@ function ManagerDashboardContent({ user, data, refreshError }) {
                   dataKey="value"
                   name="Tickets"
                   radius={[6, 6, 0, 0]}
-                  barSize={28}
+                  maxBarSize={52}
                 >
                   {statusChartData.map((entry) => (
                     <Cell key={entry.key} fill={statusColors[entry.key]} />
@@ -1140,7 +1149,12 @@ function ManagerDashboardContent({ user, data, refreshError }) {
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
-                              disabled={actionLoading}
+                              disabled={actionLoading || agentLimitReached}
+                              title={
+                                agentLimitReached
+                                  ? "Agent seat limit reached"
+                                  : "Approve agent"
+                              }
                               onClick={() =>
                                 openAgentReviewModal(agent, "approve")
                               }
@@ -1511,6 +1525,12 @@ function ManagerDashboardContent({ user, data, refreshError }) {
                   <p className="rounded-xl border border-success/20 bg-success/5 p-3.5 text-sm text-base-content/75">
                     Approve <strong>{reviewModal.agent.name}</strong> to join{" "}
                     {companyName}&apos;s support team?
+                    {seatLimit !== null && (
+                      <span className="mt-1 block text-xs text-base-content/60">
+                        Seats used: {agentSummary.activeApproved ?? 0}/
+                        {seatLimit} ({remainingSeats} remaining)
+                      </span>
+                    )}
                   </p>
                 ) : (
                   <div>

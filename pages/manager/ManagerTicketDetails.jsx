@@ -170,6 +170,154 @@ const markdownComponents = {
   ),
 };
 
+// =====================================================
+// POLISHED SKELETON LOADER (Exact Layout Match)
+// =====================================================
+
+function ManagerTicketDetailsSkeleton() {
+  return (
+    <div
+      aria-label="Loading ticket details"
+      aria-busy="true"
+      className="space-y-5 p-4 lg:p-5"
+    >
+      {/* Header Skeleton */}
+      <CardWithBlurBlob interactive={false}>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="skeleton h-4 w-20 rounded-md" />
+              <div className="skeleton h-6 w-24 rounded-full" />
+            </div>
+
+            <div className="skeleton mt-3 h-7 w-4/5 max-w-xl rounded-lg sm:h-8" />
+            <div className="skeleton mt-2.5 h-4 w-full max-w-2xl rounded-md" />
+            <div className="skeleton mt-1.5 h-4 w-2/3 max-w-lg rounded-md" />
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="skeleton h-6 w-20 rounded-full" />
+              <div className="skeleton h-6 w-28 rounded-full" />
+              <div className="skeleton h-6 w-24 rounded-full" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-72 lg:shrink-0">
+            <div className="rounded-2xl border border-base-content/10 bg-base-100/60 px-4 py-3">
+              <div className="skeleton h-3 w-14 rounded" />
+              <div className="skeleton mt-2 h-4 w-24 rounded" />
+            </div>
+
+            <div className="rounded-2xl border border-base-content/10 bg-base-100/60 px-4 py-3">
+              <div className="skeleton h-3 w-14 rounded" />
+              <div className="skeleton mt-2 h-4 w-24 rounded" />
+            </div>
+
+            <div className="sm:col-span-2">
+              <div className="skeleton h-11 w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+      </CardWithBlurBlob>
+
+      {/* Main Split View Skeleton */}
+      <div className="grid h-[89svh] min-h-0 gap-3 lg:grid-cols-2">
+        {/* Left Details Skeleton */}
+        <CardWithBlurBlob
+          interactive={false}
+          className="h-full overflow-hidden"
+        >
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-base-content/10 p-4">
+              <div className="skeleton h-4 w-40 rounded-md" />
+              <div className="skeleton mt-3 h-3.5 w-full rounded" />
+              <div className="skeleton mt-2 h-3.5 w-11/12 rounded" />
+              <div className="skeleton mt-2 h-3.5 w-3/4 rounded" />
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <div className="skeleton h-4 w-28 rounded" />
+              <div className="skeleton h-4 w-32 rounded" />
+              <div className="skeleton h-4 w-24 rounded" />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-2xl border border-base-content/10 p-4"
+                >
+                  <div className="space-y-2">
+                    <div className="skeleton h-3.5 w-20 rounded" />
+                    <div className="skeleton h-3 w-16 rounded" />
+                  </div>
+                  <div className="skeleton h-10 w-10 rounded-full" />
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2 border-b border-base-content/10 pb-5">
+              <div className="skeleton h-6 w-44 rounded-lg" />
+              <div className="skeleton h-3.5 w-full rounded" />
+              <div className="skeleton h-3.5 w-5/6 rounded" />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="skeleton h-24 rounded-2xl" />
+              <div className="skeleton h-24 rounded-2xl" />
+            </div>
+          </div>
+        </CardWithBlurBlob>
+
+        {/* Right Conversation Skeleton */}
+        <CardWithBlurBlob
+          interactive={false}
+          className="hidden h-full flex-col overflow-hidden p-0 lg:flex"
+        >
+          <div className="flex items-center justify-between border-b border-base-content/10 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="skeleton h-10 w-10 rounded-xl" />
+              <div className="space-y-1.5">
+                <div className="skeleton h-4 w-40 rounded" />
+                <div className="skeleton h-3 w-52 rounded" />
+              </div>
+            </div>
+            <div className="skeleton h-8 w-20 rounded-xl" />
+          </div>
+
+          <div className="flex-1 space-y-6 p-5">
+            <div className="flex flex-col items-center">
+              <div className="flex -space-x-3">
+                <div className="skeleton h-12 w-12 rounded-full" />
+                <div className="skeleton h-12 w-12 rounded-full" />
+              </div>
+              <div className="skeleton mt-3 h-5 w-32 rounded" />
+              <div className="skeleton mt-1.5 h-3 w-44 rounded" />
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="skeleton h-8 w-8 shrink-0 rounded-full" />
+              <div className="skeleton h-20 w-3/4 rounded-2xl" />
+            </div>
+
+            <div className="flex flex-row-reverse items-start gap-3">
+              <div className="skeleton h-8 w-8 shrink-0 rounded-full" />
+              <div className="skeleton h-20 w-3/4 rounded-2xl" />
+            </div>
+          </div>
+
+          <div className="border-t border-base-content/10 p-4">
+            <div className="skeleton h-16 w-full rounded-2xl" />
+            <div className="mt-3 flex items-center justify-between">
+              <div className="skeleton h-3 w-36 rounded" />
+              <div className="skeleton h-8 w-20 rounded-xl" />
+            </div>
+          </div>
+        </CardWithBlurBlob>
+      </div>
+    </div>
+  );
+}
+
 // Remount when the ticket or signed-in user changes.
 // Drafts and action states never carry over to another ticket.
 export default function ManagerTicketDetails() {
@@ -273,18 +421,28 @@ function ManagerTicketDetailsContent({ user, ticketId }) {
     ticketData?.subject ||
     "Untitled Ticket";
 
+  const isAiSolved =
+    ticketData?.aiResolved === true ||
+    ticketData?.supportMode === "ai" ||
+    ticketData?.resolutionSource === "ai";
+  const isUnassignedOpen = status === "open" && !agentInfo?.uid;
+
   const canReadTicket = permission.canRead === true;
-  const canReadMessages = canReadTicket && permission.canReadMessages === true;
+  const canReadMessages =
+    canReadTicket &&
+    permission.canReadMessages === true &&
+    !isAiSolved &&
+    !isUnassignedOpen;
   const canSendMessage = canReadMessages && permission.canSendMessage === true;
 
   const isClosedOrResolved = ["resolved", "closed"].includes(status);
   const canAssignOrReassign =
     !isClosedOrResolved &&
-    ticketData?.aiResolved !== true &&
+    !isAiSolved &&
     Boolean(
       permission.canAssign ||
-        permission.canReassign ||
-        permission.canManageAssignment,
+      permission.canReassign ||
+      permission.canManageAssignment,
     );
   const canUnassign =
     !isClosedOrResolved &&
@@ -557,28 +715,10 @@ function ManagerTicketDetailsContent({ user, ticketId }) {
   // =====================================================
 
   if (user && validTicketId && ticketQuery.isLoading) {
-    return (
-      <div className="space-y-5 p-4 lg:p-5">
-        <CardWithBlurBlob interactive={false}>
-          <div className="space-y-4">
-            <div className="skeleton h-4 w-32" />
-            <div className="skeleton h-7 w-3/4" />
-            <div className="skeleton h-4 w-full" />
-          </div>
-        </CardWithBlurBlob>
-
-        <CardWithBlurBlob interactive={false}>
-          <div className="min-h-[60vh] space-y-4">
-            {[1, 2, 3, 4, 5].map((item) => (
-              <div key={item} className="skeleton h-5 w-full" />
-            ))}
-          </div>
-        </CardWithBlurBlob>
-      </div>
-    );
+    return <ManagerTicketDetailsSkeleton />;
   }
 
-if (
+  if (
     !user ||
     !validTicketId ||
     ticketQuery.isError ||
@@ -684,7 +824,7 @@ if (
                 {status.replaceAll("_", " ") || "Unknown"}
               </TextBadge>
 
-              {ticketData.aiResolved === true && (
+              {isAiSolved && (
                 <TextBadge variant="purple">AI resolved</TextBadge>
               )}
             </div>
@@ -824,18 +964,24 @@ if (
       )}
 
       <div
-        className={`grid h-[89svh] min-h-0 gap-3 ${
-          canReadMessages ? "lg:grid-cols-2" : "grid-cols-1"
+        className={`grid min-h-0 gap-3 ${
+          canReadMessages ? "h-[89svh] lg:grid-cols-2" : "grid-cols-1"
         }`}
       >
         {/* Details panel */}
         <CardWithBlurBlob
           interactive={false}
-          className={`h-full min-h-0 overflow-hidden ${
+          className={`min-h-0 overflow-hidden ${
+            canReadMessages ? "h-full" : ""
+          } ${
             activeTab === "details" || !canReadMessages ? "block" : "hidden"
           } lg:block`}
         >
-          <div className="h-full overflow-y-auto pr-2">
+          <div
+            className={`${
+              canReadMessages ? "h-full overflow-y-auto pr-2" : ""
+            }`}
+          >
             {originalDescription && (
               <div className="mb-5 rounded-2xl border border-base-content/10 p-4">
                 <h2 className="text-sm font-semibold">
@@ -1096,7 +1242,7 @@ if (
           </div>
         </CardWithBlurBlob>
 
-        {/* Conversation panel */}
+        {/* Conversation panel (Hidden when open/unassigned or solved by AI) */}
         {canReadMessages && (
           <CardWithBlurBlob
             interactive={false}
@@ -1201,8 +1347,15 @@ if (
               </div>
 
               {messagesQuery.isLoading ? (
-                <div className="flex justify-center py-8">
-                  <span className="loading loading-spinner loading-md text-primary" />
+                <div className="space-y-4 py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="skeleton h-8 w-8 shrink-0 rounded-full" />
+                    <div className="skeleton h-16 w-2/3 rounded-2xl" />
+                  </div>
+                  <div className="flex flex-row-reverse items-start gap-3">
+                    <div className="skeleton h-8 w-8 shrink-0 rounded-full" />
+                    <div className="skeleton h-16 w-2/3 rounded-2xl" />
+                  </div>
                 </div>
               ) : messagesQuery.isError ? (
                 <div className="rounded-xl border border-error/20 bg-error/5 p-4 text-center">
@@ -1232,7 +1385,7 @@ if (
                     : "No messages in this conversation."}
                 </p>
               ) : (
-            conversations.map((item) => {
+                conversations.map((item) => {
                   const senderUid =
                     item.sender?.uid || item.senderUid || item.uid || "";
                   const currentUid = user?.uid || "";
@@ -1250,9 +1403,7 @@ if (
                       <Avatar
                         src={item.sender?.photoURL || item.photoURL}
                         name={
-                          item.sender?.displayName ||
-                          item.senderName ||
-                          "User"
+                          item.sender?.displayName || item.senderName || "User"
                         }
                         className="h-8 w-8"
                       />
@@ -1283,7 +1434,7 @@ if (
                           {item.sender?.displayName ||
                             item.senderName ||
                             "User"}
-                          {(item.sender?.role || item.senderRole)
+                          {item.sender?.role || item.senderRole
                             ? ` (${item.sender?.role || item.senderRole})`
                             : ""}
                           {" · "}

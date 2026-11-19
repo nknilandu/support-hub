@@ -709,8 +709,8 @@ function ManagerAgentsContent({ user, companyId }) {
       title: "Agent Seats",
       value:
         configuredLimit === null
-          ? counts.approved
-          : `${counts.approved}/${configuredLimit}`,
+          ? (seats.used ?? counts.approved)
+          : `${seats.used ?? counts.approved}/${configuredLimit}`,
       note:
         configuredLimit === null
           ? "Limit not configured"
@@ -789,7 +789,12 @@ function ManagerAgentsContent({ user, companyId }) {
         {(canSuspend || canActivate) && (
           <GradientButton
             size="sm"
-            disabled={actionLoading}
+            disabled={actionLoading || (canActivate && limitReached)}
+            title={
+              canActivate && limitReached
+                ? "Agent seat limit reached"
+                : undefined
+            }
             onClick={() =>
               openModal(canSuspend ? "suspend" : "activate", agent)
             }
@@ -1357,7 +1362,7 @@ function ManagerAgentsContent({ user, companyId }) {
                           to join your company&apos;s support team?
                         </>
                       ) : (
-                        `Approving this agent uses 1 company seat (${counts.approved}/${configuredLimit} currently used).`
+                        `Approving this agent uses 1 company seat (${seats.used ?? counts.approved}/${configuredLimit} currently used).`
                       )}
                     </p>
 

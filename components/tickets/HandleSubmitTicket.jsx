@@ -17,6 +17,7 @@ const HandleSubmitTicket = ({
     setUploadLoading(true);
 
     try {
+      const token = await user.getIdToken();
       const payload = {
         ticketData,
         aiResult,
@@ -27,14 +28,21 @@ const HandleSubmitTicket = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          authorization: `Bearer ${user.accessToken}`,
+          authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
-      if (!data.success) {
+      if (!res.ok || !data.success) {
+        const isLimit = res.status === 403 && /limit/i.test(data.message || "");
+
+        if (isLimit) {
+          toast.warning(data.message);
+          return;
+        }
+
         throw new Error(data.message || "Ticket creation failed");
       }
 

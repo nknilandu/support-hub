@@ -54,7 +54,7 @@ const StepSuccess = ({ ticket, setTicket, setStep }) => {
             onClick={() => {
               setStep(1);
               setTicket(null);
-            }}
+            }}  
           >
             Create another one
           </GradientButton>

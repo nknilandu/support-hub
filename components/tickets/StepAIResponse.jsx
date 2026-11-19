@@ -28,8 +28,7 @@ const StepAIResponse = ({
 }) => {
   const { user } = useContext(AuthContext);
   const [dataLoading, setDataLoading] = useState(false);
-
-  // console.log(ticketData);
+  const [limitError, setLimitError] = useState(null);
 
   // ========= fetch ai data ================
 
@@ -43,32 +42,58 @@ const StepAIResponse = ({
 
     if (!isValidObject || !hasDescription || aiResult) return;
 
-    setDataLoading(true);
+    let cancelled = false;
 
-    fetch("http://localhost:3021/ai/analyze-ticket", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${user.accessToken}`,
-      },
-      body: JSON.stringify(ticketData),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.success) {
+    const runAnalysis = async () => {
+      setDataLoading(true);
+      setLimitError(null);
+
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("http://localhost:3021/ai/analyze-ticket", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(ticketData),
+        });
+
+        const data = await res.json();
+
+        if (cancelled) return;
+
+        if (!res.ok || !data.success) {
+          const isLimit =
+            res.status === 403 && /limit/i.test(data.message || "");
+
+          if (isLimit) {
+            setLimitError(data.message);
+            toast.warning(data.message);
+            return;
+          }
+
           throw new Error(data.message || "Ticket analysis failed");
         }
-        // console.log(data);
 
         setAiResult(data.data);
-      })
-      .catch((err) => {
-        toast.error(err.message || "Something went wrong");
-        console.error(err);
-      })
-      .finally(() => {
-        setDataLoading(false);
-      });
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err.message || "Something went wrong");
+          console.error(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setDataLoading(false);
+        }
+      }
+    };
+
+    runAnalysis();
+
+    return () => {
+      cancelled = true;
+    };
   }, [ticketData, user, setAiResult, aiResult]);
 
   // ======================================================
@@ -99,7 +124,10 @@ const StepAIResponse = ({
             </div>
           </div>
           {dataLoading ? (
-            <div className="skeleton h-6 w-24 rounded-full"></div>
+            <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1.5 text-xs font-medium text-primary">
+              <span className="loading loading-dots loading-xs" />
+              <span>Analyzing</span>
+            </div>
           ) : (
             aiResult?.category && (
               <TextBadge variant="cyan" size="xl">
@@ -111,14 +139,93 @@ const StepAIResponse = ({
         </div>
 
         {dataLoading ? (
-          <div className="my-6 flex flex-col gap-3 justify-start items-start">
-            <div className="skeleton h-5 w-full rounded-full"></div>
-            <div className="skeleton h-5 w-full rounded-full"></div>
-            <div className="skeleton h-5 w-3/4 rounded-full"></div>
-            <div className="skeleton h-5 w-1/3 rounded-full mt-4"></div>
-            <div className="skeleton h-5 w-2/5 rounded-full"></div>
-            <div className="skeleton h-5 w-2/5 rounded-full"></div>
-            <div className="skeleton h-5 w-1/12 rounded-full"></div>
+          <div className="mt-6 space-y-6">
+            {/* Animated AI Processing Banner */}
+            <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-secondary/10 to-primary/5 p-4">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                  <Sparkles size={18} className="animate-pulse" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-base-content">
+                    Diagnosing your issue &amp; building resolution steps...
+                  </p>
+                  <p className="mt-0.5 text-xs text-base-content/60">
+                    Detecting category, priority level, root cause, and
+                    recommended actions
+                  </p>
+                </div>
+                <span className="loading loading-spinner loading-sm hidden text-primary sm:inline-block" />
+              </div>
+            </div>
+
+            {/* Title & Summary Skeleton */}
+            <div className="space-y-3 border-b border-base-content/10 pb-5">
+              <div className="skeleton h-6 w-2/3 rounded-lg" />
+              <div className="space-y-2 pt-1">
+                <div className="skeleton h-4 w-full rounded-md" />
+                <div className="skeleton h-4 w-5/6 rounded-md" />
+              </div>
+              {/* Metrics dots row */}
+              <div className="flex flex-wrap gap-4 pt-2">
+                <div className="skeleton h-3.5 w-24 rounded-full" />
+                <div className="skeleton h-3.5 w-28 rounded-full" />
+                <div className="skeleton h-3.5 w-20 rounded-full" />
+              </div>
+            </div>
+
+            {/* 3 State Cards Skeleton (Matches actual grid) */}
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-base-content/10 bg-base-100/40 p-4"
+                >
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-3.5 w-20 rounded" />
+                    <div className="skeleton h-3 w-28 rounded" />
+                  </div>
+                  <div className="skeleton h-10 w-10 shrink-0 rounded-full" />
+                </div>
+              ))}
+            </div>
+
+            {/* Root Cause & Steps Skeleton */}
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-2">
+                <div className="skeleton h-6 w-6 rounded-lg" />
+                <div className="skeleton h-5 w-40 rounded-md" />
+              </div>
+              <div className="space-y-2">
+                <div className="skeleton h-4 w-full rounded-md" />
+                <div className="skeleton h-4 w-4/5 rounded-md" />
+              </div>
+            </div>
+          </div>
+        ) : limitError ? (
+          <div className="my-6 rounded-2xl border border-warning/30 bg-warning/10 p-5">
+            <div className="flex items-start gap-3">
+              <AlertTriangle
+                size={20}
+                className="mt-0.5 shrink-0 text-warning"
+              />
+              <div>
+                <h3 className="font-semibold text-base-content">
+                  Monthly AI Limit Reached
+                </h3>
+                <p className="mt-1 text-sm text-base-content/75">
+                  {limitError}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="mt-4 flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                >
+                  <ArrowLeft size={14} />
+                  Back to edit issue
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div>

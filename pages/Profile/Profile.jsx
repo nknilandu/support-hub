@@ -8,6 +8,7 @@ import {
   Building2,
   Calendar,
   Camera,
+  CheckCircle2,
   Crown,
   Globe,
   Headphones,
@@ -16,7 +17,9 @@ import {
   MapPin,
   Phone,
   Save,
+  ShieldCheck,
   User,
+  X,
 } from "lucide-react";
 import GradientButton from "../../components/ui/Button/GradientButton";
 import { toast } from "react-toastify";
@@ -37,70 +40,86 @@ const Profile = () => {
     timezone: "GMT +06:00 Bangladesh",
   });
 
-  //   ========== load data from database ==============
+  // ========== Load profile data from database ==============
   const {
     data: userData,
     isLoading: loading,
     refetch,
   } = useQuery({
-    queryKey: ["myProfile"],
-    enabled: !!user?.accessToken,
+    queryKey: ["myProfile", user?.uid],
+    enabled: !!user,
     queryFn: async () => {
+      const token = await user.getIdToken();
       const res = await fetch("http://localhost:3021/users/me", {
         headers: {
-          authorization: `Bearer ${user.accessToken}`,
+          authorization: `Bearer ${token}`,
         },
       });
 
       const result = await res.json();
 
       if (!res.ok || !result.success) {
-        throw new Error(result.message || "Failed to fetch tickets");
+        throw new Error(result.message || "Failed to fetch profile");
       }
       return result.user;
     },
   });
 
-  //   ================= configure icon ===================
-
+  // ================= Role Color & Icon Configuration ===================
   const roleConfig = {
-    customer: { icon: User, variant: "cyan" },
-    agent: { icon: Headphones, variant: "green" },
-    owner: { icon: Crown, variant: "pink" },
-    platform: { icon: Award, variant: "purple" },
+    customer: { icon: User, variant: "green", label: "Customer" },
+    agent: { icon: Headphones, variant: "cyan", label: "Support Agent" },
+    manager: { icon: ShieldCheck, variant: "pink", label: "Manager" },
+    owner: { icon: Crown, variant: "orange", label: "Company Owner" },
   };
 
-  const config = roleConfig[userData?.role] || { icon: User, variant: "slate" };
-  const Icon = config.icon;
+  const normalizedRole = userData?.role?.toLowerCase() || "";
+  const config = roleConfig[normalizedRole] || {
+    icon: User,
+    variant: "slate",
+    label: userData?.role || "User",
+  };
+  const RoleIcon = config.icon;
 
-  //   ++++++++++++++++++++++++++++
+  // ============================
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
+
   // ============================
   const handleSaveChanges = async () => {
+    if (!formData.displayName.trim()) {
+      toast.error("Full name cannot be empty");
+      return;
+    }
+
     try {
       setSaving(true);
+      const token = await user.getIdToken();
 
       const res = await fetch("http://localhost:3021/users/me", {
         method: "PATCH",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${user.accessToken}`,
+          authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          displayName: formData.displayName.trim(),
+          phone: formData.phone.trim(),
+          location: formData.location.trim(),
+        }),
       });
 
       const result = await res.json();
 
-      if (!result.success) {
-        throw new Error(result.message);
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to update profile");
       }
 
-      // if Backend success then => Firebase update
       if (
         formData?.displayName &&
         formData.displayName.trim() !== user?.displayName
@@ -113,22 +132,22 @@ const Profile = () => {
       toast.success("Profile updated successfully");
       refetch();
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.message || "Something went wrong");
     } finally {
       setSaving(false);
     }
   };
+
   // ======================
   const handlePhotoSave = async () => {
+    if (!photo) return;
+
     try {
       setImgSaving(true);
 
-      // ======================
       // Upload To IMGBB
-      // ======================
-
-      const formData = new FormData();
-      formData.append("image", photo);
+      const uploadData = new FormData();
+      uploadData.append("image", photo);
 
       const imgRes = await fetch(
         `https://api.imgbb.com/1/upload?key=${
@@ -136,7 +155,7 @@ const Profile = () => {
         }`,
         {
           method: "POST",
-          body: formData,
+          body: uploadData,
         },
       );
 
@@ -147,16 +166,14 @@ const Profile = () => {
       }
 
       const photoURL = imgData.data.display_url;
+      const token = await user.getIdToken();
 
-      // ======================
       // MongoDB Update
-      // ======================
-
       const res = await fetch("http://localhost:3021/users/me", {
         method: "PATCH",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${user.accessToken}`,
+          authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           photoURL,
@@ -165,14 +182,11 @@ const Profile = () => {
 
       const result = await res.json();
 
-      if (!result.success) {
-        throw new Error(result.message);
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to save profile photo");
       }
 
-      // ======================
       // Firebase Update
-      // ======================
-
       await updateUserProfile({
         photoURL,
       });
@@ -183,14 +197,11 @@ const Profile = () => {
 
       await refetch();
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.message || "Photo update failed");
     } finally {
       setImgSaving(false);
     }
   };
-  // ======================
-
-  //   console.log(userData);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -205,7 +216,7 @@ const Profile = () => {
     }
   }, [userData]);
 
-  //   ============= (optional) to prevent memory leakage
+  // Prevent memory leakage from object URL
   useEffect(() => {
     return () => {
       if (preview) {
@@ -214,46 +225,68 @@ const Profile = () => {
     };
   }, [preview]);
 
+  const avatarSrc =
+    preview ||
+    userData?.photoURL ||
+    user?.photoURL ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      userData?.displayName || user?.displayName || "User",
+    )}&background=random`;
+
+  const hasCompanyBadge = ["customer", "agent", "manager", "owner"].includes(
+    normalizedRole,
+  );
+
   // ==========================
-
   return (
-    <div className="p-5 max-w-5xl mx-auto">
-      <CardWithBlurBlob interactive={false}>
+    <div className="mx-auto max-w-5xl space-y-5 p-4 lg:p-6">
+      {/* ================================================= */}
+      {/* TOP PROFILE HEADER CARD                           */}
+      {/* ================================================= */}
+      <CardWithBlurBlob interactive={false} className="p-6">
         {loading ? (
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
-            {/* Avatar */}
-            <div className="shrink-0 sm:mx-0">
-              <div className="h-20 w-20 rounded-xl skeleton" />
-            </div>
+          <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+            <div className="h-22 w-22 shrink-0 rounded-2xl skeleton" />
 
-            {/* User Info */}
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-40 rounded-xl skeleton " />
-              <div className="h-4 w-60 rounded-xl skeleton " />
+            <div className="flex-1 space-y-2.5">
+              <div className="h-5 w-44 rounded-lg skeleton" />
+              <div className="h-4 w-60 rounded-lg skeleton" />
 
-              <div className="mt-3 flex flex-wrap justify-start gap-2">
-                <div className="h-5 w-18 rounded-xl skeleton " />
-                <div className="h-5 w-18 rounded-xl skeleton " />
-                <div className="h-5 w-18 rounded-xl skeleton " />
-                <div className="h-5 w-18 rounded-xl skeleton " />
+              <div className="flex flex-wrap gap-2 pt-1">
+                <div className="h-6 w-24 rounded-full skeleton" />
+                <div className="h-6 w-28 rounded-full skeleton" />
+                <div className="h-6 w-28 rounded-full skeleton" />
               </div>
             </div>
-            <div className="w-full sm:w-auto flex justify-start sm:justify-end">
-              <div className="h-8 w-18 rounded-xl skeleton " />
-            </div>
+
+            <div className="h-10 w-28 rounded-xl skeleton" />
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
-            {/* Avatar */}
-            <div className="shrink-0 sm:mx-0">
-              <div className="relative">
-                <div className="h-20 w-20 rounded-2xl overflow-hidden bg-base-300">
-                  <img
-                    src={preview || userData?.photoURL || user?.photoURL}
-                    alt="profile"
-                    className="h-full w-full object-cover"
-                  />
+          <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+              {/* Avatar with subtle gradient ring & quick camera trigger */}
+              <div className="relative shrink-0">
+                <div className="rounded-2xl bg-gradient-to-tr from-primary/40 via-secondary/30 to-primary/10 p-[2px] shadow-sm">
+                  <div className="h-22 w-22 overflow-hidden rounded-[14px] bg-base-300">
+                    <img
+                      src={avatarSrc}
+                      alt="profile"
+                      className="h-full w-full object-cover transition duration-300 hover:scale-105"
+                    />
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  title="Change photo"
+                  disabled={imgSaving}
+                  onClick={() =>
+                    document.getElementById("profilePhoto")?.click()
+                  }
+                  className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-xl border border-base-content/15 bg-base-100 text-base-content/75 shadow-sm transition hover:border-primary/40 hover:text-primary"
+                >
+                  <Camera size={13} />
+                </button>
 
                 <input
                   type="file"
@@ -261,125 +294,156 @@ const Profile = () => {
                   className="hidden"
                   id="profilePhoto"
                   onChange={(e) => {
-                    const file = e.target.files[0];
-
+                    const file = e.target.files?.[0];
                     if (!file) return;
 
                     setPhoto(file);
                     setPreview(URL.createObjectURL(file));
+                    e.target.value = "";
                   }}
                 />
               </div>
-            </div>
 
-            {/* User Info */}
-            <div className="flex-1 sm:text-left break-all">
-              <h2 className="text-xl font-semibold text-base-content/80">
-                {userData?.displayName || user?.displayName}
-              </h2>
+              {/* User Identity & Role Badges */}
+              <div className="min-w-0 flex-1 break-all">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-bold tracking-tight text-base-content">
+                    {userData?.displayName || user?.displayName || "User"}
+                  </h2>
 
-              <p className="text-sm text-base-content/60 break-all">
-                {user?.email}
-              </p>
+                  {userData?.status && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${
+                        userData.status === "active"
+                          ? "bg-success/10 text-success"
+                          : "bg-warning/15 text-warning"
+                      }`}
+                    >
+                      <CheckCircle2 size={11} />
+                      {userData.status}
+                    </span>
+                  )}
+                </div>
 
-              <div className="mt-3 flex flex-wrap justify-start gap-2">
-                <TextBadge variant={config.variant}>
-                  <Icon size={13} className="mr-1" />
-                  {userData?.role}
-                </TextBadge>
+                <p className="mt-0.5 break-all text-sm text-base-content/60">
+                  {user?.email}
+                </p>
 
-                {(userData?.role?.toLowerCase() === "customer" ||
-                  userData?.role?.toLowerCase() === "agent") && (
-                  <TextBadge variant="orange">
-                    <Building2 size={13} className="mr-1" />
-                    {userData?.companyName || "No company"}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <TextBadge variant={config.variant}>
+                    <RoleIcon size={13} className="mr-1" />
+                    {config.label}
                   </TextBadge>
-                )}
 
-                <TextBadge variant="slate">
-                  <Calendar size={13} className="mr-1" />
-                  {userData?.createdAt
-                    ? `Joined ${new Date(userData.createdAt).toLocaleDateString(
-                        "en-US",
-                        {
+                  {hasCompanyBadge && (
+                    <TextBadge variant="purple">
+                      <Building2 size={13} className="mr-1" />
+                      {userData?.companyName || "No company"}
+                    </TextBadge>
+                  )}
+
+                  <TextBadge variant="slate">
+                    <Calendar size={13} className="mr-1" />
+                    {userData?.createdAt
+                      ? `Joined ${new Date(
+                          userData.createdAt,
+                        ).toLocaleDateString("en-US", {
                           month: "short",
                           year: "numeric",
-                        },
-                      )}`
-                    : "Joining date unavailable"}
-                </TextBadge>
+                        })}`
+                      : "Joining date unavailable"}
+                  </TextBadge>
+                </div>
               </div>
             </div>
 
-            {/* ===================== Button ================ */}
-            <div className="w-full sm:w-auto flex justify-start sm:justify-end">
-              {
-                <GradientButton
-                  buttonClassName={`${imgSaving && "from-primary/10 to-secondary/10"}`}
+            {/* Photo Actions */}
+            <div className="flex w-full items-center justify-start gap-2 sm:w-auto sm:justify-end">
+              {photo && !imgSaving && (
+                <button
+                  type="button"
                   onClick={() => {
-                    if (photo) {
-                      handlePhotoSave();
-                    } else {
-                      document.getElementById("profilePhoto")?.click();
-                    }
+                    setPhoto(null);
+                    setPreview(null);
                   }}
-                  disabled={imgSaving}
+                  className="flex h-10 items-center gap-1.5 rounded-xl border border-base-content/10 bg-base-100 px-3.5 text-xs font-medium text-base-content/70 transition hover:bg-base-200"
                 >
-                  {imgSaving ? (
-                    <span className="loading loading-spinner loading-sm mx-9"></span>
-                  ) : photo ? (
-                    <>
-                      <Save size={17} />
-                      Save Photo
-                    </>
-                  ) : (
-                    <>
-                      <Camera size={17} />
-                      Edit Photo
-                    </>
-                  )}
-                </GradientButton>
-              }
+                  <X size={14} />
+                  Discard
+                </button>
+              )}
+
+              <GradientButton
+                buttonClassName={`${
+                  imgSaving ? "from-primary/10 to-secondary/10" : "px-4"
+                }`}
+                onClick={() => {
+                  if (photo) {
+                    handlePhotoSave();
+                  } else {
+                    document.getElementById("profilePhoto")?.click();
+                  }
+                }}
+                disabled={imgSaving}
+              >
+                {imgSaving ? (
+                  <span className="loading loading-spinner loading-sm mx-8" />
+                ) : photo ? (
+                  <>
+                    <Save size={16} />
+                    Save Photo
+                  </>
+                ) : (
+                  <>
+                    <Camera size={16} />
+                    Edit Photo
+                  </>
+                )}
+              </GradientButton>
             </div>
           </div>
         )}
       </CardWithBlurBlob>
 
-      {/* ++++++++++++++++++++++++++++++++++ */}
-      {/* ++++++++++++++++++++++++++++++++++ */}
-      <CardWithBlurBlob interactive={false} className="mt-4 p-6">
+      {/* ================================================= */}
+      {/* PERSONAL INFORMATION FORM CARD                    */}
+      {/* ================================================= */}
+      <CardWithBlurBlob interactive={false} className="p-6">
         {loading ? (
-          <div className="space-y-2">
-            <div className="h-5 w-full rounded-xl skeleton " />
-            <div className="h-5 w-full rounded-xl skeleton " />
-            <div className="h-5 w-1/2 rounded-xl skeleton " />
-            <div className="h-5 w-full rounded-xl skeleton mt-10" />
-            <div className="h-5 w-full rounded-xl skeleton " />
-            <div className="h-5 w-1/2 rounded-xl skeleton " />
+          <div className="space-y-4">
+            <div className="h-5 w-44 rounded-lg skeleton" />
+            <div className="h-4 w-72 rounded-lg skeleton" />
+            <div className="grid grid-cols-1 gap-5 pt-4 md:grid-cols-2">
+              <div className="h-12 w-full rounded-xl skeleton" />
+              <div className="h-12 w-full rounded-xl skeleton" />
+              <div className="h-12 w-full rounded-xl skeleton" />
+              <div className="h-12 w-full rounded-xl skeleton" />
+            </div>
           </div>
         ) : (
           <div>
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-base-content/70">
+            <div className="mb-6 border-b border-base-content/10 pb-4">
+              <h3 className="text-lg font-semibold text-base-content/85">
                 Personal Information
               </h3>
 
-              <p className="text-sm text-base-content/60">
-                Update your name, contact and local settings.
+              <p className="mt-0.5 text-sm text-base-content/55">
+                Update your display name, contact details, and regional
+                preferences.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               {/* Full Name */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase text-base-content/50">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-base-content/55">
                   Full Name
                 </label>
 
                 <div className="relative">
                   <User
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40"
                   />
 
                   <input
@@ -387,64 +451,64 @@ const Profile = () => {
                     value={formData?.displayName}
                     onChange={handleChange}
                     placeholder="Your name here"
-                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 pl-10 pr-4 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
               </div>
 
               {/* Email */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase text-base-content/50">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-base-content/55">
                   Email Address
                 </label>
 
                 <div className="relative">
                   <Mail
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/35"
                   />
 
                   <input
-                    value={user?.email}
+                    value={user?.email || ""}
                     disabled
-                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                    className="h-12 w-full cursor-not-allowed rounded-xl border border-base-content/10 bg-base-200/50 pl-10 pr-4 text-sm text-base-content/55 outline-none"
                   />
                 </div>
               </div>
 
               {/* Phone */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase text-base-content/50">
-                  Phone
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-base-content/55">
+                  Phone Number
                 </label>
 
                 <div className="relative">
                   <Phone
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40"
                   />
 
                   <input
                     name="phone"
-                    type="number"
+                    type="tel"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="+8801XXXXXXXXX"
-                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                    placeholder="+880 1XXX-XXXXXX"
+                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 pl-10 pr-4 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
               </div>
 
               {/* Location */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase text-base-content/50">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-base-content/55">
                   Location
                 </label>
 
                 <div className="relative">
                   <MapPin
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40"
                   />
 
                   <input
@@ -452,28 +516,28 @@ const Profile = () => {
                     value={formData.location}
                     onChange={handleChange}
                     placeholder="Dhaka, Bangladesh"
-                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 pl-10 pr-4 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
               </div>
 
               {/* Language */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase text-base-content/50">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-base-content/55">
                   Language
                 </label>
 
                 <div className="relative">
                   <Languages
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40"
                   />
 
                   <select
                     name="language"
                     value={formData.language}
                     onChange={handleChange}
-                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 pl-10 pr-4 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                   >
                     <option>English (US)</option>
                     <option>English (UK)</option>
@@ -483,33 +547,33 @@ const Profile = () => {
 
               {/* Timezone */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase text-base-content/50">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-base-content/55">
                   Timezone
                 </label>
 
                 <div className="relative">
                   <Globe
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40"
                   />
 
                   <select
                     name="timezone"
                     value={formData.timezone}
                     onChange={handleChange}
-                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 px-10 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                    className="h-12 w-full rounded-xl border border-base-content/10 bg-base-100 pl-10 pr-4 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                   >
                     <option>GMT +06:00 Bangladesh</option>
-                    {/* <option>GMT +00:00 UTC</option>
-          <option>GMT -08:00 Pacific</option> */}
                   </select>
                 </div>
               </div>
             </div>
 
-            {/* Buttons */}
-            <div className="mt-8 flex flex-col-reverse sm:flex-row justify-end gap-3">
+            {/* Footer Action Buttons */}
+            <div className="mt-8 flex flex-col-reverse justify-end gap-3 border-t border-base-content/10 pt-5 sm:flex-row">
               <button
+                type="button"
+                disabled={saving}
                 onClick={() => {
                   setFormData({
                     displayName: userData?.displayName || "",
@@ -522,18 +586,20 @@ const Profile = () => {
                   setPhoto(null);
                   setPreview(null);
                 }}
-                className="h-11 px-5 rounded-xl border border-base-content/10 bg-base-100 text-sm font-medium hover:bg-base-200 transition"
+                className="h-11 rounded-xl border border-base-content/10 bg-base-100 px-5 text-sm font-medium transition hover:bg-base-200 disabled:opacity-50"
               >
-                Cancel
+                Reset
               </button>
 
               <GradientButton
-                buttonClassName={`${saving && "from-primary/10 to-secondary/10"}`}
+                buttonClassName={`px-6 ${
+                  saving ? "from-primary/10 to-secondary/10" : ""
+                }`}
                 onClick={handleSaveChanges}
                 disabled={saving}
               >
                 {saving ? (
-                  <span className="loading loading-spinner loading-sm mx-9"></span>
+                  <span className="loading loading-spinner loading-sm mx-9" />
                 ) : (
                   "Save Changes"
                 )}
@@ -542,7 +608,6 @@ const Profile = () => {
           </div>
         )}
       </CardWithBlurBlob>
-      {/* ++++++++++++++++++++++++++++++++++ */}
     </div>
   );
 };

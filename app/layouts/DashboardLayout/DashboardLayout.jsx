@@ -11,7 +11,8 @@ import {
   User,
   Users,
   Headset,
-  UserCog,
+  CreditCard,
+  Crown,
   PanelLeftOpen,
   PanelLeftClose,
   X,
@@ -23,6 +24,8 @@ import {
   Pencil,
   LogOut,
   TicketCheck,
+  Headphones,
+  ShieldCheck,
 } from "lucide-react";
 import GradientButton from "../../../components/ui/Button/GradientButton";
 import CardWithBlurBlob from "../../../components/ui/Card/CardWithBlurBlob";
@@ -98,7 +101,7 @@ const DashboardLayout = () => {
     }
   };
 
-  // ======== nav items (Notifications added above Profile/Settings) =========
+  // ======== nav items =========
   const dashboardNav = {
     customer: [
       {
@@ -163,7 +166,7 @@ const DashboardLayout = () => {
       },
       {
         label: "Profile",
-        icon: User,
+        icon: Headphones,
         path: "/profile",
       },
     ],
@@ -197,7 +200,41 @@ const DashboardLayout = () => {
       },
       {
         label: "Profile",
-        icon: UserCog,
+        icon: ShieldCheck,
+        path: "/profile",
+      },
+    ],
+
+    owner: [
+      {
+        label: "Dashboard",
+        icon: LayoutGrid,
+        path: "/owner/dashboard",
+      },
+      {
+        label: "Company Tickets",
+        icon: Ticket,
+        path: "/owner/tickets",
+      },
+      {
+        label: "Team & Roles",
+        icon: Users,
+        path: "/owner/team",
+      },
+      {
+        label: "Subscription & Billing",
+        icon: CreditCard,
+        path: "/owner/subscription",
+      },
+      {
+        label: "Notifications",
+        icon: Bell,
+        path: "/notifications",
+        badge: unreadCount,
+      },
+      {
+        label: "Profile",
+        icon: Crown,
         path: "/profile",
       },
     ],
@@ -408,9 +445,10 @@ const DashboardLayout = () => {
           {/* ============================= */}
           {/* AI CARD */}
           {/* ============================= */}
-          {!loading && userRole && !collapsed && (
-            <div className="p-3">
-              {(userRole === "agent" || userRole === "customer") && (
+          {!loading &&
+            (userRole === "agent" || userRole === "customer") &&
+            !collapsed && (
+              <div className="p-3">
                 <CardWithBlurBlob className="p-3">
                   <div className="flex items-center gap-3">
                     <img
@@ -439,9 +477,8 @@ const DashboardLayout = () => {
                     </GradientButton>
                   </Link>
                 </CardWithBlurBlob>
-              )}
-            </div>
-          )}
+              </div>
+            )}
         </aside>
 
         {/* ============================= */}
@@ -478,12 +515,11 @@ const DashboardLayout = () => {
 
                     {!loading && userRole && (
                       <TextBadge
-                        className="ml-2.5 gap-1.5 font-semibold"
+                        className="ml-2.5 gap-1.5 font-medium border-none py-1"
                         size="sm"
                         variant={getRoleBadgeVariant(userRole)}
                       >
-                        <Sparkles size={11} strokeWidth={2.2} />
-                        <span>{userRole}</span>
+                        <span>◉ {userRole}</span>
                       </TextBadge>
                     )}
                   </h1>

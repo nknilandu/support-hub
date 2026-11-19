@@ -37,6 +37,13 @@ import ManagerTickets from "../pages/manager/ManagerTickets";
 import ManagerTicketDetails from "../pages/manager/ManagerTicketDetails";
 import ManagerAgents from "../pages/manager/ManagerAgents";
 import ManagerCustomers from "../pages/manager/ManagerCustomers";
+import OwnerDashboard from "../pages/owner/OwnerDashboard";
+import OwnerTickets from "../pages/owner/OwnerTickets";
+import OwnerTeamRoles from "../pages/owner/OwnerTeamRoles";
+import OwnerSubscription from "../pages/owner/OwnerSubscription";
+import OwnerTicketDetails from "../pages/owner/OwnerTicketDetails";
+import OwnerPaymentSuccess from "../pages/owner/OwnerPaymentSuccess";
+import OwnerPaymentCancelled from "../pages/owner/OwnerPaymentCancelled";
 
 const router = createBrowserRouter([
   {
@@ -167,7 +174,7 @@ const router = createBrowserRouter([
         ],
       },
 
-// manager
+      // manager
       {
         path: "manager",
         element: <RoleRoute role="manager" />,
@@ -196,6 +203,28 @@ const router = createBrowserRouter([
             path: "customers",
             Component: ManagerCustomers,
           },
+        ],
+      },
+
+      // owner
+      {
+        path: "owner",
+        element: <RoleRoute role="owner" />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="dashboard" replace />,
+          },
+          {
+            path: "dashboard",
+            Component: OwnerDashboard,
+          },
+          { path: "tickets", Component: OwnerTickets },
+          { path: "team", Component: OwnerTeamRoles },
+          { path: "subscription", Component: OwnerSubscription },
+          { path: "tickets/:ticketId", Component: OwnerTicketDetails },
+          { path: "payment-success", Component: OwnerPaymentSuccess },
+          { path: "payment-cancelled", Component: OwnerPaymentCancelled },
         ],
       },
     ],

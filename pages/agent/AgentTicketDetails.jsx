@@ -545,6 +545,14 @@ function AgentTicketDetailsContent({ user, ticketId }) {
     } catch (error) {
       if (!mountedRef.current) return;
 
+      const isLimitError =
+        error.status === 403 && /limit/i.test(error.message || "");
+
+      if (isLimitError) {
+        toast.warning(error.message);
+        return;
+      }
+
       toast.error(error.message || "Failed to generate a suggestion");
 
       if ([403, 404, 409].includes(error.status)) {
@@ -585,7 +593,7 @@ function AgentTicketDetailsContent({ user, ticketId }) {
     );
   }
 
-if (
+  if (
     !user ||
     !validTicketId ||
     ticketQuery.isError ||
