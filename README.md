@@ -19,6 +19,10 @@
 
 **SupportHub Frontend** is the client web application for an AI-first multi-tenant SaaS customer support platform. It provides role-tailored dashboards, guided AI-assisted ticket submission, real-time customer–agent ticket conversations, one-click AI reply suggestions, workspace analytics, and Stripe subscription management across dark and light themes.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nknilandu/support-hub/main/src/assets/supportHub_landing_page.png" alt="SupportHub Preview" width="100%" />
+</p>
+
 ---
 
 ## Key Features & User Workflows
@@ -61,7 +65,7 @@ Each role receives a dedicated dashboard shell (`DashboardLayout`), navigation m
 
 ## Tech Stack & Project Structure
 
-- **Framework & Routing:** React, React Router
+- **Framework, Bundler & Routing:** React, Vite (`@/` path aliases), React Router
 - **Styling & Theming:** Tailwind CSS v4, DaisyUI v5 (custom `light` and `dark` themes with `#A770EF` primary and `#FDB99B` secondary brand palette + `Poppins` typography), `clsx` + `tailwind-merge` (`cn`)
 - **Data Fetching & Caching:** TanStack Query (`useQuery`, `useMutation`, automated cache invalidation & polling for notifications)
 - **Authentication & Media:** Firebase Authentication (Email/Password + Google Sign-In) & optional ImgBB profile avatar upload
@@ -69,25 +73,36 @@ Each role receives a dedicated dashboard shell (`DashboardLayout`), navigation m
 
 ```text
 src/
-├── app/
-│   ├── layouts/                 # MainLayout & DashboardLayout (collapsible sidebar + role topbar)
-│   ├── providers/               # AuthProvider (Firebase state, token & role resolution)
-│   └── routes/                  # Public, Private, and Role-guarded route definitions
+├── assets/                      # Brand logo & static media
 ├── components/
-│   ├── layout/                  # Navbar (role links + notification bell) & Footer
-│   ├── sections/                # Landing page sections (Hero, HeroWindow, Problem, Solution, Workflow, Pricing, Security, CTA)
+│   ├── common/                  # Shared layout components (Navbar, Footer, ScrollToTop)
+│   ├── features/
+│   │   ├── home/                # Landing page sections (Hero, HeroWindow, Problem, Solution, Workflow, Pricing, Security, CTA)
+│   │   └── tickets/             # 4-step AI ticket submission flow components
 │   └── ui/                      # Reusable primitives (TextBadge, PromoBadge, GradientButton, GradientText, CardWithBlurBlob, GradientShadowWrapper)
+├── config/
+│   └── firebase.config.js       # Firebase client initialization
+├── layouts/                     # RootLayout, AuthLayout & DashboardLayout (collapsible sidebar + role topbar)
 ├── lib/
-│   └── cn.js                    # Tailwind class merging utility
+│   ├── cn.js                    # Tailwind class merging utility
+│   └── formatRelativeDate.js    # Relative timestamp formatter
 ├── pages/
-│   ├── auth/                    # Login & Role-based Register (with mandatory Terms & Privacy consent)
-│   ├── customer/                # Customer Dashboard, Ticket List, 4-Step New Ticket & AI Assistant
+│   ├── public/                  # Home & LegalPage (smooth-scrolling Terms & Privacy)
+│   ├── auth/                    # Login, Register (with Terms & Privacy consent) & ForgotPassword
+│   ├── shared/                  # Notifications Center & Profile Settings
+│   ├── customer/                # Customer Dashboard, Tickets, 4-Step New Ticket & AI Assistant
 │   ├── agent/                   # Agent Dashboard, Company/My Tickets, Live Conversation & AI Assistant
 │   ├── manager/                 # Manager Overview, Ticket Assignment, Agent Approvals & Customers
 │   ├── owner/                   # Owner Dashboard, Team & Roles, Stripe Subscription & Billing
-│   ├── common/                  # Notifications Center, Profile Settings & LegalPage (Terms & Privacy)
-│   └── loading/                 # Loading screens & skeletons
-└── index.css                    # Tailwind v4 imports & custom DaisyUI light/dark theme tokens
+│   └── system/                  # LoadingPage, ErrorPage & ErrorApp
+├── providers/
+│   └── AuthProvider.jsx         # Firebase auth state, JWT token & role resolution
+├── routes/
+│   ├── PrivateRoute.jsx         # Authenticated route guard
+│   ├── RoleRoute.jsx            # Role-based access guard (owner, manager, agent, customer)
+│   └── DashboardRedirect.jsx    # Smart role-based dashboard redirector
+├── index.css                    # Tailwind v4 imports & custom DaisyUI light/dark theme tokens (#A770EF & #FDB99B)
+└── main.jsx                     # App entry point, QueryClient, AuthProvider & centralized BrowserRouter
 ```
 
 ---
@@ -104,7 +119,7 @@ src/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/nknilandu/supporthub-client.git
+git clone https://github.com/nknilandu/support-hub.git
 cd supporthub-client
 
 # 2. Install dependencies
@@ -118,7 +133,7 @@ cp .env.example .env
 
 ```env
 # Backend API Base URL
-VITE_API_URL=http://localhost:3021
+VITE_API_URL=https://support-hub-server.vercel.app
 
 # Firebase Client Configuration
 VITE_FIREBASE_API_KEY=your_firebase_api_key
